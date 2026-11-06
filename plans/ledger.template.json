@@ -1,0 +1,20 @@
+{
+  "deck": "<slug>",
+  "window": "<one window, for example: 52 weeks ending 2026-06-28>",
+  "slides": [
+    {
+      "id": "s01",
+      "kind": "claim",
+      "claim": "<the one claim this slide makes>",
+      "source": "<file, query or page the numbers come from>",
+      "window": "<same as the deck window>",
+      "numbers": [
+        { "value": "<42%>", "source": "<where this exact number comes from>", "reconciled": false }
+      ],
+      "status": "open",
+      "check": null,
+      "checked_on": null,
+      "note": ""
+    }
+  ]
+}

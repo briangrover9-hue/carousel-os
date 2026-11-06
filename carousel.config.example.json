@@ -1,0 +1,9 @@
+{
+  "engine": {
+    "scan": "python3 tools/scan.py {deck} {out}",
+    "render": "python3 tools/render.py {deck} {out}",
+    "tools": {
+      "budget": "python3 tools/budget.py {deck} {out}"
+    }
+  }
+}

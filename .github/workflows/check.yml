@@ -1,0 +1,32 @@
+# Note: this workflow has not run yet. Push it to a private branch and read every job before you rely on it.
+name: check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    name: ${{ matrix.os }}, Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Run every check
+        run: npm run check
+      - name: Install into a fresh folder and run that project's own tests
+        shell: bash
+        run: |
+          target="${RUNNER_TEMP}/carousel-installed"
+          node scripts/install.js init "$target"
+          cd "$target"
+          node scripts/install.js doctor .
+          node scripts/check-process.js
+          node tests/process/run.js

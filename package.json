@@ -1,0 +1,62 @@
+{
+  "name": "carousel-os",
+  "version": "0.1.0",
+  "description": "A deck process for agents, with a ledger for every number.",
+  "license": "MIT",
+  "author": "Brian Grover",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/briangrover9-hue/carousel-os.git"
+  },
+  "bugs": {
+    "url": "https://github.com/briangrover9-hue/carousel-os/issues"
+  },
+  "homepage": "https://github.com/briangrover9-hue/carousel-os",
+  "keywords": [
+    "presentations",
+    "powerpoint",
+    "pptx",
+    "slides",
+    "deck",
+    "ai-agents",
+    "agent-skills",
+    "workflow",
+    "claude-code",
+    "claim-ledger"
+  ],
+  "bin": {
+    "carousel-os": "scripts/install.js"
+  },
+  "files": [
+    "RULES.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+    "LICENSE",
+    "CONTRIBUTING.md",
+    "cheatsheet.md",
+    "carousel.config.example.json",
+    "commands/",
+    "plans/",
+    "memory/handoff.md",
+    "memory/handoff.template.md",
+    "memory/LOG.template.md",
+    "memory/history/",
+    "memory/wiki/",
+    "bookshelf/",
+    "docs/",
+    "skills/",
+    "scripts/",
+    "tests/process/",
+    "tests/installer/",
+    "!**/.DS_Store"
+  ],
+  "scripts": {
+    "check": "node scripts/check.js",
+    "test": "node tests/process/run.js && node tests/installer/run.js",
+    "install:process": "node scripts/install.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

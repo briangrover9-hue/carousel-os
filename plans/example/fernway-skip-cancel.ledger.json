@@ -1,0 +1,151 @@
+{
+  "deck": "fernway-skip-cancel",
+  "window": "52 weeks ending 2026-06-28",
+  "slides": [
+    {
+      "id": "s01",
+      "kind": "framing",
+      "claim": "Opening slide: why members cancel, and one test worth funding.",
+      "source": "none (framing slide)",
+      "window": "",
+      "numbers": [],
+      "status": "checked",
+      "check": "compared the headline with the brief's decision, and the slide prints no numbers",
+      "checked_on": "2026-07-06",
+      "note": ""
+    },
+    {
+      "id": "s02",
+      "kind": "claim",
+      "claim": "Six in ten cancellations followed two skipped boxes in a row.",
+      "source": "exports/cancellations.csv, exports/orders.csv",
+      "window": "52 weeks ending 2026-06-28",
+      "numbers": [
+        {
+          "value": "2,562",
+          "source": "cancellations with a double skip in the prior 60 days, counted from both files",
+          "reconciled": true
+        },
+        {
+          "value": "4,200",
+          "source": "all cancellations in the window, row count of exports/cancellations.csv",
+          "reconciled": true
+        },
+        {
+          "value": "61%",
+          "source": "2,562 divided by 4,200",
+          "reconciled": true,
+          "words": [
+            "six in ten"
+          ]
+        }
+      ],
+      "status": "checked",
+      "check": "recounted both figures from the two files and divided, 2,562 over 4,200 is 0.61",
+      "checked_on": "2026-07-06",
+      "note": ""
+    },
+    {
+      "id": "s03",
+      "kind": "claim",
+      "claim": "Members who skip two boxes in a row cancel at three times the base rate.",
+      "source": "exports/orders.csv",
+      "window": "52 weeks ending 2026-06-28",
+      "numbers": [
+        {
+          "value": "31.2%",
+          "source": "cancel rate among double skippers, on the one member base",
+          "reconciled": true
+        },
+        {
+          "value": "10.4%",
+          "source": "cancel rate among all other members, on the same member base",
+          "reconciled": true
+        },
+        {
+          "value": "3x",
+          "source": "31.2 divided by 10.4",
+          "reconciled": true,
+          "words": [
+            "three times"
+          ]
+        }
+      ],
+      "status": "checked",
+      "check": "recomputed both rates from the order file on one member base, ratio 3.0",
+      "checked_on": "2026-07-06",
+      "note": ""
+    },
+    {
+      "id": "s04",
+      "kind": "claim",
+      "claim": "About one in five of the members who answered the exit survey gave price as the reason.",
+      "source": "exports/exit-survey.csv",
+      "window": "52 weeks ending 2026-06-28",
+      "numbers": [
+        {
+          "value": "300",
+          "source": "survey rows with reason equal to price",
+          "reconciled": true
+        },
+        {
+          "value": "1,428",
+          "source": "survey rows, which is the number of members who answered",
+          "reconciled": true
+        },
+        {
+          "value": "21.0%",
+          "source": "300 divided by 1,428",
+          "reconciled": true,
+          "words": [
+            "one in five"
+          ]
+        },
+        {
+          "value": "34%",
+          "source": "1,428 divided by 4,200 cancellations",
+          "reconciled": true
+        },
+        {
+          "value": "4,200",
+          "source": "all cancellations in the window, same count as s02",
+          "reconciled": true
+        }
+      ],
+      "status": "checked",
+      "check": "recounted survey rows by reason and divided by the 1,428 respondents, 300 over 1,428 is 0.210",
+      "checked_on": "2026-07-06",
+      "note": ""
+    },
+    {
+      "id": "s05",
+      "kind": "claim",
+      "claim": "A one-month pause is worth testing for members who skip two boxes in a row.",
+      "source": "exports/cancellations.csv",
+      "window": "52 weeks ending 2026-06-28",
+      "numbers": [
+        {
+          "value": "2,562",
+          "source": "same count as s02",
+          "reconciled": true
+        }
+      ],
+      "status": "checked",
+      "check": "compared the 2,562 count with the s02 figure and opened the brief for the pause length",
+      "checked_on": "2026-07-06",
+      "note": ""
+    },
+    {
+      "id": "s06",
+      "kind": "framing",
+      "claim": "The ask: approve a one-month pause test next quarter.",
+      "source": "none (framing slide)",
+      "window": "",
+      "numbers": [],
+      "status": "checked",
+      "check": "compared the ask with the brief's decision, and the slide prints no numbers",
+      "checked_on": "2026-07-06",
+      "note": ""
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "rulesMaxBytes": 8000,
+  "commandMaxBytes": 7000,
+  "pointerMaxBytes": 1200,
+  "nonCommandNames": [
+    "carousel-os"
+  ],
+  "allowMissing": [
+    "memory/history/expired-lessons.md",
+    "memory/history/retired-rules.md"
+  ],
+  "unchecked": [
+    "docs/publish-checklist.md"
+  ],
+  "bannedWords": [
+    "seamless",
+    "seamlessly",
+    "robust",
+    "best-in-class",
+    "cutting-edge",
+    "world-class",
+    "game changer",
+    "game-changer",
+    "unlock",
+    "dive in",
+    "deep dive",
+    "delve",
+    "journey",
+    "leverage",
+    "leverages",
+    "leveraging",
+    "utilize",
+    "utilizes",
+    "utilizing",
+    "synergy",
+    "holistic",
+    "impactful",
+    "transformative",
+    "let me",
+    "revolutionize",
+    "supercharge",
+    "colour",
+    "colours",
+    "behaviour",
+    "favour",
+    "organise",
+    "organised",
+    "whilst",
+    "analyse",
+    "centre",
+    "licence",
+    "programme",
+    "grey"
+  ],
+  "bannedPatterns": [
+    "\\bnot just\\b",
+    "\\bnot only\\b",
+    "\\bisn't just\\b",
+    "\\bit'?s not about\\b",
+    "\\bnever about\\b",
+    "\\bthis is just the beginning\\b"
+  ]
+}
