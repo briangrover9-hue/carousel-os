@@ -1,6 +1,6 @@
 # Carousel OS
 
-![The Carousel OS wordmark beside three example slides about an invented city bike-share program](https://raw.githubusercontent.com/briangrover9-hue/carousel-os/main/docs/hero.png)
+![A slide carousel tray of example slides about an invented city bike share, projecting one slide onto a screen beside the Carousel OS wordmark](https://raw.githubusercontent.com/briangrover9-hue/carousel-os/main/docs/hero.png)
 *Slides drawn by the author's own engine, which is not included.*
 
 A deck process for agents, with a ledger for every number.
@@ -40,6 +40,12 @@ People who ship decks with numbers in them: analysts, consultants, product and s
 ## Getting started
 
 ```
+npx carousel-os init path/to/your-project
+```
+
+Or from a clone:
+
+```
 git clone https://github.com/briangrover9-hue/carousel-os.git
 cd carousel-os
 node scripts/install.js init path/to/your-project
@@ -47,7 +53,7 @@ node scripts/install.js init path/to/your-project
 
 Run `node scripts/check-process.js --plan plans/example/wrenmoor-skip-cancel.md` to see a passing deck. It prints `PASS plan`.
 
-The installer copies the process into your project and leaves any file you already have alone. Open the project in your agent and run `carousel-start`. `node scripts/install.js doctor path/to/your-project` lists anything missing, and `update`, run from your Carousel OS clone, brings a newer copy of the process across without touching files you edited. The copy of the installer inside your project refuses to run, so it can never mistake your own files for the tool's. Once the package is on npm, `npx carousel-os init path/to/your-project` will run the same installer.
+The installer copies the process into your project and leaves any file you already have alone. Open the project in your agent and run `carousel-start`. `node scripts/install.js doctor path/to/your-project` lists anything missing, and `update`, run from your Carousel OS clone, brings a newer copy of the process across without touching files you edited. The copy of the installer inside your project refuses to run, so it can never mistake your own files for the tool's. Or install straight from npm with `npx carousel-os init path/to/your-project`, which runs the same installer.
 
 ## How it works
 

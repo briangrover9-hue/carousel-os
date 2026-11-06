@@ -904,7 +904,7 @@ test("the repro: a --no-agents install with files of yours, doctor's suggestion 
   const d = node(own, ['doctor', '.'], t);
   eq(d.code, 0, d.out);
   yes(!/node scripts\/install\.js/.test(d.out), 'doctor still points at the project\'s own installer:\n' + d.out);
-  const m = /your Carousel OS clone: (node <clone>\/scripts\/install\.js update \S+ --agents), or, once the package is published: npx carousel-os update \S+ --agents/.exec(d.out);
+  const m = /your Carousel OS clone: (node <clone>\/scripts\/install\.js update \S+ --agents), or from npm: npx carousel-os update \S+ --agents/.exec(d.out);
   yes(m, 'doctor does not print a command that runs the installer from a clone:\n' + d.out);
   // Followed as a person would: pasted into the platform's shell, from inside the project.
   const follow = viaShell(m[1].replace('<clone>/scripts/install.js', shq(INSTALL)), t);

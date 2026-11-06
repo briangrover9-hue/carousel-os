@@ -585,7 +585,7 @@ function installerCommand(sub, target, extra) {
   const tail = sub + ' ' + checks.shq(path.resolve(target)) + (extra ? ' ' + extra : '');
   const fromClone = !samePlace(SOURCE, target) && !fs.existsSync(path.join(SOURCE, MANIFEST));
   if (fromClone) return 'node ' + checks.shq(path.join(SOURCE, 'scripts', 'install.js')) + ' ' + tail;
-  return 'run the installer from your Carousel OS clone: node <clone>/scripts/install.js ' + tail + ', or, once the package is published: npx carousel-os ' + tail;
+  return 'run the installer from your Carousel OS clone: node <clone>/scripts/install.js ' + tail + ', or from npm: npx carousel-os ' + tail;
 }
 
 // The project's own check-process, by its absolute path, so the command works from any folder.
