@@ -298,11 +298,15 @@ function readManifest(target) {
   return m;
 }
 
+// Run from the npm package (npx or a dependency), the command people type is
+// `npx carousel-os`; run from a clone, it is the script path.
+const FROM_NPM = /[\\/]node_modules[\\/]|[\\/]_npx[\\/]/.test(__dirname);
+const CMD = FROM_NPM ? 'npx carousel-os' : 'node scripts/install.js';
 const USAGE = [
-  'usage: node scripts/install.js init <target> [--agents|--no-agents] [--dry-run] [--overwrite]',
-  '       node scripts/install.js update [<target>] [--agents|--no-agents] [--dry-run] [--overwrite]',
-  '       node scripts/install.js doctor [<target>]',
-  '       node scripts/install.js <existing-folder> [options]     the same as init',
+  `usage: ${CMD} init <target> [--agents|--no-agents] [--dry-run] [--overwrite]`,
+  `       ${CMD} update [<target>] [--agents|--no-agents] [--dry-run] [--overwrite]`,
+  `       ${CMD} doctor [<target>]`,
+  `       ${CMD} <existing-folder> [options]     the same as init`,
 ].join('\n');
 
 function parseArgs(argv) {

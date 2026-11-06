@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1
+
+- The installer's usage text names `npx carousel-os` when it runs from the npm package, and the script path when it runs from a clone.
+- The README opens with the install command, badges for npm, CI and the license, and a fuller description of what ships.
+- The package description on npm matches the repository.
+
 ## 1.0.0
 
 The first public release. It ships the process, the checks that hold an agent to it, and a blueprint for building your own engine. It ships no engine.

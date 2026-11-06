@@ -1,6 +1,6 @@
 {
   "name": "carousel-os",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Build slide decks with AI agents that you can defend: every number is traced to its source, and a reviewer that didn't build the deck has to pass it. Works in Claude Code, Cursor and Codex.",
   "license": "MIT",
   "author": {
