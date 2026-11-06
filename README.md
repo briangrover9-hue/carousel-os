@@ -63,9 +63,14 @@ cd carousel-os
 node scripts/install.js init path/to/your-project
 ```
 
-Run `node scripts/check-process.js --plan plans/example/wrenmoor-skip-cancel.md` to see a passing deck. It prints `PASS plan`.
+In a clone, `node scripts/check-process.js --plan plans/example/wrenmoor-skip-cancel.md` shows a passing deck. It prints `PASS plan`.
 
-The installer copies the process into your project and leaves any file you already have alone. Open the project in your agent and run `carousel-start`. `node scripts/install.js doctor path/to/your-project` lists anything missing, and `update`, run from your Carousel OS clone, brings a newer copy of the process across without touching files you edited. The copy of the installer inside your project refuses to run, so it can never mistake your own files for the tool's. Or install straight from npm with `npx carousel-os init path/to/your-project`, which runs the same installer.
+The installer copies the process into your project and leaves any file you already have alone. Open the project in your agent and run `carousel-start`. Two more commands keep it healthy:
+
+- `npx carousel-os doctor path/to/your-project` lists anything missing.
+- `npx carousel-os update path/to/your-project` brings a newer version across without touching files you edited. Anything it has to replace is saved as a `.carousel-backup` first.
+
+From a clone, the same commands are `node scripts/install.js doctor` and `node scripts/install.js update`. The copy of the installer inside your project refuses to run, so it can never mistake your own files for the tool's.
 
 ## How it works
 
