@@ -106,7 +106,7 @@ The system runs long stretches on its own, and the human decides at the points t
 
 The two reviewers in `agents/` are working examples. Copy the shape of `agents/carousel-reviewer.md` for any row in the table above:
 
-- **Front matter.** A `name`, a one-line `description` that states the job, and `tools` limited to what the role needs. Reviewers get read-only tools.
+- **Front matter.** A `name`, a one-line `description` that states the job, and `tools` limited to what the role needs. Reviewers get read and search tools plus Bash for running checks, and their body tells them to change nothing.
 - **Inputs as paths.** The agent receives file paths, never the builder's summary of what the files say.
 - **One output format.** A fixed shape the next stage can parse, such as a verdict with pasted evidence.
 - **Refusals as rules.** Turn the role's Refuses column into plain rules the agent must follow.

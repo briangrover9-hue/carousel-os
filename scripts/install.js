@@ -78,7 +78,7 @@ const PROCESS = [
   { dir: 'docs', only: ['short-run.md', 'cost.md', 'how-it-thinks.md'] },
   { dir: 'docs/build-your-engine' },   // docs/gallery stays home: its images are not in the npm package
   { dir: 'tests/process' },
-  { dir: 'scripts', exclude: ['check.js', 'check-links.js', 'leak-scan.js'] },   // repository-only scripts stay home; every other script a process script needs ships
+  { dir: 'scripts', exclude: ['check.js', 'check-links.js', 'leak-scan.js', 'make-release-zip.js'] },   // repository-only scripts stay home; every other script a process script needs ships
   { dir: 'memory', skeleton: true,
     ships: (f) => /^memory\/(handoff\.md|handoff\.template\.md|LOG\.template\.md|history\/README\.md|wiki\/[^/]+\.md|wiki\/lessons\.history)$/.test(f) },
 ];

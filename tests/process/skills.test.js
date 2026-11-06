@@ -157,14 +157,14 @@ test('a stage with no Job line or the wrong title is a problem the script will n
   assert.ok(confirm(d).out.includes('no "Job:" line'));
 });
 
-test('the reviewer agents are read-only, engine-agnostic and never round UNVERIFIABLE up', () => {
+test('the reviewer agents get read, search and Bash tools, are told to change nothing, are engine-agnostic and never round UNVERIFIABLE up', () => {
   ['carousel-reviewer.md', 'carousel-fidelity.md'].forEach((f) => {
     const text = fs.readFileSync(path.join(h.ROOT, 'agents', f), 'utf8');
     const { front, body } = gen.splitFrontMatter(text);
     assert.ok(front.includes(`name: ${f.replace(/\.md$/, '')}`), f);
     assert.ok(/^description: ".+"$/m.test(front), f);
     assert.strictEqual(/^tools: (.*)$/m.exec(front)[1], 'Read, Grep, Glob, Bash', f);
-    ['PASS', 'REJECT', 'UNVERIFIABLE', 'never rounded up to PASS', 'pasted', "builder's reasoning", 'found <value>'].forEach((s) => assert.ok(body.includes(s), `${f} lacks: ${s}`));
+    ['PASS', 'REJECT', 'UNVERIFIABLE', 'never rounded up to PASS', 'pasted', "builder's reasoning", 'found <value>', 'change nothing'].forEach((s) => assert.ok(body.includes(s), `${f} lacks: ${s}`));
     assert.ok(!/\bengine\b/i.test(body), `${f} assumes an engine`);
   });
   const review = fs.readFileSync(path.join(h.ROOT, '.agents/skills/carousel-review/SKILL.md'), 'utf8');

@@ -9,13 +9,20 @@ An agent process for building slide decks you can defend. It interviews you, sto
 
 ## Install
 
-Run this in a terminal, pointing it at the folder where you make decks:
+Pick one of four ways. Each installs the whole system, and each needs Node 20 or newer.
+
+1. **Download the one skill.** Put [`skills/carousel-os/SKILL.md`](skills/carousel-os/SKILL.md) in your skills folder (`~/.claude/skills/carousel-os/` for Claude Code), then ask your agent to set up Carousel OS in a project. It installs the whole system on first use, after you say yes.
+2. **npm.** Run `npx carousel-os init path/to/your-project`.
+3. **Release zip.** Download `carousel-os-<version>.zip` from the [latest GitHub release](https://github.com/briangrover9-hue/carousel-os/releases/latest) and unzip it into your project folder.
+4. **Clone.** Clone the repository and run `node scripts/install.js init path/to/your-project`.
+
+Or ask your agent: paste this into the chat in Claude Code, Cursor or Codex, with the project open.
 
 ```
-npx carousel-os init path/to/your-project
+Install Carousel OS in this project by running npx carousel-os init . and then run npx carousel-os doctor . and tell me the result.
 ```
 
-Then open that project in Claude Code, Cursor or Codex and start your first deck with `carousel-start` (in Claude Code, type `/carousel-start`). It needs Node 20 or newer. The package is on [npm](https://www.npmjs.com/package/carousel-os), and everything it installs is listed under [Getting started](#getting-started).
+Then open that project in Claude Code, Cursor or Codex and start your first deck with `carousel-start` (in Claude Code, type `/carousel-start`). The package is on [npm](https://www.npmjs.com/package/carousel-os), and [Getting started](#getting-started) covers what happens next.
 
 Every slide gets one ledger entry, and every number printed on the slide is listed in it with its source, its window and a check that has to pass before the entry counts. A script then reads the slide text out of the deck file and compares it with the ledger.
 
@@ -31,7 +38,7 @@ The check passes and the mistake is still there. A reviewer starts with fresh co
 
 You tell it the same thing for the third time. Each correction becomes a dated lesson, and a lesson corrected twice becomes a rule after you approve it.
 
-It looked done until someone else read it. Before anyone else sees it, the headlines read alone have to make the argument, and a fresh reviewer has to fail to break it.
+It looked done until someone else read it. Before anyone else sees it, the headlines read alone have to make the argument, and two fresh reviewers have to fail to break it.
 
 ## Who it is for
 
@@ -51,11 +58,7 @@ People who ship decks with numbers in them: analysts, consultants, product and s
 
 ## Getting started
 
-```
-npx carousel-os init path/to/your-project
-```
-
-Or from a clone:
+Install with any of the options under [Install](#install). From a clone:
 
 ```
 git clone https://github.com/briangrover9-hue/carousel-os.git
@@ -70,7 +73,7 @@ The installer copies the process into your project and leaves any file you alrea
 - `npx carousel-os doctor path/to/your-project` lists anything missing.
 - `npx carousel-os update path/to/your-project` brings a newer version across without touching files you edited. Anything it has to replace is saved as a `.carousel-backup` first.
 
-From a clone, the same commands are `node scripts/install.js doctor` and `node scripts/install.js update`. The copy of the installer inside your project refuses to run, so it can never mistake your own files for the tool's.
+From a clone, the same commands are `node scripts/install.js doctor` and `node scripts/install.js update`. The copy of the installer inside your project refuses to install or update from there, so it can never mistake your own files for the tool's.
 
 ## How it works
 
@@ -87,6 +90,16 @@ You type nine commands, one at a time. No command starts the next, and each decl
 9. `carousel-handoff` writes the note the next session starts from.
 
 A single prompt would interpret the request, pick the story, find the numbers, draw the slides and grade itself in one pass, so its mistakes go into the deck with its own approval. [How it thinks](docs/how-it-thinks.md) explains what each piece of the process targets. A short internal deck can take the [short run](docs/short-run.md): the same nine stages with one critique round.
+
+## Where you're needed
+
+The process needs you at three points:
+
+- You answer the questions `carousel-brief` asks. A question you cannot answer yet stays in the brief as an `ASK:` marker, and the storyboard declines to start while the literal ask, the reader or the evidence still holds one.
+- You read the storyboard's headlines, listed in its `Headlines only:` block, and start the critique only when they make your argument.
+- Before the deck goes out, you read the plan's `Calls made` section, where the build logs each call it made without you, and overrule any you don't like.
+
+Between those points you can queue the stages one after another and come back to a checked deck.
 
 ## A rejection, a fix and a pass
 

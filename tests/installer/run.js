@@ -47,6 +47,8 @@ const LIST = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'stages.json'
 const STAGES = LIST.stages;
 const REVIEWERS = LIST.agents;
 const skill = (dir, n) => `${dir}/${n}/SKILL.md`;
+// The one skill people download on its own. It is not a stage and never installs.
+const { BOOTSTRAP } = require(path.join(ROOT, 'scripts', 'check-process.js'));
 
 // ------------------------------------------------------------------ init and the argument rules
 test('init installs the process, with no engine and no Python files', () => {
@@ -63,7 +65,7 @@ test('every script the process scripts require ships, and the repository-only on
   run(['init', t]);
   const have = fs.readdirSync(path.join(t, 'scripts'));
   ['check-process.js', 'lessons.js', 'rotate-log.js', 'install.js', 'check-process.config.json'].forEach((f) => yes(have.includes(f), f + ' was not installed'));
-  ['check.js', 'check-links.js', 'leak-scan.js'].forEach((f) => yes(!have.includes(f), f + ' was installed'));
+  ['check.js', 'check-links.js', 'leak-scan.js', 'make-release-zip.js'].forEach((f) => yes(!have.includes(f), f + ' was installed'));
   fs.readdirSync(path.join(ROOT, 'scripts')).filter((f) => f.endsWith('.js')).forEach((f) => {
     const text = fs.readFileSync(path.join(ROOT, 'scripts', f), 'utf8');
     if (!have.includes(f)) return;
@@ -306,7 +308,7 @@ test('init installs the reviewer agents in agents/ and .claude/agents/, tracked 
   const m = manifestOf(t);
   REVIEWERS.forEach((f) => {
     yes(fs.readFileSync(path.join(t, 'agents', f)).equals(fs.readFileSync(path.join(t, '.claude', 'agents', f))), f + ' differs between agents/ and .claude/agents/');
-    yes(/^tools: Read, Grep, Glob, Bash$/m.test(fs.readFileSync(path.join(t, 'agents', f), 'utf8')), f + ' is not limited to read-only tools');
+    yes(/^tools: Read, Grep, Glob, Bash$/m.test(fs.readFileSync(path.join(t, 'agents', f), 'utf8')), f + ' does not get exactly read, search and Bash tools');
     yes(m.files['agents/' + f] && m.files['.claude/agents/' + f], 'manifest does not track ' + f);
   });
 });
@@ -664,10 +666,11 @@ test('package.json asks for Node 20, keeps the publish checklist out of the pack
   yes(/node: \[20, 22\]/.test(ci) && /ubuntu-latest, macos-latest, windows-latest/.test(ci), 'the CI matrix is not 3 systems by Node 20 and 22');
 });
 
-test('each stage skill and reviewer agent obeys the skill upload rules: name, no angle brackets, 1024 characters or fewer', () => {
-  STAGES.map((n) => [n, skill('.agents/skills', n)]).concat(REVIEWERS.map((f) => [f.replace(/\.md$/, ''), 'agents/' + f])).forEach(([name, rel]) => {
+test('each stage skill, reviewer agent and the carousel-os skill obeys the skill upload rules: name, no angle brackets, 1024 characters or fewer', () => {
+  STAGES.map((n) => [n, skill('.agents/skills', n)]).concat(REVIEWERS.map((f) => [f.replace(/\.md$/, ''), 'agents/' + f]), [['carousel-os', BOOTSTRAP]]).forEach(([name, rel]) => {
     const text = fs.readFileSync(path.join(ROOT, rel), 'utf8').replace(/\r\n/g, '\n');
     const fm = (/^---\n([\s\S]*?)\n---/.exec(text) || [])[1] || '';
+    yes(/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name) && name.length <= 64, rel + ': the name breaks the naming rules');
     yes(new RegExp('^name:\\s*' + name + '\\s*$', 'm').test(fm), rel + ': the front matter name is not ' + name);
     const d = /^description:\s*"(.*)"\s*$/m.exec(fm);
     yes(d, rel + ': no quoted description');
@@ -1831,6 +1834,46 @@ test('doctor reads quoted engine paths, -m modules and inline code without calli
   fs.writeFileSync(path.join(t, 'carousel.config.json'), JSON.stringify({ engine: { scan: 'python3 "my tools/nope.py" {deck} {out}', render: 'node docs/build-your-engine/example/render.js {deck} {out}' } }));
   const d2 = run(['doctor', t]);
   yes(/MISSING\s+engine scan: my tools\/nope\.py not found/.test(d2.out), d2.out);
+});
+
+test('the carousel-os skill ships in the package, may start on its own, and is never a stage or installed', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  yes(pkg.files.some((f) => BOOTSTRAP.startsWith(f)), 'package.json does not ship ' + BOOTSTRAP);
+  const text = fs.readFileSync(path.join(ROOT, BOOTSTRAP), 'utf8');
+  yes(!/disable-model-invocation:\s*true/.test(text), BOOTSTRAP + ' is manual-only, and it is the front door');
+  yes(!STAGES.includes('carousel-os') && !LIST.retiredStages.includes('carousel-os'), 'stages.json lists carousel-os');
+  const gen = require(path.join(ROOT, 'scripts', 'generate-skills.js'));
+  yes(!gen.stageNames(ROOT).includes('carousel-os'), 'generate-skills counts carousel-os as a stage');
+  ['npx carousel-os init .', 'npx carousel-os doctor .', 'https://github.com/briangrover9-hue/carousel-os'].concat(STAGES.map((n) => '`' + n + '`')).forEach((s) => yes(text.includes(s), BOOTSTRAP + ' does not say ' + s));
+  const t = tmp();
+  eq(run(['init', t]).code, 0);
+  yes(!fs.existsSync(path.join(t, 'skills')) && !fs.existsSync(path.join(t, '.agents/skills/carousel-os')) && !fs.existsSync(path.join(t, '.claude/skills/carousel-os')), 'the installer copied the carousel-os skill');
+  yes(!Object.keys(manifestOf(t).files).some((f) => /carousel-os\//.test(f)), 'the manifest records the carousel-os skill');
+});
+
+test('the release zip holds what init installs, and the unzipped folder passes its own checks and doctor', () => {
+  const has = (cmd, arg) => { const r = cp.spawnSync(cmd, [arg], { encoding: 'utf8' }); return !r.error && r.status === 0; };
+  if (!has('zip', '-v') || !has('unzip', '-v')) { console.log('skip  the release zip test: zip or unzip is not installed'); return; }
+  const out = tmp();
+  const r = node(path.join(ROOT, 'scripts', 'make-release-zip.js'), ['--out', out]);
+  eq(r.code, 0, r.out);
+  const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+  const zipFile = path.join(out, `carousel-os-${version}.zip`);
+  yes(fs.existsSync(zipFile), 'no ' + zipFile + ':\n' + r.out);
+  const u = tmp();
+  const uz = cp.spawnSync('unzip', ['-q', zipFile, '-d', u], { encoding: 'utf8' });
+  eq(uz.status, 0, (uz.stdout || '') + (uz.stderr || ''));
+  const want = tmp();
+  eq(run(['init', want]).code, 0);
+  eq(walk(u, '', []).sort().join('\n'), walk(want, '', []).sort().join('\n'), 'the zip does not hold exactly what init installs');
+  yes(fs.existsSync(path.join(u, '.carousel-install.json')), 'the zip has no manifest');
+  [['scripts/check-process.js', []], ['tests/process/run.js', []], ['scripts/generate-skills.js', ['--confirm']]].forEach(([script, args]) => {
+    const c = node(path.join(u, script), args, u);
+    eq(c.code, 0, script + ' fails in the unzipped folder:\n' + c.out);
+  });
+  const d = run(['doctor', u]);
+  eq(d.code, 0, d.out);
+  yes(/doctor: all good/.test(d.out), d.out);
 });
 
 fs.rmSync(RUN_DIR, { recursive: true, force: true });

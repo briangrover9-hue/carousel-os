@@ -5,6 +5,10 @@
 - The installer's usage text names `npx carousel-os` when it runs from the npm package, and the script path when it runs from a clone.
 - The README opens with the install command, badges for npm, CI and the license, and a fuller description of what ships.
 - The package description on npm matches the repository.
+- **One skill to download.** `skills/carousel-os/SKILL.md` is a single skill you can drop into your skills folder like any public skill. When you ask your agent to set up Carousel OS, it checks the project, asks once before running `npx carousel-os init .`, runs `doctor`, and then points you to `carousel-start` without running any stage itself. Unlike the stages, an agent may start it unasked. The prose, byte budget and skill upload checks cover it, and the installer never copies it into a project.
+- **A release zip.** `node scripts/make-release-zip.js` builds `dist/carousel-os-<version>.zip`, holding exactly what `init` installs into an empty project, manifest included, so a later `update` works on the unzipped folder. A test unzips it and runs the process checks, the process tests, `generate-skills.js --confirm` and `doctor` on the result.
+- The README's Install section lists the four ways to install: the one skill, npm, the release zip and a clone. A new section, Where you're needed, names the three points where the process waits on you.
+- The reviewer agents are described as they are: read and search tools plus Bash for running checks, told to change nothing. The stage index names both reviewers.
 
 ## 1.0.0
 
@@ -12,7 +16,7 @@ The first public release. It ships the process, the checks that hold an agent to
 
 - **Nine stages.** `carousel-start` through `carousel-handoff`, with `carousel-critique` running the critique rounds between storyboard and build. Each stage is a skill in `.agents/skills/<name>/SKILL.md` with a fixed report line, guards keyed on the previous stage's line, and a Real-change check. Every stage is manual-only: the front matter sets `disable-model-invocation: true` and each stage's `.agents/skills/<name>/agents/openai.yaml` sets `allow_implicit_invocation: false`, so no tool starts a stage unasked.
 - **Three tools.** `.agents/skills/` is the source, used as-is by Codex and Cursor. `scripts/generate-skills.js` mirrors it into `.claude/skills/` for Claude Code. `AGENTS.md` and `CLAUDE.md` point every tool to `RULES.md`.
-- **Two reviewer agents.** `agents/carousel-reviewer.md` tries to disprove the deck against the bar. `agents/carousel-fidelity.md` recomputes every number on the slides from the ledger's sources. Both start with fresh context, are limited to read-only tools, and return PASS, REJECT or UNVERIFIABLE with pasted evidence. Claude Code finds them in `.claude/agents/`, and any other tool can take the body as instructions.
+- **Two reviewer agents.** `agents/carousel-reviewer.md` tries to disprove the deck against the bar. `agents/carousel-fidelity.md` recomputes every number on the slides from the ledger's sources. Both start with fresh context, get read and search tools plus Bash for running checks, are told to change nothing, and return PASS, REJECT or UNVERIFIABLE with pasted evidence. Claude Code finds them in `.claude/agents/`, and any other tool can take the body as instructions.
 - **A claim ledger.** One entry per slide, each number with its source and window, `checked` only after a recorded recomputation. `node scripts/check-process.js --plan` reads the slide text and native chart values out of the .pptx and compares them with the ledger.
 - **A plan state machine.** `node scripts/check-process.js` checks report lines, stage order, hashes from Build to Check to Review, the REJECT cap, the prose and spelling rules, and the byte budgets for `RULES.md` and each stage file.
 - **A lessons loop.** `node scripts/lessons.js` logs corrections, and only a human promotes one to a rule.

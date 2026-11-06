@@ -26,6 +26,9 @@ const skills = require('./generate-skills.js');
 const STAGE_DIR = skills.SKILLS;
 const stageFile = (name) => `${STAGE_DIR}/${name}/SKILL.md`;
 const STAGE_INDEX = `${STAGE_DIR}/README.md`;
+// The one skill people download on its own. It installs the system and is not a stage: stages.json does not list it,
+// generate-skills.js never reads it, and the installer never copies it. Only the repository holds it.
+const BOOTSTRAP = 'skills/carousel-os/SKILL.md';
 
 // ---------------------------------------------------------------- contract
 
@@ -1159,6 +1162,8 @@ function budget(ctx) {
     const s = size(rel);
     if (s > c.stageMaxBytes) out.push(`${rel} is ${s} bytes, the cap is ${c.stageMaxBytes}`);
   });
+  const boot = size(BOOTSTRAP);
+  if (boot !== null && boot > c.stageMaxBytes) out.push(`${BOOTSTRAP} is ${boot} bytes, the cap is ${c.stageMaxBytes}`);
   return out;
 }
 
@@ -1823,6 +1828,6 @@ function checkProject(root, o) {
   return result;
 }
 
-module.exports = { regenAdvice, shq, migrationHint, LIMITS, DeckError, pptxCoreProperties, STAGES, reportRegex, validateLedger, validateHandoff, HANDOFF_LAYOUT, checkProject, validateEngineConfig, readPptxSlides, ledgerMd, checkTextProblem, spellingProblems, ratioPhrases, main };
+module.exports = { BOOTSTRAP, regenAdvice, shq, migrationHint, LIMITS, DeckError, pptxCoreProperties, STAGES, reportRegex, validateLedger, validateHandoff, HANDOFF_LAYOUT, checkProject, validateEngineConfig, readPptxSlides, ledgerMd, checkTextProblem, spellingProblems, ratioPhrases, main };
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
