@@ -39,7 +39,7 @@ End with exactly this line, then add the same line to Reports:
 
 `Storyboard report: <N> slides, headlines-only read <holds|does not hold>, ledger rows <N>.`
 
-## No-rubber-stamp guard
+## Real-change check
 
 A fake storyboard has topic labels for headlines. Its ledger rows carry "internal data" or "see appendix" as the source, or leave the window blank on a slide with numbers. It says the read holds with no `Headlines only:` block. It copies one placeholder number into every row so the counts match.
 

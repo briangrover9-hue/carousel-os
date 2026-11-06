@@ -68,4 +68,4 @@ Last round of a plan with two or more rounds. Review every claim that earlier ro
 
 ## Choosing an angle
 
-Pick the angle most likely to find something given what earlier rounds did not look at. After a round that found a number problem, angle 6 or 10 follows naturally. After a round that reordered slides, angle 2 checks the new order. With one round on the light path, take angle 10, and resolve anything the round parks before it ends.
+Pick the angle most likely to find something given what earlier rounds did not look at. After a round that found a number problem, angle 6 or 10 follows naturally. After a round that reordered slides, angle 2 checks the new order. With one round on the short run, take angle 10, and resolve anything the round parks before it ends.

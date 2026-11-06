@@ -25,13 +25,13 @@ Decline, name the cause, and stop when:
 3. Add at most 5 bullets for the human: decisions to make, things to know.
 4. Write `## Agent half` with these lines in this order:
    - `Start with carousel-start.`
-   - `Recommended focus: <one line>`. Choose exactly one. Two compete: pick the one that the open markers block least.
+   - `Recommended focus: <one line>`. Choose exactly one. When two compete, pick the one the open markers block least.
    - `Agent-doable:` with bullets for tasks the agent can finish with no new decision.
    - `Needs the human:` with bullets for decisions or files only the human can supply.
    - `Out of scope:` with bullets for what the next session leaves alone.
-5. A task needs any decision: it goes under `Needs the human:`, never under `Agent-doable:`.
-6. Replace the old file. Never append to it. The template with placeholders is `memory/handoff.template.md`.
-7. Run `node scripts/check-process.js` with no flags. It must exit 0. Append the report line to Reports.
+5. A task that needs any decision goes under `Needs the human:` and stays out of `Agent-doable:`.
+6. Never append to the old file: replace it. The template with placeholders is `memory/handoff.template.md`.
+7. Run `node scripts/check-process.js` with no flags, which must exit 0, then append the report line to Reports.
 
 ## Report line
 
@@ -39,7 +39,7 @@ End with exactly this line, then add the same line to Reports:
 
 `Handoff report: memory/handoff.md written; <N> bullets; focus <one line or none>.`
 
-## No-rubber-stamp guard
+## Real-change check
 
 A fake handoff runs past five bullets, or names three focuses ("a few things"). It lists a task under Agent-doable that needs a decision. It uses the empty sentence while a marker, a REJECT or an UNVERIFIABLE verdict is open. It appends to the old handoff.
 

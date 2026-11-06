@@ -3,7 +3,7 @@ const h = require('./harness');
 const { assert, fs, path, test, done } = h;
 const cp = require(path.join(h.SCRIPTS, 'check-process.js'));
 
-const good = () => JSON.parse(fs.readFileSync(path.join(h.ROOT, 'plans/example/fernway-skip-cancel.ledger.json'), 'utf8'));
+const good = () => JSON.parse(fs.readFileSync(path.join(h.ROOT, 'plans/example/wrenmoor-skip-cancel.ledger.json'), 'utf8'));
 const finalErrs = (o) => cp.validateLedger(o, { final: true });
 
 test('the worked example ledger passes the final gate', () => {
@@ -60,7 +60,7 @@ test('a rejected row needs a note, and fails the final gate', () => {
 });
 
 test('a numbered slide with a different window fails the final gate', () => {
-  const o = good(); o.slides[2].window = '26 weeks ending 2026-06-28';
+  const o = good(); o.slides[2].window = '6 months ending 2026-06-30';
   assert.ok(finalErrs(o).some((e) => e.includes('differs from the deck window')));
 });
 
@@ -74,7 +74,7 @@ test('a framing slide may not carry numbers; a duplicate id fails; bad status fa
 });
 
 test('CLI: --final exits 0 on the example and 1 on an open row; summary line is printed', () => {
-  const ex = path.join(h.ROOT, 'plans/example/fernway-skip-cancel.ledger.json');
+  const ex = path.join(h.ROOT, 'plans/example/wrenmoor-skip-cancel.ledger.json');
   const r = h.node(path.join(h.SCRIPTS, 'check-process.js'), ['--ledger', ex, '--final']);
   assert.strictEqual(r.code, 0, r.out);
   assert.ok(r.out.includes('Ledger: 6 slides, 6 checked, 0 open, 0 rejected, 0 unreconciled numbers'), r.out);
@@ -87,7 +87,7 @@ test('CLI: --final exits 0 on the example and 1 on an open row; summary line is 
 });
 
 test('CLI: --ledger-md prints a pipe table with a Slide column and a VERIFIED stamp', () => {
-  const ex = path.join(h.ROOT, 'plans/example/fernway-skip-cancel.ledger.json');
+  const ex = path.join(h.ROOT, 'plans/example/wrenmoor-skip-cancel.ledger.json');
   const r = h.node(path.join(h.SCRIPTS, 'check-process.js'), ['--ledger-md', ex]);
   assert.strictEqual(r.code, 0, r.out);
   assert.ok(r.out.startsWith('| Slide | Claim |') && /VERIFIED agent; .+; 2026-07-06/.test(r.out), r.out);
@@ -115,7 +115,7 @@ test('checked_on may not be later than today or earlier than the window end', ()
   assert.deepStrictEqual(cp.validateLedger(o, { today: '2026-07-06' }), []);
   assert.ok(cp.validateLedger(o, { today: '2026-07-05' }).some((e) => e.includes('later than today')));
   o.slides[1].checked_on = '2026-06-27';
-  assert.ok(cp.validateLedger(o, { today: '2026-12-01' }).some((e) => e.includes('earlier than the window end (2026-06-28)')));
+  assert.ok(cp.validateLedger(o, { today: '2026-12-01' }).some((e) => e.includes('earlier than the window end (2026-06-30)')));
 });
 
 test('the action word test uses word boundaries', () => {

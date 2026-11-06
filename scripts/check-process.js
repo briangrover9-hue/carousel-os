@@ -83,7 +83,7 @@ const STAGES = [
 ];
 const STOP = { id: 'stopped', report: STOP_TEMPLATE };
 
-const ANATOMY = ['## Guards', '## Steps', '## Report line', '## No-rubber-stamp guard', '## Rationale'];
+const ANATOMY = ['## Guards', '## Steps', '## Report line', '## Real-change check', '## Rationale'];
 const PLAN_SECTIONS = ['Direction', 'Brief', 'Storyboard', 'Challenge log', 'Deviations', 'Build', 'Check', 'Review', 'Reports'];
 const EMPTY_HANDOFF = 'Nothing to hand off this time.';
 const SKIP_DIRS = new Set(['node_modules', 'engine', 'tests', 'decks', 'out', 'build', 'dist', '__pycache__']);
@@ -1215,8 +1215,8 @@ function contract(ctx) {
       if (body === null) return;
       st.must[name].forEach((s) => { if (!body.includes(s)) out.push(`${file}: ${name} must keep: ${s}`); });
     });
-    const nrs = sectionText(text, '## No-rubber-stamp guard');
-    if (nrs !== null && (nrs.length < 200 || !/fake/i.test(nrs))) out.push(`${file}: the No-rubber-stamp guard must name what a fake pass looks like (200+ characters, uses "fake")`);
+    const nrs = sectionText(text, '## Real-change check');
+    if (nrs !== null && (nrs.length < 200 || !/fake/i.test(nrs))) out.push(`${file}: the Real-change check must name what a fake pass looks like (200+ characters, uses "fake")`);
     const why = sectionText(text, '## Rationale');
     if (why !== null && why.length < 100) out.push(`${file}: Rationale is too short`);
     if (!rules.includes(st.name)) out.push(`RULES.md does not name ${st.name}`);

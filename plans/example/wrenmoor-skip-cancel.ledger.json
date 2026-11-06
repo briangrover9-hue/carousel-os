@@ -1,6 +1,6 @@
 {
-  "deck": "fernway-skip-cancel",
-  "window": "52 weeks ending 2026-06-28",
+  "deck": "wrenmoor-skip-cancel",
+  "window": "12 months ending 2026-06-30",
   "slides": [
     {
       "id": "s01",
@@ -17,13 +17,13 @@
     {
       "id": "s02",
       "kind": "claim",
-      "claim": "Six in ten cancellations followed two skipped boxes in a row.",
-      "source": "exports/cancellations.csv, exports/orders.csv",
-      "window": "52 weeks ending 2026-06-28",
+      "claim": "Six in ten cancellations followed two missed weeks in a row.",
+      "source": "exports/cancellations.csv, exports/visits.csv",
+      "window": "12 months ending 2026-06-30",
       "numbers": [
         {
           "value": "2,562",
-          "source": "cancellations with a double skip in the prior 60 days, counted from both files",
+          "source": "cancellations with two missed weeks in the prior 60 days, counted from both files",
           "reconciled": true
         },
         {
@@ -48,13 +48,13 @@
     {
       "id": "s03",
       "kind": "claim",
-      "claim": "Members who skip two boxes in a row cancel at three times the base rate.",
-      "source": "exports/orders.csv",
-      "window": "52 weeks ending 2026-06-28",
+      "claim": "Members who miss two weeks in a row cancel at three times the base rate.",
+      "source": "exports/visits.csv",
+      "window": "12 months ending 2026-06-30",
       "numbers": [
         {
           "value": "31.2%",
-          "source": "cancel rate among double skippers, on the one member base",
+          "source": "cancel rate among members who missed two weeks in a row, on the one member base",
           "reconciled": true
         },
         {
@@ -72,7 +72,7 @@
         }
       ],
       "status": "checked",
-      "check": "recomputed both rates from the order file on one member base, ratio 3.0",
+      "check": "recomputed both rates from the visit file on one member base, ratio 3.0",
       "checked_on": "2026-07-06",
       "note": ""
     },
@@ -81,7 +81,7 @@
       "kind": "claim",
       "claim": "About one in five of the members who answered the exit survey gave price as the reason.",
       "source": "exports/exit-survey.csv",
-      "window": "52 weeks ending 2026-06-28",
+      "window": "12 months ending 2026-06-30",
       "numbers": [
         {
           "value": "300",
@@ -120,9 +120,9 @@
     {
       "id": "s05",
       "kind": "claim",
-      "claim": "A one-month pause is worth testing for members who skip two boxes in a row.",
+      "claim": "A one-month freeze is worth testing for members who miss two weeks in a row.",
       "source": "exports/cancellations.csv",
-      "window": "52 weeks ending 2026-06-28",
+      "window": "12 months ending 2026-06-30",
       "numbers": [
         {
           "value": "2,562",
@@ -131,14 +131,14 @@
         }
       ],
       "status": "checked",
-      "check": "compared the 2,562 count with the s02 figure and opened the brief for the pause length",
+      "check": "compared the 2,562 count with the s02 figure and opened the brief for the freeze length",
       "checked_on": "2026-07-06",
       "note": ""
     },
     {
       "id": "s06",
       "kind": "framing",
-      "claim": "The ask: approve a one-month pause test next quarter.",
+      "claim": "The ask: approve a one-month freeze test next quarter.",
       "source": "none (framing slide)",
       "window": "",
       "numbers": [],

@@ -23,7 +23,7 @@ Give the refusal a way out where one is legitimate. A deck may need a darker par
 Text fit is the most common visual defect, and estimating it by character count is wrong often enough to matter.
 
 - [ ] Measure text with the real font file at the size you will draw, including tracking.
-- [ ] Count lines, not width. A guard that caps width and never counts lines lets a long table label wrap and print over the next row.
+- [ ] Count rendered lines. A guard that caps width and never counts lines lets a long table label wrap and print over the next row.
 - [ ] Measure every text cell in a table, header included.
 - [ ] Balance line breaks on titles and quotes so no word sits alone on the last line, measured at the drawn tracking so the break you plan is the break that renders.
 - [ ] Refuse a headline that wraps past its cap instead of shrinking it.
@@ -51,7 +51,7 @@ The same inputs should produce the same bytes.
 
 - [ ] Fix every timestamp, revision number and generated ID in the saved file.
 - [ ] Strip theme style references the library adds to shapes by default. A library may attach an effect reference to every shape, and one renderer draws it as a drop shadow under every table row.
-- [ ] Size logos and images from their own aspect ratio, never stretched to a box.
+- [ ] Size logos and images from their own aspect ratio, and never stretch one to fill a box.
 
 Why: per-slide hashes are how review verdicts carry over between rounds, and how the golden gallery detects change. Noise in the bytes voids every verdict and hides real diffs.
 

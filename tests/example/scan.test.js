@@ -63,7 +63,7 @@ test('headline length: within 10 percent of the limit is a CANDIDATE and does no
   eq(r.code, 0, r.out); eq(r.last, 'scan: 0 FAIL, 1 CANDIDATE');
 });
 test('headline length: with no named headline, the first sentence of the first text is the headline', () => {
-  const long = 'Members who skip two boxes in a row cancel at three times the base rate of everyone else here. Source: file.';
+  const long = 'Members who miss two weeks in a row cancel at three times the base rate of everyone else here. Source: file.';
   let r = scan(deck([slide([shape({ text: long })])]));
   eq(r.code, 1, r.out);
   r = scan(deck([slide([shape({ text: 'A short claim. ' + 'z'.repeat(200) })])]));
@@ -179,7 +179,7 @@ if (process.platform !== 'win32') {
   test('the registered scan template runs on the worked example deck, as the README shows', () => {
     const cfg = JSON.parse(fs.readFileSync(path.join(EX, 'carousel.config.json'), 'utf8'));
     const out = tmp();
-    const cmd = cfg.engine.scan.replace('{deck}', 'plans/example/fernway-skip-cancel.pptx').replace('{out}', out);
+    const cmd = cfg.engine.scan.replace('{deck}', 'plans/example/wrenmoor-skip-cancel.pptx').replace('{out}', out);
     const r = cp.spawnSync('sh', ['-c', cmd], { cwd: ROOT, encoding: 'utf8' });
     eq(r.status, 1, r.stdout);
     eq(r.stdout.trim().split('\n').pop(), 'scan: 3 FAIL, 1 CANDIDATE');

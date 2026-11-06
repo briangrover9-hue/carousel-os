@@ -43,9 +43,9 @@ Stop line, written under guard 3 or after a second REJECT:
 
 `Stopped at <start|brief|storyboard|challenge-plan|build|check|review>: <reason>.`
 
-## No-rubber-stamp guard
+## Real-change check
 
-A fake wrap writes a log paragraph that says the session went well and names no decision. It reports `lessons added 0` after the human corrected something. It counts an edit to the index alone as a wiki page touched. It reports `check n/a` while a deck exists. It skips rotation because nothing seems old. It runs `repeat` or `promote` without the human.
+A fake wrap writes a log paragraph that says the session went well and names no decision. It reports `lessons added 0` after the human corrected something. It counts an edit to the index alone as a wiki page touched. It reports `check n/a` while a deck exists. It skips rotation because nothing seems old, or runs `repeat` or `promote` without the human.
 
 ## Rationale
 

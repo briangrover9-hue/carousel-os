@@ -1,10 +1,10 @@
-# The light path
+# The short run
 
-The light path keeps every stage and cuts the work inside two of them. Use it when the deck is short, the reader is internal, and a miss is cheap to fix. The human chooses it at `carousel-start`, and the choice is recorded in the plan's Direction and Path lines.
+The short run keeps every stage and cuts the work inside two of them. Use it when the deck is short, the reader is internal, and a miss is cheap to fix. The human chooses it at `carousel-start`, and the plan records the choice in its Direction line and as `Path: light`.
 
 ## What stays the same
 
-- All nine stages, started by the human, each with its guard, report line and No-rubber-stamp guard.
+- All nine stages, started by the human, each with its guard, report line and Real-change check.
 - The brief interview, in full. It is the cheapest place to find a wrong assumption, and a thin brief makes every later stage guess. Never cut it.
 - The ledger, one row per slide, and the rule that a row is `checked` only after its check passes.
 - The complete check at `carousel-check` and again at `carousel-wrap`.
@@ -19,7 +19,7 @@ The light path keeps every stage and cuts the work inside two of them. Use it wh
 
 ## When not to use it
 
-Skip the light path when the deck goes outside the company, when a number in it will drive a spend or a decision, or when the evidence base is new to you. One round misses what three catch, and the light path is honest about that. Counts in the report line show it: `Challenge round 1 of 1`.
+Skip the short run when the deck goes outside the company, when a number in it will drive a spend or a decision, or when the evidence base is new to you. One round misses what three catch, and the short run is honest about that. Counts in the report line show it: `Challenge round 1 of 1`.
 
 ## Moving up
 

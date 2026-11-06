@@ -44,10 +44,10 @@ End with exactly this line, then add the same line to Reports:
 
 `Build report: <N> slides built, <M> ledger rows checked, <K> deviations logged.`
 
-## No-rubber-stamp guard
+## Real-change check
 
 A fake build marks rows checked from memory of the number, or because the slide looks right. It leaves `check` empty or writes "verified". It reports `deviations logged 0` while markers exist. It adds slides the storyboard did not list. It edits a scan input or threshold so a check passes.
 
 ## Rationale
 
-Checking each row right after its slide keeps the source in view, so an error costs one slide and not a review round. Conservative choices keep the build moving without the human, and the Deviations list gives the human a short list to overturn.
+Checking each row right after its slide keeps the source in view, so an error costs one slide instead of a review round. Conservative choices keep the build moving without the human, and the Deviations list gives the human a short list to overturn.

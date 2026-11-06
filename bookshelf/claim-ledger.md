@@ -40,9 +40,9 @@ The ledger holds one entry per slide. It is how the deck proves that every numbe
 {
   "id": "s04",
   "kind": "claim",
-  "claim": "Members who skip two boxes in a row cancel within 60 days at three times the base rate.",
-  "source": "orders.csv, cancellations.csv",
-  "window": "52 weeks ending 2026-06-28",
+  "claim": "Members who miss two weeks in a row cancel within 60 days at three times the base rate.",
+  "source": "visits.csv, cancellations.csv",
+  "window": "12 months ending 2026-06-30",
   "numbers": [
     { "value": "3x", "source": "cancel rate 31.2% vs base 10.4%, computed in retention.py", "reconciled": true }
   ],

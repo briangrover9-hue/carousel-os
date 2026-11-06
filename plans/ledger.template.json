@@ -1,6 +1,6 @@
 {
   "deck": "<slug>",
-  "window": "<one window, for example: 52 weeks ending 2026-06-28>",
+  "window": "<one window, for example: 12 months ending 2026-06-30>",
   "slides": [
     {
       "id": "s01",

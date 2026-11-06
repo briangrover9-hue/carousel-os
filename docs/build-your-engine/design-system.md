@@ -14,7 +14,7 @@ Give each color a role and a budget, and keep the budgets separate. Chrome wants
 - [ ] **Light partners for de-emphasis.** Each data hue gets one derived light partner, computed by a single rule (move lightness toward the ground, scale chroma down, hold hue). A non-claim mark takes the partner. Derive it in code; a partner chosen at the call site is a second decision nobody reviews.
 - [ ] **Line partners for thin marks.** A color that works as a bar can fall under the 3:1 non-text floor as a two-point line or a small marker. Give those hues a darker partner for lines, markers and their legend swatches only.
 - [ ] **One scoped neutral.** If you need a neutral fill (the middle segment of a sentiment bar), register it for that job alone and make the kit refuse it anywhere else.
-- [ ] **Heatmap steps.** Five fixed steps per hue, never a continuous blend, so one shade reads as one value on every slide.
+- [ ] **Heatmap steps.** Five fixed steps per hue instead of a continuous blend, so one shade reads as one value on every slide.
 - [ ] **One ground.** One background for the whole deck, cover and dividers included. A dark divider among light slides reads as two systems.
 
 **A color means one thing.** If the accent is also the growth sign, it never decorates. Gray is for rules and secondary text, so a bar carrying a claim value is never gray, because a gray claim bar nearly disappears.
@@ -90,7 +90,7 @@ Why: a reader spends attention on every mark, so a mark that carries no informat
 
 ## The budget census
 
-Count what reached the built file, never what the spec declares. Build a reference deck that exercises every component, open the saved file, and count every type size, fill, text color and component. Fail when a count passes its budget. A counter that reads the declaration list measures the list.
+Count what the built file holds, because a spec can declare things that never reach the file. Build a reference deck that exercises every component, open the saved file, and count every type size, fill, text color and component. Fail when a count passes its budget. A counter that reads the declaration list measures the list.
 
 Pair it with a rule: nothing enters a budget unless something leaves, or the budget's number rises in the same edit with a written reason.
 

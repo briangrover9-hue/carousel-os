@@ -23,7 +23,7 @@ Run a targeted check on the slide in front of you while you build, because an er
 
 ## Where to trim, honestly
 
-- The light path (`light-path.md`) cuts two critique rounds.
+- The short run (`short-run.md`) cuts two critique rounds.
 - Fewer slides means fewer ledger rows, fewer numbers to re-derive and a smaller review.
 - A narrower evidence base, one source and one window, shrinks every re-verification.
 

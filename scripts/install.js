@@ -48,7 +48,7 @@ const PROCESS = [
   { dir: 'agents' },
   { dir: 'plans' },
   { dir: 'bookshelf' },
-  { dir: 'docs', only: ['light-path.md', 'cost.md', 'how-it-thinks.md'] },
+  { dir: 'docs', only: ['short-run.md', 'cost.md', 'how-it-thinks.md'] },
   { dir: 'docs/build-your-engine' },   // docs/gallery stays home: its images are not in the npm package
   { dir: 'tests/process' },
   { dir: 'scripts', exclude: ['check.js', 'check-links.js', 'leak-scan.js'] },   // repository-only scripts stay home; every other script a process script needs ships

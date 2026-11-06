@@ -46,19 +46,19 @@ You type nine commands, one at a time. No command starts the next, and each decl
 8. `carousel-wrap` runs one more check, logs the session and records lessons.
 9. `carousel-handoff` writes the note the next session starts from.
 
-A single prompt would interpret the request, pick the story, find the numbers, draw the slides and grade itself in one pass, so its mistakes go into the deck with its own approval. [How it thinks](docs/how-it-thinks.md) explains what each piece of the process targets. A short internal deck can take the [light path](docs/light-path.md): the same nine stages with one critique round.
+A single prompt would interpret the request, pick the story, find the numbers, draw the slides and grade itself in one pass, so its mistakes go into the deck with its own approval. [How it thinks](docs/how-it-thinks.md) explains what each piece of the process targets. A short internal deck can take the [short run](docs/short-run.md): the same nine stages with one critique round.
 
 ## A rejection, a fix and a pass
 
-The [worked example](plans/example/fernway-skip-cancel.md) is an invented subscription business. Its deck is a plain text deck built without an engine, so it shows the process and has no design to judge. The first review rejected it. This is the reviewer's finding, copied from the plan:
+The [worked example](plans/example/wrenmoor-skip-cancel.md) is about an invented gym chain. Its deck is a plain text deck built without an engine, so it shows the process and has no design to judge. The first review rejected it. This is the reviewer's finding, copied from the plan:
 
-> s03 31.2%: recomputed from orders.csv, found 31.2%. The slide printed 31%. MISMATCH.
+> s03 31.2%: recomputed from visits.csv, found 31.2%. The slide printed 31%. MISMATCH.
 > Finding: s03 printed 31% where the source and the ledger say 31.2%. One unreconciled number.
 
 The fix pass changed slide 3 to print 31.2%, the ledger's value. A new check ran, a second review recomputed every number, and it passed. The critique rounds had already caught a survey percentage divided by the wrong base: 300 of the 1,428 members who answered, not of all 4,200 cancellations. Here are the report lines from that run:
 
 ```
-Start report: plan plans/example/fernway-skip-cancel.md created; path full; handoff read; lessons loaded 0.
+Start report: plan plans/example/wrenmoor-skip-cancel.md created; path full; handoff read; lessons loaded 0.
 Brief report: 6 questions asked, 6 answers recorded, 0 NEEDS HUMAN markers open.
 Storyboard report: 6 slides, headlines-only read holds, ledger rows 6.
 Challenge round 1 of 3: angle Literal ask (new). Re-verified 4 claims, demoted 0 to uncertainty.
@@ -79,7 +79,7 @@ Handoff report: memory/handoff.md written; 2 bullets; focus confirm whether the 
 I copied the example to a temporary folder, changed slide 3 in the deck file to print 31% and ran the plan gate. This is the real output:
 
 ```
-$ node scripts/check-process.js --plan plans/example/fernway-skip-cancel.md
+$ node scripts/check-process.js --plan plans/example/wrenmoor-skip-cancel.md
 Plan: the deck read against 6 ledger rows and the Build table
   the deck changed after Build recorded its hash. A changed deck needs a new Build.
   slide s03: ledger number "31.2%" is not printed in the deck (slide 3)
@@ -93,9 +93,9 @@ The exit code is 1, and the Check stage reports `plan FAIL` until a new Build fi
 
 ## Evidence you can read
 
-- [The plan](plans/example/fernway-skip-cancel.md) holds the brief, storyboard, three critique rounds with their diff summaries, the pasted check output and the reviewer's evidence.
-- [The ledger](plans/example/fernway-skip-cancel.ledger.json) holds 12 numbers across 6 slides, each with its source and the check that confirmed it.
-- `node scripts/check-process.js` reads that plan as a state machine and opens the deck file. It fails when a report line is out of order or a printed number is missing from the ledger. It also fails when a deck changes after its check, or when a review passes without pasted evidence. `node tests/process/run.js` holds the broken variants it must reject, including a plan that was rubber-stamped from start to finish.
+- [The plan](plans/example/wrenmoor-skip-cancel.md) holds the brief, storyboard, three critique rounds with their diff summaries, the pasted check output and the reviewer's evidence.
+- [The ledger](plans/example/wrenmoor-skip-cancel.ledger.json) holds 12 numbers across 6 slides, each with its source and the check that confirmed it.
+- `node scripts/check-process.js` reads that plan as a state machine and opens the deck file. It fails when a report line is out of order or a printed number is missing from the ledger. It also fails when a deck changes after its check, or when a review passes without pasted evidence. `node tests/process/run.js` holds the broken variants it must reject, including a plan that passed every stage without doing the work.
 
 ## Bring your own engine
 
@@ -178,7 +178,7 @@ MIT. See the LICENSE file.
 - **[writing](bookshelf/writing.md)**: the writing standard for slide text.
 - **[narrative-devices](bookshelf/narrative-devices.md)**: named slide beats for the storyboard.
 
-Also: [RULES.md](RULES.md), [CHANGELOG.md](CHANGELOG.md), [cheatsheet.md](cheatsheet.md), [bookshelf index](bookshelf/README.md), [light path](docs/light-path.md), [cost](docs/cost.md).
+Also: [RULES.md](RULES.md), [CHANGELOG.md](CHANGELOG.md), [cheatsheet.md](cheatsheet.md), [bookshelf index](bookshelf/README.md), [short run](docs/short-run.md), [cost](docs/cost.md).
 
 ## Author
 

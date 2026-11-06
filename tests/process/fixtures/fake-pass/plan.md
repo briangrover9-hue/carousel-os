@@ -1,7 +1,7 @@
-# Plan: A plan that was rubber-stamped from start to finish
+# Plan: A plan that passed every stage without doing the work
 
 Status: wrapped
-Slug: rubber
+Slug: fake-pass
 Path: full
 Rounds: 3
 
@@ -59,7 +59,7 @@ Looks good to me. PASS.
 
 ## Reports
 
-- Start report: plan plans/rubber.md created; path full; handoff read; lessons loaded 0.
+- Start report: plan plans/fake-pass.md created; path full; handoff read; lessons loaded 0.
 - Brief report: 3 questions asked, 3 answers recorded, 0 NEEDS HUMAN markers open.
 - Storyboard report: 1 slides, headlines-only read holds, ledger rows 1.
 - Challenge round 1 of 3: angle Literal ask (new). Re-verified 1 claims, demoted 0 to uncertainty.

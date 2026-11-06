@@ -16,7 +16,7 @@ Type each command yourself. The last line a stage prints is the one to look for,
 
 ## Paths
 
-Full: three challenge rounds, the last on Parked claims. Light: one round, same stages otherwise. Set it at start.
+Full: three challenge rounds, the last on Parked claims. Short run (`Path: light`): one round, same stages otherwise. Set it at start.
 
 Engine: optional. Register your own in `carousel.config.json` (sample: `carousel.config.example.json`). Without one, `carousel-check` takes the rubric path.
 

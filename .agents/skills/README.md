@@ -1,6 +1,6 @@
 # Stages
 
-Nine stages, all started by the human. Each is a skill: `<stage>/SKILL.md` here is its one source, which Cursor and Codex read, and `node scripts/generate-skills.js` writes its front matter, its Codex settings file `<stage>/agents/openai.yaml`, and the copy in `.claude/skills/` for Claude Code. Edit the body only, below the front matter. Every file has the same parts in the same order. First comes the job with its Reads, Writes and Exit check lines, then a Guards section (what it declines, keyed on the previous stage's report line). The steps follow, then one report line to scan for, a No-rubber-stamp guard and a short Rationale. `RULES.md` says what the rules are, and these files say how each stage runs.
+Nine stages, all started by the human. Each is a skill: `<stage>/SKILL.md` here is its one source, which Cursor and Codex read, and `node scripts/generate-skills.js` writes its front matter, its Codex settings file `<stage>/agents/openai.yaml`, and the copy in `.claude/skills/` for Claude Code. Edit the body only, below the front matter. Every file has the same parts in the same order. First comes the job with its Reads, Writes and Exit check lines, then a Guards section (what it declines, keyed on the previous stage's report line). The steps follow, then one report line to scan for, a Real-change check and a short Rationale. `RULES.md` says what the rules are, and these files say how each stage runs.
 
 | Stage | Job | Needs | Report line starts with |
 |---|---|---|---|

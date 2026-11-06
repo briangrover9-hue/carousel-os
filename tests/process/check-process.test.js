@@ -5,15 +5,15 @@ const cp = require(path.join(h.SCRIPTS, 'check-process.js'));
 const zlibDeflate = (b) => require('zlib').deflateRawSync(b);
 
 const fresh = () => h.copyRepo();
-const EX = 'plans/example/fernway-skip-cancel.md';
-const EXL = 'plans/example/fernway-skip-cancel.ledger.json';
+const EX = 'plans/example/wrenmoor-skip-cancel.md';
+const EXL = 'plans/example/wrenmoor-skip-cancel.ledger.json';
 const ex = (d, fn) => edit(d, EX, fn);
 const exLedger = (d, fn) => edit(d, EXL, (t) => { const o = JSON.parse(t); fn(o); return JSON.stringify(o, null, 2) + '\n'; });
 const replaceLast = (t, a, b) => { const i = t.lastIndexOf(a); assert.ok(i >= 0, `no "${a}" to replace`); return t.slice(0, i) + b + t.slice(i + a.length); };
 const dropLine = (t, re) => { assert.ok(re.test(t), `no line matches ${re}`); return t.replace(re, ''); };
 // A real (non-example) plan: the example plan and ledger copied under plans/real.
 const realPlan = (d, fn) => {
-  const md = fs.readFileSync(path.join(d, EX), 'utf8').replace(/\r\n/g, '\n').replace('plans/example/fernway-skip-cancel.md', 'plans/real.md');
+  const md = fs.readFileSync(path.join(d, EX), 'utf8').replace(/\r\n/g, '\n').replace('plans/example/wrenmoor-skip-cancel.md', 'plans/real.md');
   fs.writeFileSync(path.join(d, 'plans/real.md'), fn ? fn(md) : md);
   fs.copyFileSync(path.join(d, EXL), path.join(d, 'plans/real.ledger.json'));
 };
@@ -145,13 +145,13 @@ test('contract: a changed report string fails', () => {
   const d = fresh(); edit(d, '.agents/skills/carousel-build/SKILL.md', (t) => t.replace('slides built', 'slides done'));
   mustFail(d, 'contract', 'exact report string not found');
 });
-test('contract: a missing No-rubber-stamp guard fails', () => {
-  const d = fresh(); edit(d, '.agents/skills/carousel-check/SKILL.md', (t) => t.replace('## No-rubber-stamp guard', '## Notes'));
-  mustFail(d, 'contract', 'No-rubber-stamp guard');
+test('contract: a missing Real-change check fails', () => {
+  const d = fresh(); edit(d, '.agents/skills/carousel-check/SKILL.md', (t) => t.replace('## Real-change check', '## Notes'));
+  mustFail(d, 'contract', 'Real-change check');
 });
 test('contract: a guard that does not describe a fake pass fails', () => {
   const d = fresh();
-  edit(d, '.agents/skills/carousel-wrap/SKILL.md', (t) => t.replace(/## No-rubber-stamp guard[\s\S]*?## Rationale/, '## No-rubber-stamp guard\n\nBe careful.\n\n## Rationale'));
+  edit(d, '.agents/skills/carousel-wrap/SKILL.md', (t) => t.replace(/## Real-change check[\s\S]*?## Rationale/, '## Real-change check\n\nBe careful.\n\n## Rationale'));
   mustFail(d, 'contract', 'fake pass');
 });
 test('contract: sections out of order fail', () => {
@@ -291,10 +291,10 @@ test('state: more than 12 rules, and a rule past its review, fail', () => {
 
 // ---- helpers for the plan tests
 const CHECK_LINE = 'Check report: path rubric; plan PASS; ledger PASS; tools none; checklist 9 of 9; Deferred: item 9, no render available.';
-const slides = () => cp.readPptxSlides(path.join(h.ROOT, 'plans/example/fernway-skip-cancel.pptx'));
-const writeDeck = (d, texts, opts) => fs.writeFileSync(path.join(d, 'plans/example/fernway-skip-cancel.pptx'), h.makePptx(texts, opts));
+const slides = () => cp.readPptxSlides(path.join(h.ROOT, 'plans/example/wrenmoor-skip-cancel.pptx'));
+const writeDeck = (d, texts, opts) => fs.writeFileSync(path.join(d, 'plans/example/wrenmoor-skip-cancel.pptx'), h.makePptx(texts, opts));
 const REAL_RESOLVED = (t) => t.replace('Deferred: NEEDS HUMAN:', 'Deferred: RESOLVED: NEEDS HUMAN:');
-const EXP = 'plans/example/fernway-skip-cancel.md';
+const EXP = 'plans/example/wrenmoor-skip-cancel.md';
 // A real plan on the engine path. Two small tools are registered, run-tools.js runs them, and the Check
 // section is filled from what it printed. opts.tools: { name: { exit, line } } overrides the default tools.
 function writeTool(d, name, exit, line, edits) {
@@ -324,10 +324,10 @@ test('plan: the worked example passes every rule, and so does a copy of it as a 
   const d = fresh(); mustPass(d);
   realPlan(d, REAL_RESOLVED); mustPass(d);
 });
-test('plan: the rubber-stamped fixture fails, for the right reasons', () => {
+test('plan: the fake-pass fixture fails, for the right reasons', () => {
   const d = fresh();
-  fs.copyFileSync(path.join(h.ROOT, 'tests/process/fixtures/rubber-stamp/plan.md'), path.join(d, 'plans/rubber.md'));
-  fs.copyFileSync(path.join(h.ROOT, 'tests/process/fixtures/rubber-stamp/plan.ledger.json'), path.join(d, 'plans/rubber.ledger.json'));
+  fs.copyFileSync(path.join(h.ROOT, 'tests/process/fixtures/fake-pass/plan.md'), path.join(d, 'plans/fake-pass.md'));
+  fs.copyFileSync(path.join(h.ROOT, 'tests/process/fixtures/fake-pass/plan.ledger.json'), path.join(d, 'plans/fake-pass.ledger.json'));
   const r = h.check(d);
   assert.strictEqual(r.code, 1, r.out);
   [
@@ -529,11 +529,11 @@ test('plan: Path and Rounds must be plain values', () => {
   mustFail(d, 'state', 'Rounds line');
 });
 test('plan: the example handoff file must exist and agree with the Handoff report line', () => {
-  let d = fresh(); fs.unlinkSync(path.join(d, 'plans/example/fernway-skip-cancel.handoff.md'));
+  let d = fresh(); fs.unlinkSync(path.join(d, 'plans/example/wrenmoor-skip-cancel.handoff.md'));
   mustFail(d, 'state', "the example's handoff");
-  d = fresh(); edit(d, 'plans/example/fernway-skip-cancel.handoff.md', (t) => t.replace(/^- Item 9.*$/m, ''));
+  d = fresh(); edit(d, 'plans/example/wrenmoor-skip-cancel.handoff.md', (t) => t.replace(/^- Item 9.*$/m, ''));
   mustFail(d, 'state', 'Handoff report says 2 bullets but the handoff file has 1');
-  d = fresh(); edit(d, 'plans/example/fernway-skip-cancel.handoff.md', (t) => t.replace('Recommended focus: confirm whether the exit survey was voluntary', 'Recommended focus: polish the deck'));
+  d = fresh(); edit(d, 'plans/example/wrenmoor-skip-cancel.handoff.md', (t) => t.replace('Recommended focus: confirm whether the exit survey was voluntary', 'Recommended focus: polish the deck'));
   mustFail(d, 'state', 'but the handoff file says');
 });
 
@@ -565,7 +565,7 @@ test('deck: a deck printing 31% while the ledger says 31.2% fails at check time'
 test('deck: a deck edited after the check fails review', () => {
   const d = fresh(); writeDeck(d, slides().map((s) => s.replace('31.2%', '31%')));
   mustFail(d, 'state', 'the deck changed after the check');
-  const d2 = fresh(); fs.appendFileSync(path.join(d2, 'plans/example/fernway-skip-cancel.pptx'), Buffer.from([0]));
+  const d2 = fresh(); fs.appendFileSync(path.join(d2, 'plans/example/wrenmoor-skip-cancel.pptx'), Buffer.from([0]));
   mustFail(d2, 'state', 'the deck changed after the check');
 });
 test('deck: an extra number, a missing slide, a swapped order and an unrecorded ratio phrase each fail', () => {
@@ -579,11 +579,11 @@ test('deck: an extra number, a missing slide, a swapped order and an unrecorded 
   assert.ok(h.check(d, ['--plan', EXP]).out.includes('the deck prints "half", which the ledger does not record'));
 });
 test('deck: a number in the deck that the Build table does not show, and the reverse, fail', () => {
-  let d = fresh(); ex(d, (t) => t.replace('| s02 | Six in ten cancellations follow two skipped boxes in a row. 2,562 of 4,200 cancellations (61%)', '| s02 | Six in ten cancellations follow two skipped boxes in a row. 2,562 of 4,200 cancellations'));
+  let d = fresh(); ex(d, (t) => t.replace('| s02 | Six in ten cancellations follow two missed weeks in a row. 2,562 of 4,200 cancellations (61%)', '| s02 | Six in ten cancellations follow two missed weeks in a row. 2,562 of 4,200 cancellations'));
   const r = h.check(d, ['--plan', EXP]);
   assert.strictEqual(r.code, 1, r.out);
   assert.ok(r.out.includes('the deck prints 61 but the Build table does not'), r.out);
-  d = fresh(); ex(d, (t) => replaceLast(t, '| s05 | A one-month pause', '| s05 | 77 A one-month pause'));
+  d = fresh(); ex(d, (t) => replaceLast(t, '| s05 | A one-month freeze', '| s05 | 77 A one-month freeze'));
   assert.ok(h.check(d, ['--plan', EXP]).out.includes('the Build table shows 77 but the deck does not print it'));
 });
 test('deck: a framing slide that prints a digit fails', () => {
@@ -593,7 +593,7 @@ test('deck: a framing slide that prints a digit fails', () => {
 test('deck: the Build section edited after the check fails, and so does a missing deck line or file', () => {
   let d = fresh(); ex(d, (t) => t.replace('Fix pass after the first REJECT:', 'Fix pass, edited later:'));
   mustFail(d, 'state', 'the Build section changed after the check');
-  d = fresh(); ex(d, (t) => t.replace('Deck: plans/example/fernway-skip-cancel.pptx', 'Deck: plans/example/missing.pptx'));
+  d = fresh(); ex(d, (t) => t.replace('Deck: plans/example/wrenmoor-skip-cancel.pptx', 'Deck: plans/example/missing.pptx'));
   mustFail(d, 'state', 'does not exist');
   d = fresh(); ex(d, (t) => t.replace(/^Deck sha256: .*$/m, 'Deck sha256: 1234'));
   mustFail(d, 'state', 'Deck sha256');
@@ -615,7 +615,7 @@ test('words: a ratio phrase must agree with its number, be printed, and match th
   mustFail(d, 'state', 'cannot describe 61%');
   d = fresh(); exLedger(d, (o) => { delete o.slides[1].numbers[2].words; });
   assert.ok(h.check(d, ['--plan', EXP]).out.includes('the deck prints "six in ten", which the ledger does not record'));
-  d = fresh(); exLedger(d, (o) => { o.slides[1].claim = 'Seven in ten cancellations followed two skipped boxes in a row.'; o.slides[1].numbers[2].words = ['seven in ten']; });
+  d = fresh(); exLedger(d, (o) => { o.slides[1].claim = 'Seven in ten cancellations followed two missed weeks in a row.'; o.slides[1].numbers[2].words = ['seven in ten']; });
   assert.ok(h.check(d, ['--plan', EXP]).out.includes('the ledger claim says "seven in ten" but the storyboard says "six in ten"'));
   d = fresh(); exLedger(d, (o) => { o.slides[1].numbers[2].words = ['six in ten', 'nine in ten']; });
   assert.ok(h.check(d, ['--plan', EXP]).out.includes('the ledger records "nine in ten" but the deck does not print it'));
@@ -905,10 +905,10 @@ test('build hash: the deck must be unchanged between Build and Check, and Build 
 });
 test('charts: values cached inside a native chart are read and compared with the ledger', () => {
   const texts = slides();
-  let d = fresh(); writeDeck(d, texts, { chart: { slide: 1, values: [0.61, 0.39], format: '0%', title: 'Share', cats: ['Double skip', 'Other'] } });
+  let d = fresh(); writeDeck(d, texts, { chart: { slide: 1, values: [0.61, 0.39], format: '0%', title: 'Share', cats: ['Two missed weeks', 'Other'] } });
   let r = h.check(d, ['--plan', EXP]);
   assert.ok(r.out.includes('the deck prints 39, which is not in the ledger'), r.out);
-  d = fresh(); writeDeck(d, texts, { chart: { slide: 1, values: [0.61], format: '0%', title: 'Share', cats: ['Double skip'] } });
+  d = fresh(); writeDeck(d, texts, { chart: { slide: 1, values: [0.61], format: '0%', title: 'Share', cats: ['Two missed weeks'] } });
   r = h.check(d, ['--plan', EXP]);
   assert.ok(!r.out.includes('the deck prints'), r.out);
   d = fresh(); writeDeck(d, texts.map((t) => t.replace('61%', 'many')), { chart: { slide: 1, values: [0.61], format: '0%' } });
@@ -936,10 +936,10 @@ test('number words: percent, fractions, doubled and tripled are read and checked
   mustFail(d, 'state', '"seventy percent" says 70% but the ledger says 61%');
 });
 test('ledger claim and storyboard: digits in the claim, and the source named, must agree', () => {
-  let d = fresh(); exLedger(d, (o) => { o.slides[1].claim = 'Forty one point two percent cancelled after two skipped boxes in a row (41.2%).'; });
+  let d = fresh(); exLedger(d, (o) => { o.slides[1].claim = 'Forty one point two percent cancelled after two missed weeks in a row (41.2%).'; });
   assert.ok(h.check(d, ['--plan', EXP]).out.includes('the ledger claim holds 41.2, which is not among'));
-  d = fresh(); ex(d, (t) => t.replace('| exports/orders.csv | 52 weeks ending 2026-06-28 | two bars |', '| exports/exit-survey.csv | 52 weeks ending 2026-06-28 | two bars |'));
-  assert.ok(h.check(d, ['--plan', EXP]).out.includes('the storyboard names the source "exports/exit-survey.csv" but the ledger says "exports/orders.csv"'));
+  d = fresh(); ex(d, (t) => t.replace('| exports/visits.csv | 12 months ending 2026-06-30 | two bars |', '| exports/exit-survey.csv | 12 months ending 2026-06-30 | two bars |'));
+  assert.ok(h.check(d, ['--plan', EXP]).out.includes('the storyboard names the source "exports/exit-survey.csv" but the ledger says "exports/visits.csv"'));
 });
 test('contract: no stage but the brief may tell the agent to ask the human', () => {
   ['carousel-storyboard', 'carousel-build', 'carousel-challenge-plan', 'carousel-check', 'carousel-review', 'carousel-wrap'].forEach((n) => {
@@ -953,7 +953,7 @@ test('contract: the RULES chain table must key each stage on its previous report
   mustFail(d, 'contract', 'RULES.md chain table row for carousel-review must key on: Check report:');
 });
 test('storyboard: digits in the storyboard must be ledger values', () => {
-  const d = fresh(); ex(d, (t) => t.replace('| 2,562 of 4,200 cancellations followed a double skip |', '| 2,562 of 4,100 cancellations followed a double skip |'));
+  const d = fresh(); ex(d, (t) => t.replace('| 2,562 of 4,200 cancellations followed two missed weeks |', '| 2,562 of 4,100 cancellations followed two missed weeks |'));
   const r = h.check(d, ['--plan', EXP]);
   assert.strictEqual(r.code, 1, r.out);
   assert.ok(r.out.includes('slide s02: the storyboard prints 4100, which is not in the ledger'), r.out);
@@ -1101,11 +1101,11 @@ test('zip: corrupt offsets, bad signatures, truncation, garbage and zip64 each g
   plainFail(mod((b) => b.writeUInt32LE(b.length + 10, eocdAt(b) + 12)), 'directory');
 });
 test('zip: a broken deck reaches the CLI as one plain finding with exit 1, never a stack trace', () => {
-  const d = fresh(); fs.writeFileSync(path.join(d, 'plans/example/fernway-skip-cancel.pptx'), h.makePptx(['one']).subarray(0, 30));
+  const d = fresh(); fs.writeFileSync(path.join(d, 'plans/example/wrenmoor-skip-cancel.pptx'), h.makePptx(['one']).subarray(0, 30));
   const r = h.check(d, ['--plan', EXP]);
   assert.strictEqual(r.code, 1, r.out);
   assert.ok(r.out.includes('cannot be read: broken or unsupported .pptx') && !/\n\s+at /.test(r.out) && !r.out.includes('RangeError'), r.out);
-  const big = fresh(); fs.writeFileSync(path.join(big, 'plans/example/fernway-skip-cancel.pptx'), h.zip([['ppt/slides/slide1.xml', Buffer.alloc(40 * 1024 * 1024)]], true));
+  const big = fresh(); fs.writeFileSync(path.join(big, 'plans/example/wrenmoor-skip-cancel.pptx'), h.zip([['ppt/slides/slide1.xml', Buffer.alloc(40 * 1024 * 1024)]], true));
   assert.ok(h.check(big, ['--plan', EXP]).out.includes('inflates past 32 MB'));
 });
 test('zip: text paths: a line break reads as a space, slide order falls back to numbers, absolute targets and entities work', () => {
@@ -1122,7 +1122,7 @@ test('zip: text paths: a line break reads as a space, slide order falls back to 
 
 // ---- neutral document properties on a shipped deck
 test('pptx metadata: a shipped deck carries only the neutral creator, no generator string and no thumbnail', () => {
-  const put = (d, opts) => fs.writeFileSync(path.join(d, 'plans/example/fernway-skip-cancel.pptx'), h.makePptx(slides(), opts));
+  const put = (d, opts) => fs.writeFileSync(path.join(d, 'plans/example/wrenmoor-skip-cancel.pptx'), h.makePptx(slides(), opts));
   const neutral = { creator: 'Carousel OS example', lastModifiedBy: 'Carousel OS example' };
   let d = fresh(); put(d, { core: Object.assign({}, neutral, { creator: 'A Person' }) });
   mustFail(d, 'state', 'docProps creator is "A Person"');
@@ -1136,7 +1136,7 @@ test('pptx metadata: a shipped deck carries only the neutral creator, no generat
   mustFail(d, 'state', 'docProps creator is ""');
   d = fresh(); fs.writeFileSync(path.join(d, 'docs/extra.pptx'), 'not a deck');
   mustFail(d, 'state', 'docs/extra.pptx: broken or unsupported .pptx');
-  const real = fresh(); const m = cp.pptxCoreProperties(path.join(real, 'plans/example/fernway-skip-cancel.pptx'));
+  const real = fresh(); const m = cp.pptxCoreProperties(path.join(real, 'plans/example/wrenmoor-skip-cancel.pptx'));
   assert.strictEqual(m.creator, 'Carousel OS example'); assert.strictEqual(m.lastModifiedBy, 'Carousel OS example'); assert.ok(!m.thumbnail);
 });
 

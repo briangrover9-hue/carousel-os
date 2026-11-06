@@ -36,7 +36,7 @@ End with exactly this line, then add the same line to Reports:
 
 `Brief report: <N> questions asked, <M> answers recorded, <K> NEEDS HUMAN markers open.`
 
-## No-rubber-stamp guard
+## Real-change check
 
 A fake brief answers its own questions. It fills a field with "standard" or "TBD". It rewords the literal ask so it reads better. It reports zero questions asked when the start message left fields open. It writes "internal data" as the evidence with no window.
 

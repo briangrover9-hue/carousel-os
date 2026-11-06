@@ -31,7 +31,7 @@ Decline, name the cause, and stop when:
 6. Edit the plan and the ledger. Why: a round that edits only the log changed nothing.
 7. Write the diff summary, each entry with where (slide id or section):
    - `Addressed:` what changed.
-   - `Deferred:` followed by the marker `NEEDS HUMAN: <question>`, left open. You cannot answer it, and the human answers it outside this round.
+   - `Deferred:` a question you cannot answer, written as the marker `NEEDS HUMAN: <question>` and left open for the human to answer outside this round.
    - `Kept as is:` what you left, and the check you ran on it (recomputed, opened, matches).
 8. Write `Re-verified <N> claims, demoted <M> to uncertainty.` as the last line of the section.
 9. Last round, whatever the total (a one-round plan included): end Challenge log with `Parked claims: none open`. Every slide id on an earlier `Parked claims:` line must appear in this round's `Addressed:` or `Kept as is:` lines.
@@ -43,7 +43,7 @@ End each round with exactly this line, then add the same line to Reports:
 
 `Challenge round <R> of <T>: angle <name> (new). Re-verified <N> claims, demoted <M> to uncertainty.`
 
-## No-rubber-stamp guard
+## Real-change check
 
 A fake round renames an old angle and calls it new. It edits only the log. It files every finding under Kept as is with no check named, or defers all of them. It reports a count equal to the ledger size without opening a source. The last round empties the parked list by deleting entries.
 

@@ -17,7 +17,7 @@ A small engine you can read in one sitting, written to show what the [engine con
 4. Text contrast. A text run that has its own color and sits on a known fill (its shape's fill, or the slide background) is measured against `contrast.min`. FAIL under it. Runs with no color of their own or no known fill are counted as NOT SCANNED in the report, never passed.
 5. Percentage with no base. A percent on a slide with no count beside it (`4,200`, `1204`, `n=300`; years do not count) is a FAIL.
 
-The scan never edits the deck. It writes `scan-report.md` and `scan-report.json` into the out folder, prints its findings, ends with one line, `scan: N FAIL, M CANDIDATE`, and exits 0 (no FAIL), 1 (a FAIL) or 2 (the deck or the tokens are missing or unreadable).
+The scan never edits the deck. It writes `scan-report.md` and `scan-report.json` into the out folder, prints its findings and ends with one line, `scan: N FAIL, M CANDIDATE`. It exits 0 (no FAIL), 1 (a FAIL) or 2 (the deck or the tokens are missing or unreadable).
 
 ## Register it in a project
 
@@ -35,8 +35,8 @@ The worked example deck was built without an engine, and its plan took the rubri
 
 ```
 mkdir -p out
-node docs/build-your-engine/example/scan.js plans/example/fernway-skip-cancel.pptx out/check
-node docs/build-your-engine/example/render.js plans/example/fernway-skip-cancel.pptx out/check
+node docs/build-your-engine/example/scan.js plans/example/wrenmoor-skip-cancel.pptx out/check
+node docs/build-your-engine/example/render.js plans/example/wrenmoor-skip-cancel.pptx out/check
 ```
 
 The real output:
@@ -44,7 +44,7 @@ The real output:
 ```
 CANDIDATE slide 3 headline length: 71 characters, within 10 percent of the 72 limit
 FAIL slide 4 headline length: 86 characters, limit 72: "About one in five of the members who answered the exit survey gave price as the reason"
-FAIL slide 5 headline length: 74 characters, limit 72: "A one-month pause is worth testing for members who skip two boxes in a row"
+FAIL slide 5 headline length: 75 characters, limit 72: "A one-month freeze is worth testing for members who miss two weeks in a row"
 FAIL slide 3 percentage base: 31.2%, 10.4% with no base (a count of what it is a percent of) on the slide
 scan: 3 FAIL, 1 CANDIDATE
 ```

@@ -1,6 +1,6 @@
 # Handoff
 
-The Fernway deck passed review on the second pass and is ready to present. One question from the critique rounds is still open, and it changes how slide s04 reads.
+The Wrenmoor deck passed review on the second pass and is ready to present. One question from the critique rounds is still open, and it changes how slide s04 reads.
 
 - Answer the open question: was the exit survey voluntary? Until you do, s04 says "of the members who answered" and claims nothing about the rest.
 - Item 9 of the check, a look at a render, never ran because this deck was built without an engine. Open the deck on a screen before Thursday.
@@ -19,4 +19,4 @@ Needs the human:
 - Look at the deck on a screen.
 
 Out of scope:
-- Pricing changes and gift subscriptions.
+- Pricing changes and personal training.

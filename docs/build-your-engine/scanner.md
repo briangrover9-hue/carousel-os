@@ -2,7 +2,7 @@
 
 The scanner opens a finished deck file and measures it. It checks the exact file that will ship, whoever built it and whatever kit drew it. That makes it the one tool that can catch a defect introduced after the kit was done, such as a hand edit, an import into another app or a find-and-replace.
 
-Write each check so it reads the file's XML or its parsed shapes, never a description of the deck. Write the report to a folder, and end with one summary line.
+Write each check so it reads the file's XML or its parsed shapes. A description of the deck can be wrong about what the file holds. Write the report to a folder, and end with one summary line.
 
 ## Result levels
 
