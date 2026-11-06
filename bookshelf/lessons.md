@@ -12,7 +12,7 @@ A lesson is a correction, written down the day it happened so nobody makes it tw
 6. A lesson not reconfirmed within 90 days expires: `node scripts/lessons.js expire` moves it to `memory/history/expired-lessons.md`. `confirm <id> --human-confirmed "<words>"` restarts the 90 days.
 7. `dedupe` lists merge candidates. It merges only after `--human-confirmed "<words>"`.
 
-Every `--human-confirmed` action appends a line to `memory/wiki/lessons.history` (date, action, id, the human's words in quotes, detail). `check-process` replays that file and compares it with the lessons file: a repeat count, a confirmed date, a promotion or a review date that the history does not support is an error, and so is a date in the future. The flag is self-attested. The script cannot tell a human from an agent that types it, so the history is there for a person to read.
+Every `--human-confirmed` action appends a line to `memory/wiki/lessons.history` (date, action, id, the human's words in quotes, detail). `check-process` replays that file and compares it with the lessons file. A repeat count, a confirmed date, a promotion or a review date that the history does not support is an error, and so is a date in the future. The flag is self-attested. The script cannot tell a human from an agent that types it, so the history is there for a person to read.
 
 `node scripts/check-process.js` fails on a lesson past 90 days, on a rule past its review, on more than 12 rules, and on a twice-corrected lesson still unpromoted after 14 days. Inside the 14 days it prints a notice.
 

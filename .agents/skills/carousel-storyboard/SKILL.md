@@ -1,3 +1,9 @@
+---
+name: carousel-storyboard
+description: "Turn the brief into one headline, claim, source and window per slide, and open the claim ledger."
+disable-model-invocation: true
+---
+
 # carousel-storyboard
 
 Job: turn the brief into one headline, claim, source and window per slide, and open the claim ledger.

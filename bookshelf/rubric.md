@@ -2,13 +2,13 @@
 
 Summary: twelve dimensions, floors, compound caps, severities and the stopping rule a reviewer uses when it judges a finished deck.
 
-The reviewer scores the deck, never the builder. A score summarizes named defects. Every dimension below 9 traces to specific findings. The review itself runs in `commands/carousel-review.md`; this file says how the numbers work and when the loop ends.
+The reviewer scores the deck, never the builder. A score summarizes named defects. Every dimension below 9 traces to specific findings. The review itself runs in `.agents/skills/carousel-review/SKILL.md`; this file says how the numbers work and when the loop ends.
 
 ## The twelve dimensions
 
 | # | Dimension | Weight | 9 to 10 looks like | Floor |
 |---|---|---:|---|---:|
-| 1 | Question alignment | 15 | Every literal question answered first, in your framing, with the requester's names for categories and metrics | 8 |
+| 1 | Question alignment | 15 | Every literal question answered first, in your framing, with the requester's names for segments and metrics | 8 |
 | 2 | Strategic insight | 12 | The organizing idea makes the decision or next step clear | 7 |
 | 3 | Narrative | 10 | The headlines alone make a complete, non-repetitive argument with a turn and an answer | 8 |
 | 4 | Evidence | 15 | Every claim supported, fact apart from inference, counter-evidence shown | 8 |

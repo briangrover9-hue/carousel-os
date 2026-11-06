@@ -7,7 +7,7 @@ Every word on every slide, in every summary, memo and delivery message follows t
 These forms are banned. They appear here as examples, so the block is fenced.
 
 ```
-No em dashes, en dashes, or spaced hyphens as punctuation. Use commas, colons, periods, "to" for ranges, "+" for combos. Standard compound hyphens (better-for-you) are fine.
+No em dashes, en dashes, or spaced hyphens as punctuation. Use commas, colons, periods, "to" for ranges, "+" for combos. Standard compound hyphens (well-known) are fine.
 No negation-reframe ("it was never about X, it was about Y"; "not X but Y").
 No fragment stacking (runs of short declaratives used as a drumbeat).
 No rule-of-three triads used for rhythm.
@@ -26,7 +26,7 @@ No slop vocabulary: best-in-class, seamless, robust, cutting-edge, world-class, 
 5. Use an everyday English word in place of a foreign phrase, a scientific word or jargon, when one exists.
 6. Break any of these rules before you write something outright awkward.
 
-Before drafting, answer in order: What am I trying to say? What words will say it? What image or example makes it clearer? Could I say it more briefly? Bad prose comes from letting ready-made phrases do the thinking.
+Before drafting, answer four questions in order: what you are trying to say, which words will say it, what image or example makes it clearer, and whether you could say it more briefly. Bad prose comes from letting ready-made phrases do the thinking.
 
 ## Five habits to scan for
 
@@ -49,7 +49,7 @@ Before drafting, answer in order: What am I trying to say? What words will say i
 ## Slide-specific rules
 
 - A headline states the conclusion and never labels the topic. Vary the grammar across the deck, and drop any template repeated slide after slide, such as a repeated antithesis.
-- Write the finding the reader will repeat in their own meeting. The ones that travel put a number and its contrast in one line ("down 5% while the rest grew 10%", with its base on the slide per preflight item 15; "from 4.2 to 2.6 stars in four weeks"; "five times the category rate"), state a zero with its base ("none of 7,000 reviews mention it"), set a time box, or settle the reader's own hypothesis. They are seldom recommendations. A zero ships with its base and a coverage check (preflight items 21 and 22).
+- Write the finding the reader will repeat in their own meeting. The ones that travel put a number and its contrast in one line ("down 5% while the rest grew 10%", with its base on the slide per preflight item 15; "from 4.2 to 2.6 days in four weeks"; "five times the district rate"), state a zero with its base ("none of 7,000 tickets mention it"), set a time box, or settle the reader's own hypothesis. They are seldom recommendations. A zero ships with its base and a coverage check (preflight items 21 and 22).
 - Body sentences run to about 35 words at most. Check again after any text sweep, because one inserted word can push a long sentence over.
 - Use vocabulary the audience uses daily, and leave analyst shorthand out of slide language.
 - Use causal wording only where the evidence supports it. Otherwise frame it as a test ("the most promising combination to test") and avoid directives. A prevalence claim that the data fully supports can stay punchy.
@@ -57,8 +57,8 @@ Before drafting, answer in order: What am I trying to say? What words will say i
 
 ## Reader-facing hygiene (anything the audience will see)
 
-- Keep internal tool, pipeline, tenant and system names out of headlines and body text. Describe the capability ("our product enrichment", "review analysis across N retailers") and skip the plumbing. The source line is the exception: it names the data system, the market and the window.
-- Identify no consumer. A quote carries platform or retailer, rating or engagement, and date, with no username or handle.
+- Keep internal tool, pipeline, database and system names out of headlines and body text. Describe the capability ("our usage tagging", "ticket analysis across N regions") and skip the plumbing. The source line is the exception: it names the data system, the population and the window.
+- Identify no individual. A quote carries its source, its score or engagement, and its date, with no username or handle.
 - Anonymize customer names unless a published reference already names them.
 - Translate internal jargon before it ships. Segment predicates become plain descriptions, field names become English, and a term the audience does not use daily gets replaced or defined on first use.
 

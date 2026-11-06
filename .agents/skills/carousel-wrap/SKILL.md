@@ -1,3 +1,9 @@
+---
+name: carousel-wrap
+description: "Close the session with one complete check, the session's lessons, wiki updates, a log entry and log rotation."
+disable-model-invocation: true
+---
+
 # carousel-wrap
 
 Job: close the session with one complete check, the session's lessons, wiki updates, a log entry and log rotation.

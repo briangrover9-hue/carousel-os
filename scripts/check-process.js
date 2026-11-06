@@ -4,6 +4,7 @@
 //
 //   node scripts/check-process.js [--root DIR] [--config FILE] [--today YYYY-MM-DD]
 //   node scripts/check-process.js --skip handoff          (carousel-wrap only)
+//   node scripts/check-process.js --only budget           (one check by name)
 //   node scripts/check-process.js --ledger FILE [--final]
 //   node scripts/check-process.js --ledger-md FILE        (prints the ledger as a pipe table)
 //   node scripts/check-process.js --help
@@ -19,6 +20,12 @@ const zlib = require('zlib');
 const rotate = require('./rotate-log.js');
 const lessons = require('./lessons.js');
 const runTools = require('./run-tools.js');
+const skills = require('./generate-skills.js');
+
+// Where each stage's single source lives (Cursor and Codex read this folder; Claude Code reads a generated copy).
+const STAGE_DIR = skills.SKILLS;
+const stageFile = (name) => `${STAGE_DIR}/${name}/SKILL.md`;
+const STAGE_INDEX = `${STAGE_DIR}/README.md`;
 
 // ---------------------------------------------------------------- contract
 
@@ -1060,24 +1067,23 @@ function budget(ctx) {
     if (s === null) out.push(`${f} is missing`);
     else if (s > c.pointerMaxBytes) out.push(`${f} is ${s} bytes, the cap is ${c.pointerMaxBytes}`);
   });
-  let names = [];
-  try { names = fs.readdirSync(path.join(ctx.root, 'commands')).filter((n) => n.endsWith('.md')); } catch (e) { out.push('commands/ is missing'); }
-  names.forEach((n) => {
-    const s = size('commands/' + n);
-    if (s > c.commandMaxBytes) out.push(`commands/${n} is ${s} bytes, the cap is ${c.commandMaxBytes}`);
+  const stages = skills.stageNames(ctx.root);
+  if (!stages.length) out.push(`${STAGE_DIR}/ holds no stage`);
+  stages.map(stageFile).concat(skills.agentNames(ctx.root).map((f) => `${skills.AGENTS}/${f}`)).forEach((rel) => {
+    const s = size(rel);
+    if (s > c.stageMaxBytes) out.push(`${rel} is ${s} bytes, the cap is ${c.stageMaxBytes}`);
   });
   return out;
 }
 
-const PATH_TOKEN = /^(?:(?:bookshelf|commands|docs|memory|plans|scripts|engine|tests)\/[^\s<>*]*|(?:RULES|AGENTS|CLAUDE|README|cheatsheet)\.md(?:#\S*)?)$/;
+const PATH_TOKEN = /^(?:(?:bookshelf|\.agents|agents|docs|memory|plans|scripts|engine|tests)\/[^\s<>*]*|(?:RULES|AGENTS|CLAUDE|README|cheatsheet)\.md(?:#\S*)?)$/;
 
 function deadrefs(ctx) {
   const out = [];
   const engine = fs.existsSync(path.join(ctx.root, 'engine'));
   const cmdNames = new Set();
-  try {
-    fs.readdirSync(path.join(ctx.root, 'commands')).forEach((n) => { if (/^carousel-.*\.md$/.test(n)) cmdNames.add(n.replace(/\.md$/, '')); });
-  } catch (e) { /* reported by budget */ }
+  skills.stageNames(ctx.root).forEach((n) => cmdNames.add(n));
+  skills.agentNames(ctx.root).forEach((f) => cmdNames.add(f.replace(/\.md$/, '')));
   const headingCache = new Map();
   const headingsFor = (rel) => {
     if (!headingCache.has(rel)) {
@@ -1128,7 +1134,7 @@ function deadrefs(ctx) {
       while ((m = spanRe.exec(l.line))) {
         const span = m[1];
         const cm = /^(carousel-[a-z-]+)$/.exec(span);
-        if (cm && !cmdNames.has(cm[1]) && !ctx.config.nonCommandNames.includes(cm[1])) out.push(`${where}: \`${cm[1]}\` is not a command in commands/`);
+        if (cm && !cmdNames.has(cm[1]) && !ctx.config.nonCommandNames.includes(cm[1])) out.push(`${where}: \`${cm[1]}\` is not a stage in ${STAGE_DIR}/ or an agent in ${skills.AGENTS}/`);
         const toks = span.trim().split(/\s+/);
         if (toks.length === 1 || /^(node|python3)$/.test(toks[0])) toks.forEach((t) => checkToken(where, t));
       }
@@ -1168,7 +1174,7 @@ function wiki(ctx) {
 function contract(ctx) {
   const out = [];
   const rules = readIf(path.join(ctx.root, 'RULES.md')) || '';
-  const readme = readIf(path.join(ctx.root, 'commands/README.md')) || '';
+  const readme = readIf(path.join(ctx.root, STAGE_INDEX)) || '';
   RULES_PINS.forEach((p) => { if (!rules.includes(p)) out.push(`RULES.md must keep: ${p}`); });
   STAGES.filter((x) => x.guard.length).forEach((x) => {
     const row = rules.split('\n').find((l) => l.startsWith(`| \`${x.name}\` |`));
@@ -1176,9 +1182,10 @@ function contract(ctx) {
     else if (!row.includes(x.guard[0])) out.push(`RULES.md chain table row for ${x.name} must key on: ${x.guard[0]}`);
   });
   STAGES.forEach((st) => {
-    const file = `commands/${st.name}.md`;
-    const text = readIf(path.join(ctx.root, file));
-    if (text === null) { out.push(`${file} is missing`); return; }
+    const file = stageFile(st.name);
+    const raw = readIf(path.join(ctx.root, file));
+    if (raw === null) { out.push(`${file} is missing`); return; }
+    const text = skills.splitFrontMatter(raw).body;
     const lines = text.split('\n');
     if (lines[0].trim() !== `# ${st.name}`) out.push(`${file}: first line must be "# ${st.name}"`);
     const head = lines.slice(0, 10);
@@ -1213,7 +1220,7 @@ function contract(ctx) {
     const why = sectionText(text, '## Rationale');
     if (why !== null && why.length < 100) out.push(`${file}: Rationale is too short`);
     if (!rules.includes(st.name)) out.push(`RULES.md does not name ${st.name}`);
-    if (!readme.includes(`(${st.name}.md)`)) out.push(`commands/README.md does not link ${st.name}`);
+    if (!readme.includes(`(${st.name}/SKILL.md)`)) out.push(`${STAGE_INDEX} does not link ${st.name}`);
   });
   return out;
 }
@@ -1451,7 +1458,13 @@ function handoffCheck(ctx) {
 // ---------------------------------------------------------------- run
 
 const DEFAULTS = {
-  rulesMaxBytes: 8000, commandMaxBytes: 7000, pointerMaxBytes: 1200,
+  // Byte budgets. RULES.md is loaded in every session, through AGENTS.md or CLAUDE.md. Codex reads only the first
+  // 32 KiB of AGENTS.md by default, so a team that inlines these rules there, beside its own instructions, must still
+  // fit. 9000 bytes keeps the rules under a third of that, with about 1,400 bytes of headroom over today's 7,600.
+  // A stage file (.agents/skills/<name>/SKILL.md, or a reviewer in agents/) loads only while its stage runs. 8000
+  // bytes keeps one procedure short enough to follow in one read, about 1,700 bytes over today's largest.
+  // AGENTS.md and CLAUDE.md are pointers and stay tiny.
+  rulesMaxBytes: 9000, stageMaxBytes: 8000, pointerMaxBytes: 1200,
   nonCommandNames: [], allowMissing: [], unchecked: [], bannedWords: [], bannedPatterns: [], americanAllow: [], scrubAllow: [],
 };
 
@@ -1461,11 +1474,14 @@ function loadConfig(file) {
   return Object.assign({}, DEFAULTS, JSON.parse(t));
 }
 
+const CHECK_NAMES = ['budget', 'deadrefs', 'wiki', 'contract', 'prose', 'state', 'handoff'];
+
 function runChecks(ctx) {
   const checks = [['budget', budget], ['deadrefs', deadrefs], ['wiki', wiki], ['contract', contract], ['prose', prose], ['state', state], ['handoff', handoffCheck]];
   const lines = [];
   let failed = 0;
   checks.forEach(([name, fn]) => {
+    if (ctx.only && ctx.only !== name) return;
     if (ctx.skip.includes(name)) { lines.push(`SKIP ${name}`); return; }
     const all = fn(ctx);
     const warns = all.filter((p) => p.startsWith('WARN '));
@@ -1477,7 +1493,7 @@ function runChecks(ctx) {
     } else lines.push(`PASS ${name}`);
     warns.forEach((w) => lines.push(`  ${w}`));
   });
-  lines.push(`check-process: ${checks.length - ctx.skip.length} checks, ${failed} failed`);
+  lines.push(`check-process: ${ctx.only ? 1 : checks.length - ctx.skip.length} checks, ${failed} failed`);
   return { lines, failed };
 }
 
@@ -1486,6 +1502,7 @@ const HELP = [
   '  node scripts/check-process.js                      run every check in the current folder',
   '  node scripts/check-process.js --root DIR           run in another folder',
   '  node scripts/check-process.js --skip handoff       skip the handoff check (carousel-wrap only)',
+  '  node scripts/check-process.js --only budget        run one check by name',
   '  node scripts/check-process.js --plan PLAN.md       read the deck itself and compare it with the ledger and the Build table',
   '  node scripts/check-process.js --hashes PLAN.md     print the Deck, Ledger and Build hashes for the Check section',
   '  node scripts/check-process.js --ledger FILE [--final]   check one ledger; --final needs every row checked',
@@ -1494,7 +1511,7 @@ const HELP = [
 ].join('\n');
 
 function main(argv) {
-  const opts = { root: process.cwd(), config: null, today: null, ledger: null, final: false, ledgerMd: null, plan: null, hashes: null, skip: [] };
+  const opts = { root: process.cwd(), config: null, today: null, ledger: null, final: false, ledgerMd: null, plan: null, hashes: null, skip: [], only: null };
   const FLAGS = {
     '--root': ['a folder', (v) => { opts.root = path.resolve(v); }],
     '--config': ['a file', (v) => { opts.config = v; }],
@@ -1504,6 +1521,7 @@ function main(argv) {
     '--plan': ['a plan file', (v) => { opts.plan = v; }],
     '--hashes': ['a plan file', (v) => { opts.hashes = v; }],
     '--skip': ['a check name', (v) => { opts.skip.push(v); }],
+    '--only': ['a check name', (v) => { opts.only = v; }],
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -1570,9 +1588,11 @@ function main(argv) {
   let config;
   try { config = loadConfig(configFile); } catch (e) { console.error(`check-process: bad config ${configFile}: ${e.message}`); return 2; }
   if (opts.skip.some((n) => n !== 'handoff')) { console.error('check-process: only the handoff check may be skipped'); return 2; }
+  if (opts.only && !CHECK_NAMES.includes(opts.only)) { console.error(`check-process: --only wants one of ${CHECK_NAMES.join(', ')}`); return 2; }
   const skip = new Set([...SKIP_DIRS, ...ignoredNames(opts.root)]);
-  const proseFiles = walkMd(opts.root, skip).filter((p) => !config.unchecked.includes(p)).sort();
-  const result = runChecks({ root: opts.root, config, today: todayStr, prose: proseFiles, skip: opts.skip });
+  // walkMd skips dot folders, so the stage sources are added by name. The .claude/ copies are generated and skipped.
+  const proseFiles = walkMd(opts.root, skip).concat(walkAny(opts.root, STAGE_DIR, '.md')).filter((p) => !config.unchecked.includes(p)).sort();
+  const result = runChecks({ root: opts.root, config, today: todayStr, prose: proseFiles, skip: opts.skip, only: opts.only });
   console.log(result.lines.join('\n'));
   return result.failed ? 1 : 0;
 }

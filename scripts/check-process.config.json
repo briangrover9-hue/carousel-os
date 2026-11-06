@@ -1,7 +1,4 @@
 {
-  "rulesMaxBytes": 8000,
-  "commandMaxBytes": 7000,
-  "pointerMaxBytes": 1200,
   "nonCommandNames": [
     "carousel-os"
   ],

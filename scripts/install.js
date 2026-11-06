@@ -7,15 +7,19 @@
 //   node scripts/install.js update [<target>] [--no-agents] [--dry-run] [--overwrite]
 //   node scripts/install.js doctor [<target>]
 //
-// init     copies the process into <target>: RULES.md, commands, plans, bookshelf, docs, memory skeleton and
-//          scripts. It also copies the nine commands into <target>/.claude/commands/ where agents look
-//          (--no-agents skips that copy).
+// init     copies the process into <target>: RULES.md, the nine stages in .agents/skills/ (where Cursor and Codex
+//          look), the reviewer agents in agents/, plans, bookshelf, docs, memory skeleton and scripts. It also
+//          copies the stages to <target>/.claude/skills/ and the reviewers to <target>/.claude/agents/, where
+//          Claude Code looks. --no-agents skips those .claude/ copies; .agents/skills/ is the process itself and
+//          always installs.
 // update   re-runs init against an existing install. It replaces only files you have not edited, does not
 //          bring back a file you deleted on purpose, and removes a file a newer version stopped shipping
-//          only when you have not edited it.
+//          only when you have not edited it. An install from 0.1.0 had commands/ and .claude/commands/: update
+//          removes those files when they still match what that version wrote, and keeps any you edited.
 // doctor   checks what is installed and prints exactly what is missing.
 //
-// A file you already have in .claude/commands/ with the same name is never replaced, even with --overwrite.
+// A file you already have with the same name in .agents/skills/, .claude/skills/ or .claude/agents/ is never
+// replaced, even with --overwrite.
 // A manifest (.carousel-install.json) records the hash of every file this script wrote and every file you
 // deleted. memory/ is a skeleton: it is created once and never changed again, even with --overwrite.
 
@@ -25,7 +29,10 @@ const crypto = require('crypto');
 
 const SOURCE = path.resolve(__dirname, '..');
 const MANIFEST = '.carousel-install.json';
-const AGENT_DIR = '.claude/commands';
+const skills = require('./generate-skills.js');
+const CLAUDE_SKILLS = '.claude/skills';
+const CLAUDE_AGENTS = '.claude/agents';
+const OLD_COMMAND_DIRS = ['commands', '.claude/commands'];   // where 0.1.0 put the stages
 const VERSION = (() => {
   try { return JSON.parse(fs.readFileSync(path.join(SOURCE, 'package.json'), 'utf8')).version; } catch (e) { return '0'; }
 })();
@@ -37,12 +44,12 @@ const PROCESS = [
   { file: 'carousel.config.example.json' },   // the example only: a carousel.config.json is the user's and is never installed
   { file: 'AGENTS.md', onlyIfAbsent: true },
   { file: 'CLAUDE.md', onlyIfAbsent: true },
-  { dir: 'commands' },
+  { dir: '.agents/skills', userOwned: true },   // a tool folder: a skill of yours with the same name is never replaced
+  { dir: 'agents' },
   { dir: 'plans' },
   { dir: 'bookshelf' },
   { dir: 'docs', only: ['light-path.md', 'cost.md', 'how-it-thinks.md'] },
-  { dir: 'docs/build-your-engine' },
-  { dir: 'docs/gallery' },
+  { dir: 'docs/build-your-engine' },   // docs/gallery stays home: its images are not in the npm package
   { dir: 'tests/process' },
   { dir: 'scripts', exclude: ['check.js', 'check-links.js', 'leak-scan.js'] },   // repository-only scripts stay home; every other script a process script needs ships
   { dir: 'memory', skeleton: true },
@@ -112,20 +119,27 @@ function listSource() {
     files.forEach((f) => {
       if (out.some((o) => o.rel === f)) return;                                    // a nested dir listed on its own
       if (s.skeleton && (f === 'memory/LOG.md' || f === 'memory/LOG.md.template' || f === 'memory/wiki/lessons.history')) return;
-      out.push({ rel: f, skeleton: !!s.skeleton });
+      out.push({ rel: f, skeleton: !!s.skeleton, userOwned: !!s.userOwned });
     });
     if (s.skeleton && s.dir === 'memory') { out.push(logEntry()); out.push(lessonsHistoryEntry()); }
   });
   return out;
 }
 
-// The nine stage commands, copied where agents look. They are the user's to keep: an existing file of the same
-// name that this tool did not write is never touched.
+// The Claude Code copies: each stage's SKILL.md byte for byte, and each reviewer agent. They are the user's to keep:
+// an existing file of the same name that this tool did not write is never touched.
 function agentFiles() {
-  const dir = path.join(SOURCE, 'commands');
-  if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir).filter((f) => /^carousel-.*\.md$/.test(f)).sort()
-    .map((f) => ({ rel: AGENT_DIR + '/' + f, from: 'commands/' + f, userOwned: true }));
+  const out = skills.stageNames(SOURCE).map((n) => ({ rel: `${CLAUDE_SKILLS}/${n}/SKILL.md`, from: `${skills.SKILLS}/${n}/SKILL.md`, userOwned: true }));
+  return out.concat(skills.agentNames(SOURCE).map((f) => ({ rel: `${CLAUDE_AGENTS}/${f}`, from: `${skills.AGENTS}/${f}`, userOwned: true })));
+}
+
+// Remove folders the update emptied, from the file's folder up to (not including) the target.
+function pruneEmpty(target, rel) {
+  let dir = path.dirname(path.join(target, rel));
+  while (dir.startsWith(path.resolve(target) + path.sep)) {
+    try { if (fs.readdirSync(dir).length) return; fs.rmdirSync(dir); } catch (e) { return; }
+    dir = path.dirname(dir);
+  }
 }
 
 // A manifest path must stay inside the project: no absolute path, no "..", nothing that resolves outside the target.
@@ -267,9 +281,10 @@ function install(o, updating) {
       if (sha(fs.readFileSync(dst)) === recorded[rel]) {
         say(verb + 'remove   ' + rel + ' (no longer shipped)');
         counts.removed++;
-        if (!o.dry) { assertNoSymlink(o.target, rel); fs.rmSync(dst); delete next[rel]; }
+        if (!o.dry) { assertNoSymlink(o.target, rel); fs.rmSync(dst); delete next[rel]; pruneEmpty(o.target, rel); }
       } else {
         counts.kept++; say('kept     ' + rel + ' (no longer shipped, but you edited it)');
+        if (/^\.claude\/commands\/carousel-/.test(rel)) say('         ' + rel + ' now duplicates a stage in ' + CLAUDE_SKILLS + '/. Move your edits there, then delete it.');
       }
     });
   } catch (e) {
@@ -285,15 +300,15 @@ function install(o, updating) {
 
 // ------------------------------------------------------------------- doctor
 
-// Paths under scripts/ and tests/ that the stage commands name. A command that calls a file the install did not copy
-// is a defect.
+// Paths under scripts/ and tests/ that the stages and reviewer agents name. A stage that calls a file the install
+// did not copy is a defect.
 function filesCalledByCommands(target) {
-  const dir = path.join(target, 'commands');
   const out = [];
   const seen = new Set();
-  if (!fs.existsSync(dir)) return out;
-  fs.readdirSync(dir).filter((f) => f.endsWith('.md')).forEach((f) => {
-    const text = fs.readFileSync(path.join(dir, f), 'utf8');
+  const files = skills.stageNames(target).map((n) => `${skills.SKILLS}/${n}/SKILL.md`)
+    .concat(skills.agentNames(target).map((f) => `${skills.AGENTS}/${f}`));
+  files.forEach((rel) => {
+    const text = fs.readFileSync(path.join(target, rel), 'utf8');
     const ref = /\b((?:scripts|tests)\/[A-Za-z0-9_.\/-]*[A-Za-z0-9_](?:\.[A-Za-z0-9]+))/g;
     let m;
     while ((m = ref.exec(text))) {
@@ -301,7 +316,7 @@ function filesCalledByCommands(target) {
       // The engine is optional: its wrapper is only expected where the project has an engine/ folder.
       if (m[1] === 'scripts/engine.js' && !fs.existsSync(path.join(target, 'engine'))) continue;
       seen.add(m[1]);
-      out.push({ path: m[1], by: 'commands/' + f });
+      out.push({ path: m[1], by: rel });
     }
   });
   return out;
@@ -314,25 +329,45 @@ function doctor(o) {
   const problems = [];
   const ok = (m) => say('ok       ' + m);
   const bad = (m) => { problems.push(m); warn('MISSING  ' + m); };
+  const fix = ' (run: node scripts/install.js update ' + target + ')';
 
   const major = Number(process.versions.node.split('.')[0]);
-  if (major >= 18) ok('Node ' + process.versions.node); else bad('Node 18 or newer (found ' + process.versions.node + ')');
+  if (major >= 20) ok('Node ' + process.versions.node); else bad('Node 20 or newer (found ' + process.versions.node + ')');
 
-  const required = ['RULES.md', 'commands/README.md', 'plans/plan.template.md', 'memory/wiki/lessons.md', 'bookshelf/README.md', 'scripts/check-process.js'];
+  const required = ['RULES.md', skills.SKILLS + '/README.md', 'plans/plan.template.md', 'memory/wiki/lessons.md', 'bookshelf/README.md', 'scripts/check-process.js'];
   required.forEach((f) => { if (fs.existsSync(path.join(target, f))) ok(f); else bad(f + ' (run: node scripts/install.js init ' + target + ')'); });
-  const cmds = fs.existsSync(path.join(target, 'commands')) ? fs.readdirSync(path.join(target, 'commands')).filter((f) => /^carousel-.*\.md$/.test(f)).length : 0;
-  if (cmds >= 9) ok(cmds + ' stage commands'); else bad('stage commands: found ' + cmds + ' of 9 in commands/');
+  const want = skills.stageNames(SOURCE);
+  const have = want.filter((n) => fs.existsSync(path.join(target, skills.SKILLS, n, 'SKILL.md')));
+  if (have.length === want.length) ok(skills.SKILLS + ': ' + have.length + ' stages');
+  else bad(skills.SKILLS + ': found ' + have.length + ' of ' + want.length + ' stages' + fix);
+  const yaml = have.filter((n) => fs.existsSync(path.join(target, skills.SKILLS, n, 'agents', 'openai.yaml')));
+  if (yaml.length === have.length) ok(yaml.length + ' stages marked manual-only for Codex');
+  else bad(skills.SKILLS + ': ' + (have.length - yaml.length) + ' stage(s) lack agents/openai.yaml' + fix);
+  const reviewers = skills.agentNames(SOURCE);
+  const revHave = reviewers.filter((f) => fs.existsSync(path.join(target, skills.AGENTS, f)));
+  if (revHave.length === reviewers.length) ok(skills.AGENTS + ': ' + revHave.length + ' reviewer agents');
+  else bad(skills.AGENTS + ': found ' + revHave.length + ' of ' + reviewers.length + ' reviewer agents' + fix);
 
+  // The Claude Code copies: optional after --no-agents, and they must match their source byte for byte.
   const manifest = readManifest(target);
-  const agentDir = path.join(target, AGENT_DIR);
-  const agentHave = fs.existsSync(agentDir) ? fs.readdirSync(agentDir).filter((f) => /^carousel-.*\.md$/.test(f)).length : 0;
-  if (agentHave >= 9) ok(AGENT_DIR + ': ' + agentHave + ' commands');
-  else if (manifest && manifest.agents) bad(AGENT_DIR + ': found ' + agentHave + ' of 9 commands (run: node scripts/install.js update ' + target + ')');
-  else say('agents   ' + AGENT_DIR + ' has ' + agentHave + ' of 9 commands (optional; add with: node scripts/install.js update ' + target + ' --agents)');
+  const copies = agentFiles();
+  const present = copies.filter((c) => fs.existsSync(path.join(target, c.rel)));
+  if (present.length === copies.length) ok('.claude/: ' + want.length + ' skills and ' + reviewers.length + ' agents');
+  else if (manifest && manifest.agents) bad('.claude/: found ' + present.length + ' of ' + copies.length + ' skill and agent copies' + fix);
+  else say('agents   .claude/ has ' + present.length + ' of ' + copies.length + ' skill and agent copies (optional; add with: node scripts/install.js update ' + target + ' --agents)');
+  present.forEach((c) => {
+    const src = path.join(target, c.from);
+    if (fs.existsSync(src) && !fs.readFileSync(src).equals(fs.readFileSync(path.join(target, c.rel)))) bad(c.rel + ' differs from ' + c.from + ' (run: node scripts/generate-skills.js --root ' + target + ')');
+  });
+  OLD_COMMAND_DIRS.forEach((d) => {
+    const dir = path.join(target, d);
+    const left = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /^carousel-.*\.md$/.test(f)) : [];
+    if (left.length) say('note     ' + d + '/ still holds ' + left.length + ' carousel stage file(s) from an older version; the stages now live in ' + skills.SKILLS + '/');
+  });
 
   const called = filesCalledByCommands(target);
   called.forEach((f) => { if (!fs.existsSync(path.join(target, f.path))) bad(f.path + ' (called by ' + f.by + ')'); });
-  if (called.length) ok(called.length + ' files called by the commands are all present');
+  if (called.length) ok(called.length + ' files called by the stages are all present');
   if (!fs.existsSync(path.join(target, 'engine'))) say('engine   none (optional; see docs/build-your-engine/README.md)');
 
   say(problems.length ? `doctor: ${problems.length} problem(s)` : 'doctor: all good');

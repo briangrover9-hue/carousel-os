@@ -1,3 +1,9 @@
+---
+name: carousel-handoff
+description: "Write the note the next session starts from, in the locked template."
+disable-model-invocation: true
+---
+
 # carousel-handoff
 
 Job: write the note the next session starts from, in the locked template.

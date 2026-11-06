@@ -9,7 +9,7 @@
 // (separated by the platform path delimiter). A token matches as a whole word, case folded, accents
 // stripped. A token with no word characters at its edges matches as plain text.
 // Without a token file the scan still runs its built-in checks (personal home paths, email
-// addresses) and says that no name list was given.
+// addresses, except the author's contact address in README.md and package.json) and says that no name list was given.
 // It also opens every .pptx it finds: the creator and last-modified-by in docProps/core.xml must be the neutral
 // "Carousel OS example", app.xml may name no company or manager, and the token list, email and home-path checks run
 // on the document properties and on all slide and notes text.
@@ -24,6 +24,11 @@ const TEXT = new Set(['.md', '.js', '.json', '.py', '.txt', '.yml', '.yaml', '.s
 const SKIP_DIRS = new Set(['.git', 'node_modules', '__pycache__', '.carousel-venv', 'out', 'build', 'dist']);
 // Addresses on reserved or invented example domains are fixtures, not leaks.
 const ALLOWED_EMAIL = /^(noreply|no-reply)@|@([a-z0-9-]+\.)*(example\.(com|org|net)|example-company\.com|host\.tld|invalid|test)$/i;
+// The one real address that may ship: the author's contact, in exactly these two files. It is not a pattern, so any
+// other address, or this one in any other file, is still a leak. Built at run time so this file holds no address.
+const AUTHOR_EMAIL = ['briangrover9', 'gmail.com'].join('@');
+const AUTHOR_EMAIL_FILES = new Set(['README.md', 'package.json']);
+const emailAllowed = (rel, m) => ALLOWED_EMAIL.test(m) || (m.toLowerCase() === AUTHOR_EMAIL && AUTHOR_EMAIL_FILES.has(rel));
 
 function fold(s) { return s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 function esc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
@@ -130,7 +135,7 @@ function scan(root, tokenFiles) {
       const folded = fold(line);
       builtin.forEach((b) => { if (b.re.test(line)) hits.push(`${where}: ${b.name}`); });
       (line.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || []).forEach((m) => {
-        if (!ALLOWED_EMAIL.test(m)) hits.push(`${where}: email address ${m}`);
+        if (!emailAllowed(rel, m)) hits.push(`${where}: email address ${m}`);
       });
       toks.forEach((k) => { if (k.re.test(folded)) hits.push(`${where}: token from your list`); });
     });

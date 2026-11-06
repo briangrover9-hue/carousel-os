@@ -1,8 +1,8 @@
 # Build your own engine
 
-Carousel OS ships the process: the rules, the nine stage commands, the plan, the claim ledger, a reviewer with fresh context, and memory with a lessons loop. It does not ship an engine. This guide tells you how to build one for your own brand, and how to build the agent system around it, so the decks it produces hold up to a skeptical reader and look like someone chose every element.
+Carousel OS ships the process: the rules, the nine stage commands, the plan, the claim ledger, a reviewer with fresh context, and memory with a lessons loop. It does not ship an engine. This guide shows how to build one in your own visual style, and the agent system around it. The decks it produces should hold up to a skeptical reader and look as if someone chose every element.
 
-I built my own engine over two months and 27 releases, and every rule in these pages came from a failure I met along the way. I have stripped out the brand, the clients and the specific values, and kept each principle with the moment a reader would feel it.
+I built my own engine over two months and 27 releases, and every rule in these pages came from a failure I met along the way. I have taken out my own visual identity, the clients and the specific values, and kept each principle with the moment a reader would feel it.
 
 ## What an engine is
 
@@ -58,7 +58,7 @@ Start small. The order below gets you value from the first afternoon and never a
 | [agent-system.md](agent-system.md) | The roles, fresh context, model routing, gates, job tiers, the brief, the knowledge layer and connectors |
 | [rigor.md](rigor.md) | Release discipline: incidents become tests, mutation testing, the golden gallery, leak scans, and the lessons behind them |
 
-For pictures of slides my own engine drew, see [docs/gallery/](../gallery/).
+For pictures of slides my own engine drew, see [the gallery](https://github.com/briangrover9-hue/carousel-os/tree/main/docs/gallery).
 
 ## Minimum version
 

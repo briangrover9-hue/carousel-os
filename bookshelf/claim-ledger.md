@@ -20,8 +20,8 @@ The ledger holds one entry per slide. It is how the deck proves that every numbe
 ## Rules
 
 - The agent sets `status` to `checked` only after the check named in `check` has passed, and only when every number in the row is `reconciled: true`.
-- A check names what was done: "recomputed from the order file, column D, sum of 52 weeks, matches 42.1%". It has six words at least and names an action word (recomputed, recounted, compared, opened, ran, matches). `check-process` refuses "verified", "looks right" and phrases like them. `checked_on` must be a real date, no later than today and no earlier than the end of the window.
-- Every number printed on a slide has a row entry. A figure on a slide that is missing from `numbers` is an unreconciled number. `check-process --plan` reads the slide text out of the .pptx file itself and compares it with the ledger in both directions: every ledger value must be printed on its slide, and every figure printed must be a ledger value. It compares the same figures with the Build table too.
+- A check names what was done: "recomputed from the order file, column D, summed over the window, matches 42.1%". It has six words at least and names an action word (recomputed, recounted, compared, opened, ran, matches). `check-process` refuses "verified", "looks right" and phrases like them. `checked_on` must be a real date, no later than today and no earlier than the end of the window.
+- Every number printed on a slide has a row entry. A figure on a slide that is missing from `numbers` is an unreconciled number. `check-process --plan` reads the slide text out of the .pptx file itself and compares it with the ledger in both directions. Every ledger value must be printed on its slide, and every figure printed must be a ledger value. It compares the same figures with the Build table too.
 - A figure in words ("six in ten", "three times", "half") is a figure. Record it as `words` on the number it describes, as in `{"value": "61%", "words": ["six in ten"]}`. The words must be printed on the slide, must agree with the number (within 5 points for a percentage, 0.3 for a multiple), and a ratio phrase the ledger does not record fails the check. The ledger claim and the storyboard row for a slide must use the same ratio phrases.
 - A figure that is a choice and not a measurement (a proposed trial length printed as digits) still gets an entry. Its source says "proposal parameter from the brief".
 - A claim demoted to uncertainty stays `open` with a note until a later round resolves it.
@@ -30,7 +30,7 @@ The ledger holds one entry per slide. It is how the deck proves that every numbe
 
 ## The final gate
 
-`node scripts/check-process.js --ledger plans/<slug>.ledger.json --final` runs on every plan that has a review line, and exits non-zero when any row is not `checked`, any number is not `reconciled`, any numbered slide's window differs from the deck window, or a checked row lacks its `check` text. `carousel-check` runs it, `carousel-review` runs it again, and the review fails on any unreconciled number.
+`node scripts/check-process.js --ledger plans/<slug>.ledger.json --final` runs on every plan that has a review line. It exits non-zero when any row is not `checked` or any number is not `reconciled`. It also exits non-zero when a numbered slide's window differs from the deck window, or a checked row lacks its `check` text. `carousel-check` runs it, `carousel-review` runs it again, and the review fails on any unreconciled number.
 
 `node scripts/check-process.js --ledger-md plans/<slug>.ledger.json` prints the same ledger as a pipe table, for an engine scan that reads one.
 

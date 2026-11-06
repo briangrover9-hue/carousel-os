@@ -1,6 +1,6 @@
 # Carousel OS
 
-![Carousel OS: example slides arranged around the title](docs/hero.png)
+![The Carousel OS wordmark beside three example slides about an invented city bike-share program](https://raw.githubusercontent.com/briangrover9-hue/carousel-os/main/docs/hero.png)
 *Slides drawn by the author's own engine, which is not included.*
 
 A deck process for agents, with a ledger for every number.
@@ -23,7 +23,7 @@ It looked done until someone else read it. The headlines read alone have to make
 
 ## Who it is for
 
-People who ship decks with numbers in them: analysts, consultants, product and strategy leads, anyone who presents a readout to readers who will ask where a figure came from. It runs inside an agent such as Claude Code and needs Node 20 or newer.
+People who ship decks with numbers in them: analysts, consultants, product and strategy leads, anyone who presents a readout to readers who will ask where a figure came from. It runs inside an agent such as Cursor, Codex or Claude Code and needs Node 20 or newer.
 
 ## What you get
 
@@ -42,7 +42,7 @@ You type nine commands, one at a time. No command starts the next, and each decl
 4. `carousel-challenge-plan` attacks the plan from a new angle, three rounds on the full path.
 5. `carousel-build` builds the deck and checks each ledger row as its slide is finished.
 6. `carousel-check` reads the deck file, runs any engine you registered, and pastes exact results.
-7. `carousel-review` hands the deck to a reviewer with fresh context who tries to disprove it.
+7. `carousel-review` hands the deck to two reviewers with fresh context who try to disprove it.
 8. `carousel-wrap` runs one more check, logs the session and records lessons.
 9. `carousel-handoff` writes the note the next session starts from.
 
@@ -95,11 +95,11 @@ The exit code is 1, and the Check stage reports `plan FAIL` until a new Build fi
 
 - [The plan](plans/example/fernway-skip-cancel.md) holds the brief, storyboard, three critique rounds with their diff summaries, the pasted check output and the reviewer's evidence.
 - [The ledger](plans/example/fernway-skip-cancel.ledger.json) holds 12 numbers across 6 slides, each with its source and the check that confirmed it.
-- `node scripts/check-process.js` reads that plan as a state machine and opens the deck file. It fails when a report line is out of order, when a number printed in the deck is missing from the ledger, when a deck changes after its check, or when a review passes without pasted evidence. `node tests/process/run.js` holds the broken variants it must reject, including a plan that was rubber-stamped from start to finish.
+- `node scripts/check-process.js` reads that plan as a state machine and opens the deck file. It fails when a report line is out of order or a printed number is missing from the ledger. It also fails when a deck changes after its check, or when a review passes without pasted evidence. `node tests/process/run.js` holds the broken variants it must reject, including a plan that was rubber-stamped from start to finish.
 
 ## Bring your own engine
 
-An engine is a program that draws slides, checks them, or both: a scanner that counts type sizes and colors, a renderer that turns the deck into images, a drawing kit that refuses what it cannot draw well. Carousel OS does not ship one. It ships the process and a blueprint, and it works without an engine, using a written checklist instead.
+An engine is a program that draws slides, checks them, or both. It might be a scanner that counts type sizes and colors, a renderer that turns the deck into images, or a drawing kit that refuses what it cannot draw well. Carousel OS does not ship one. It ships the process and a blueprint, and it works without an engine, using a written checklist instead.
 
 You can build your own, or plug in one you already have. Register it in `carousel.config.json`, and `carousel-check` runs it and records what it says. The sample is [carousel.config.example.json](carousel.config.example.json), and [the engine contract](bookshelf/engine-contract.md) defines the keys and exit codes.
 
@@ -108,7 +108,7 @@ You can build your own, or plug in one you already have. Register it in `carouse
 
 ## What it costs
 
-The full chain is slow and uses many tokens. The review costs the most because the reviewer re-reads everything with no shared context. [What it costs](docs/cost.md) says where the tokens go and what you can trim. I make no promise of savings. Run targeted checks while you work, and one complete check at check and one at wrap.
+The full chain is slow and uses many tokens. The review costs the most because the reviewer re-reads everything with no shared context. [What it costs](docs/cost.md) says where the tokens go and what you can trim. I make no promise of savings. Run targeted checks while you work, then one complete check at the check stage and another at wrap.
 
 ## Limits
 
@@ -126,33 +126,44 @@ cd carousel-os
 node scripts/install.js init path/to/your-project
 ```
 
-That copies the process into your project and leaves any file you already have alone. Open the project in your agent and type `carousel-start`. `node scripts/install.js doctor path/to/your-project` lists anything missing, and `update` brings a newer copy of the process across without touching files you edited. A one-line install through a package registry is planned and does not exist yet.
+From npm, `npx carousel-os init path/to/your-project` runs the same installer. Either way it copies the process into your project and leaves any file you already have alone. Open the project in your agent and run `carousel-start`. `node scripts/install.js doctor path/to/your-project` lists anything missing, and `update` brings a newer copy of the process across without touching files you edited.
 
-## How an agent picks up the commands
+## Cursor, Codex and Claude Code
 
-`init` copies the nine commands into `.claude/commands/` in your project, where Claude Code looks for them, and keeps a plain copy in `commands/` for any other agent. Pass `--no-agents` to skip the first copy. `AGENTS.md` and `CLAUDE.md` both point the agent to `RULES.md`, which holds the rules and the order of the stages.
+Each stage is a skill with one source file, `.agents/skills/<stage>/SKILL.md`, and the installer puts it where each tool looks.
+
+- **Cursor and Codex** read `.agents/skills/` in your project. Type the stage name, such as `carousel-start`, or pick it from the skills list.
+- **Claude Code** reads `.claude/skills/`, where the installer writes an exact copy of each stage. Type `/carousel-start`. The two reviewer agents go to `.claude/agents/`, and `carousel-review` starts them.
+- **Any other agent** can read the same `SKILL.md` files as plain instructions, and the reviewers in `agents/` as plain prompts.
+
+Every stage is manual-only. None of the three tools will start one on its own, because the process waits for you between stages. `AGENTS.md` (read by Cursor and Codex) and `CLAUDE.md` (read by Claude Code) both point the agent to `RULES.md`, which holds the rules and the order of the stages. Pass `--no-agents` to skip the `.claude/` copies. An install from an earlier version kept the stages in `commands/` and `.claude/commands/`, and `update` removes those files when you have not edited them.
 
 ## If you edit anything
 
-One rule has one owner: `RULES.md` owns rules, each command owns its procedure, each bookshelf page owns its reference. Change a rule in one place. Then run `node scripts/check-process.js` and `node tests/process/run.js`. The first checks the byte budgets, links, the wiki index, the report formats, the plan state machine, the deck file against the ledger, the prose and spelling rules, and your log, lessons and ledgers. The second proves each of those checks can fail.
+One rule has one owner: `RULES.md` owns rules, each stage file owns its procedure, each bookshelf page owns its reference. Change a rule in one place. Edit a stage in `.agents/skills/` and run `node scripts/generate-skills.js` to refresh its copies. Then run `node scripts/check-process.js` and `node tests/process/run.js`. The first checks the byte budgets, links, the wiki index, the report formats, the plan state machine, the deck file against the ledger, the prose and spelling rules, and your log, lessons and ledgers. The second proves each of those checks can fail.
 
 ## License
 
-MIT. See the LICENSE file. Author: Brian Grover.
+MIT. See the LICENSE file.
 
 ## Reference
 
-**Commands**
+**Stages**
 
-- **[carousel-start](commands/carousel-start.md)**: read the handoff, pick the path, open a plan.
-- **[carousel-brief](commands/carousel-brief.md)**: interview you and write the brief.
-- **[carousel-storyboard](commands/carousel-storyboard.md)**: one headline, claim and source per slide, and the ledger.
-- **[carousel-challenge-plan](commands/carousel-challenge-plan.md)**: one critique round from a new angle.
-- **[carousel-build](commands/carousel-build.md)**: build the deck and check each ledger row.
-- **[carousel-check](commands/carousel-check.md)**: read the deck, run your engine, paste exact results.
-- **[carousel-review](commands/carousel-review.md)**: a fresh reviewer tries to disprove the deck.
-- **[carousel-wrap](commands/carousel-wrap.md)**: one more check, lessons, wiki, log, rotation.
-- **[carousel-handoff](commands/carousel-handoff.md)**: the next session's starting note.
+- **[carousel-start](.agents/skills/carousel-start/SKILL.md)**: read the handoff, pick the path, open a plan.
+- **[carousel-brief](.agents/skills/carousel-brief/SKILL.md)**: interview you and write the brief.
+- **[carousel-storyboard](.agents/skills/carousel-storyboard/SKILL.md)**: one headline, claim and source per slide, and the ledger.
+- **[carousel-challenge-plan](.agents/skills/carousel-challenge-plan/SKILL.md)**: one critique round from a new angle.
+- **[carousel-build](.agents/skills/carousel-build/SKILL.md)**: build the deck and check each ledger row.
+- **[carousel-check](.agents/skills/carousel-check/SKILL.md)**: read the deck, run your engine, paste exact results.
+- **[carousel-review](.agents/skills/carousel-review/SKILL.md)**: a fresh reviewer tries to disprove the deck.
+- **[carousel-wrap](.agents/skills/carousel-wrap/SKILL.md)**: one more check, lessons, wiki, log, rotation.
+- **[carousel-handoff](.agents/skills/carousel-handoff/SKILL.md)**: the next session's starting note.
+
+**Reviewer agents**
+
+- **[carousel-reviewer](agents/carousel-reviewer.md)**: tries to disprove the deck against the bar.
+- **[carousel-fidelity](agents/carousel-fidelity.md)**: recomputes every number on the slides from the ledger's sources.
 
 **Bookshelf**
 
@@ -167,4 +178,12 @@ MIT. See the LICENSE file. Author: Brian Grover.
 - **[writing](bookshelf/writing.md)**: the writing standard for slide text.
 - **[narrative-devices](bookshelf/narrative-devices.md)**: named slide beats for the storyboard.
 
-Also: [RULES.md](RULES.md), [cheatsheet.md](cheatsheet.md), [bookshelf index](bookshelf/README.md), [light path](docs/light-path.md), [cost](docs/cost.md).
+Also: [RULES.md](RULES.md), [CHANGELOG.md](CHANGELOG.md), [cheatsheet.md](cheatsheet.md), [bookshelf index](bookshelf/README.md), [light path](docs/light-path.md), [cost](docs/cost.md).
+
+## Author
+
+Carousel OS is built and maintained by Brian Grover.
+
+- LinkedIn: [linkedin.com/in/briantgrover](https://www.linkedin.com/in/briantgrover/)
+- GitHub: [github.com/briangrover9-hue](https://github.com/briangrover9-hue)
+- Email: briangrover9@gmail.com

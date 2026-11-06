@@ -1,3 +1,9 @@
+---
+name: carousel-challenge-plan
+description: "Attack the plan from a new angle, fix what survives, and report the change as a diff summary."
+disable-model-invocation: true
+---
+
 # carousel-challenge-plan
 
 Job: attack the plan from a new angle, fix what survives, and report the change as a diff summary. One run is one round.

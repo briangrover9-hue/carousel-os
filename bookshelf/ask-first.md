@@ -22,7 +22,7 @@
 | 6 | Which claims are you comfortable making, and which are off limits? | Overreach | Descriptive claims only. Causal claims read "worth testing". |
 | 7 | PowerPoint or Google Slides? | The build target | PowerPoint. |
 | 8 | Default theme or your own? | The look | Your engine's default theme, or the platform's plain theme. |
-| 9 | Names, brands or figures that must not appear? | Confidentiality | Anonymize every name that is not in the sources. |
+| 9 | Names, organizations or figures that must not appear? | Confidentiality | Anonymize every name that is not in the sources. |
 | 10 | What is out of scope? | Scope creep | Anything the brief does not mention. |
 
 ## After the interview

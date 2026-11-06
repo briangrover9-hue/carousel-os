@@ -33,7 +33,7 @@ const lastLine = (s) => s.trim().split('\n').pop();
 
 // ------------------------------------------------------------------ check.js
 // A stand-in project: the real check.js, check-links.js and leak-scan.js, and stubs for the other steps.
-const STEP_FILES = ['scripts/check-process.js', 'tests/process/run.js', 'tests/installer/run.js', 'tests/scripts/scripts.test.js', 'tests/example/scan.test.js'];
+const STEP_FILES = ['scripts/check-process.js', 'scripts/generate-skills.js', 'tests/process/run.js', 'tests/installer/run.js', 'tests/scripts/scripts.test.js', 'tests/example/scan.test.js'];
 function stubProject(failing) {
   const t = tmp();
   ['check.js', 'check-links.js', 'leak-scan.js'].forEach((f) => write(t, 'scripts/' + f, fs.readFileSync(path.join(ROOT, 'scripts', f), 'utf8')));
@@ -56,7 +56,8 @@ test('check.js exits nonzero and names the step when any one step fails', () => 
     yes(r.code !== 0, f + ' failed but check.js exited ' + r.code);
     yes(/!! .* failed/.test(r.err), f + ': no failure message on stderr: ' + r.err);
     const m = /^check: (\d+) of (\d+) steps passed$/.exec(lastLine(r.out));
-    yes(m && Number(m[1]) === Number(m[2]) - 1, f + ': the summary does not count one failure: ' + lastLine(r.out));
+    const fails = f === 'scripts/check-process.js' ? 2 : 1;   // check-process.js runs twice: every check, then the byte budgets alone
+    yes(m && Number(m[1]) === Number(m[2]) - fails, f + ': the summary does not count its failures: ' + lastLine(r.out));
   });
 });
 
@@ -132,6 +133,24 @@ test('leak-scan flags an email address, allows example and no-reply addresses, a
   write(ok, 'out/b.md', REAL + '\n');
   r = leak(ok);
   eq(r.code, 0, r.out + r.err);
+});
+
+test('leak-scan allows the author address only in README.md and package.json, and still flags every other address', () => {
+  const AUTHOR = ['briangrover9', 'gmail.com'].join('@');
+  const ok = tmp();
+  write(ok, 'README.md', 'Email: ' + AUTHOR + '\n');
+  write(ok, 'package.json', JSON.stringify({ author: { email: AUTHOR } }) + '\n');
+  let r = leak(ok);
+  eq(r.code, 0, r.out + r.err);
+  const other = tmp();
+  write(other, 'README.md', 'Email: ' + ['someone.else', 'gmail.com'].join('@') + ' or ' + ['briangrover9', 'gmail.co'].join('@') + '\n');
+  write(other, 'package.json', JSON.stringify({ author: { email: ADDR } }) + '\n');
+  write(other, 'docs/README.md', AUTHOR + '\n');
+  write(other, 'CONTRIBUTING.md', AUTHOR + '\n');
+  r = leak(other);
+  eq(r.code, 1, r.out + r.err);
+  eq(lastLine(r.out), 'leak-scan: 4 files, 0 tokens, 5 hits');
+  ['README.md:1', 'package.json:1', 'docs/README.md:1', 'CONTRIBUTING.md:1'].forEach((w) => yes(r.err.includes('LEAK  ' + w + ': email address'), w + ' not flagged:\n' + r.err));
 });
 
 test('leak-scan keeps findings on stderr and the summary on stdout, and finds a listed name without printing it', () => {

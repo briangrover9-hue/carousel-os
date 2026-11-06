@@ -14,7 +14,7 @@ When a call asks for something off the system, raise an error that names the pro
 
 Why: a refusal reports to whoever wrote the line, at the moment they wrote it. A warning in a report reaches a reviewer days later, if it is read at all.
 
-Give the refusal a way out where one is legitimate. A deck that needs a darker partner for one hue, or a larger body size for a reader who needs it, registers the change through a named function that requires a written reason and replaces the default (so the deck never mixes two values). Every scan then discloses the override. Give test harnesses a separate escape hatch for building deliberately bad decks, and make it record every refusal it suspended.
+Give the refusal a way out where one is legitimate. A deck may need a darker partner for one hue, or a larger body size for a reader who needs it. It registers the change through a named function that requires a written reason and replaces the default, so the deck never mixes two values. Every scan then discloses the override. Give test harnesses a separate escape hatch for building deliberately bad decks, and make it record every refusal it suspended.
 
 **Guard at import, too.** Some defects can be reintroduced in one line: a neutral aliased to an accent, a budget that grew. Check those when the kit loads and refuse to load. A test watches for the defect when someone runs it; an import guard stops the line from running at all.
 

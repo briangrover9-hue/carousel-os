@@ -36,7 +36,7 @@ The engine's self-test and the deck's check are two different questions.
 
 ## Leak scans before every push
 
-- [ ] Before any push, scan every tracked file for names on a private deny list: clients, people, products, internal systems.
+- [ ] Before any push, scan every tracked file for names on a private deny list: clients, people, project code names, internal systems.
 - [ ] The deny list lives outside the repo. Tests that need real names read the path from an environment variable and use invented names when it is unset.
 - [ ] Squash history before publishing a repo that started private, so a name removed today is not in a commit from last month.
 - [ ] Give every fixture author the rule in their brief. A test author who writes a real name into a fixture ships it, so give every author the rule in their brief.

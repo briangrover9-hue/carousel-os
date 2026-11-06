@@ -4,7 +4,8 @@
 //
 //   node scripts/check.js [--tokens FILE ...]
 //
-// Steps: process checks, process tests, installer tests, link check, leak scan.
+// Steps: process checks, byte budgets, skill copies, process tests, installer tests, script tests, example scanner
+// tests, link check, leak scan.
 const path = require('path');
 const cp = require('child_process');
 
@@ -20,6 +21,8 @@ for (let i = 0; i < argv.length; i++) {
 
 const steps = [
   ['process checks', ['scripts/check-process.js']],
+  ['byte budgets', ['scripts/check-process.js', '--only', 'budget']],   // the caps and their reasons live in check-process.js
+  ['skill copies', ['scripts/generate-skills.js', '--confirm']],
   ['process tests', ['tests/process/run.js']],
   ['installer tests', ['tests/installer/run.js']],
   ['script tests', ['tests/scripts/scripts.test.js']],

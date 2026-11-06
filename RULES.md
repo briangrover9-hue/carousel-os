@@ -1,6 +1,6 @@
 # Carousel OS rules
 
-This is the one rules file. `AGENTS.md` and `CLAUDE.md` point here. Read it at the start of every session, then read only the command file for the stage the human started.
+This is the one rules file. `AGENTS.md` and `CLAUDE.md` point here. Read it at the start of every session, then read only the stage file for the stage the human started.
 
 ## The chain
 
@@ -34,7 +34,7 @@ A deck is done when all five hold.
 
 1. **Predecessors.** If the previous stage's report line is missing, decline, name it, and stop. Why: a stage built on a missing artifact guesses.
 2. **Questions.** Only `carousel-brief` asks the human anything. Any later gap: take the conservative option (the smaller claim, fewer slides, a plain theme) and log `D<n>: stage, choice, reason` under `## Deviations`.
-3. **Report lines.** End every stage with its exact report line from its command file, and append it to `## Reports`. The format is fixed. Why: the human scans for it and a script parses it.
+3. **Report lines.** End every stage with its exact report line from its stage file, and append it to `## Reports`. The format is fixed. Why: the human scans for it and a script parses it.
 4. **No-rubber-stamp.** Before you report a stage as passed, read its No-rubber-stamp guard and check yourself against it.
 5. **Ledger.** One row per slide (`bookshelf/claim-ledger.md`). Set `checked` only after the row's named check passes. Print no number, in digits or words, that is not in the ledger. `check-process --plan` reads the slide text out of the .pptx and compares it.
 6. **Critique.** Each challenge round takes an angle not used before (`bookshelf/review-angles.md`), edits the plan, and reports Addressed, Deferred and Kept as is, each with where.
@@ -44,7 +44,7 @@ A deck is done when all five hold.
 10. **Memory.** `memory/LOG.md` is what happened: newest first, one plain paragraph per session. `memory/wiki/` is what we know, and `memory/wiki/INDEX.md` lists every page. Entries older than the current ISO week rotate into `memory/history/`.
 11. **Sources.** Numbers come from the sources named in the brief. Label external numbers external. Quote exactly, with attribution. Write "worth testing" unless the evidence shows cause.
 12. **Writing.** Plain American English, active voice, short words. No em dashes, en dashes or spaced hyphens as punctuation. No negation-reframes, runs of short fragments, rule-of-three rhythm or closing pronouncements. The banned words are in `scripts/check-process.config.json`.
-13. **Context budget.** This file stays under 8000 bytes and each command under 7000. Load a command only when its stage runs, and a wiki page only through the index.
+13. **Context budget.** This file and each stage file stay under the byte caps in `scripts/check-process.js`. Load a stage file only when its stage runs, and a wiki page only through the index.
 14. **Hands off.** Never commit, push, send or publish a deck. The human does.
 15. **Engine.** Register your own in `carousel.config.json`. `bookshelf/engine-contract.md` is the one authority for its keys and exit codes. `carousel-check` runs it through `node scripts/run-tools.js`. With no engine it takes the rubric path and says so. Both paths read the deck file.
 
@@ -52,12 +52,13 @@ A deck is done when all five hold.
 
 ```
 RULES.md  README.md  cheatsheet.md
-commands/   one file per stage
-plans/      one plan and one ledger per deck, templates, a worked example
-memory/     LOG.md, handoff.md, wiki/, history/
-bookshelf/  reference pages the stages read
-docs/       how it thinks, light path, cost
-scripts/    helper scripts, each with a usage comment and --help
+.agents/skills/  one SKILL.md per stage, the single source; copied to .claude/skills/
+agents/          the two reviewer agents that carousel-review starts
+plans/           one plan and one ledger per deck, templates, a worked example
+memory/          LOG.md, handoff.md, wiki/, history/
+bookshelf/       reference pages the stages read
+docs/            how it thinks, light path, cost
+scripts/         helper scripts, each with a usage comment and --help
 ```
 
 ## Enforcement
@@ -80,4 +81,4 @@ The script cannot see the following, so a person or the reviewer is the backstop
 
 ## If you edit anything
 
-One rule has one owner: this file owns rules, a command owns its procedure, a bookshelf page owns reference detail. Change a rule here and delete it elsewhere. Cite a heading as the file name, a comma, and the heading in quotation marks, such as `RULES.md, "The bar"`. Run both scripts before you finish.
+One rule has one owner: this file owns rules, a stage file owns its procedure, a bookshelf page owns reference detail. Change a rule here and delete it elsewhere. Cite a heading as the file name, a comma, and the heading in quotation marks, such as `RULES.md, "The bar"`. Run both scripts before you finish.

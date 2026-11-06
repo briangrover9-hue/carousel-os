@@ -8,7 +8,7 @@ A single prompt asks one pass to interpret the request, pick a story, find the n
 
 ## Same look, same thinking
 
-A deck should look the same every time, and it should think the same way every time. An engine handles the look: one set of type sizes, one palette, and scans that fail when a slide leaves them. The process handles the thinking: a brief that settles the question before anyone draws, a ledger that ties numbers to sources, critique rounds that each attack from a new angle, and a reviewer who has not seen the work. A consistent look over inconsistent thinking gives you handsome decks that fall over in the room.
+A deck should look the same every time, and it should think the same way every time. An engine handles the look: one set of type sizes, one palette, and scans that fail when a slide leaves them. The process handles the thinking. A brief settles the question before anyone draws, a ledger ties numbers to sources, each critique round attacks from a new angle, and a reviewer reads work they have not seen. A consistent look over inconsistent thinking gives you handsome decks that fall over in the room.
 
 ## What each mechanism is for
 
@@ -29,7 +29,7 @@ Each row starts from a moment you have probably felt.
 
 ## Where the agent still does the work
 
-The agent finds the story, chooses the evidence, writes the headlines and builds the slides. The process does not make those choices for it. It makes them visible and checkable. What you get is a loop you can trust, with no one-click button. You read the brief back, skim the Deviations, glance at each round's diff summary, and decide what to do about a REJECT.
+The agent finds the story, chooses the evidence, writes the headlines and builds the slides. The process leaves those choices to the agent and makes them visible and checkable. You get a loop you can trust, and your part stays small: you read the brief back, skim the Deviations, glance at each round's diff summary, and decide what to do about a REJECT.
 
 ## Limits
 

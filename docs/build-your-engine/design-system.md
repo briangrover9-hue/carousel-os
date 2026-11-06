@@ -36,8 +36,8 @@ Give each color a role and a budget, and keep the budgets separate. Chrome wants
 
 - [ ] **Canvas and margins** as constants, with one content region every component stays inside.
 - [ ] **A grid** of column widths that cards and charts snap to.
-- [ ] **A header stack:** headline (the claim), a scope line under it (market, window, base, in gray sentence case), an optional subhead for method. Splitting the jobs is what lets the headline stay small.
-- [ ] **A footer:** one canonical source line per deck naming the data system, market and window, pasted verbatim on every data slide, plus the page number on one baseline.
+- [ ] **A header stack:** headline (the claim), a scope line under it (population, window, base, in gray sentence case), an optional subhead for method. Splitting the jobs is what lets the headline stay small.
+- [ ] **A footer:** one canonical source line per deck naming the data system, population and window, pasted verbatim on every data slide, plus the page number on one baseline.
 - [ ] **One gap after every container,** one corner radius, one card surface, one chart baseline. Two charts at the same height must share a baseline.
 - [ ] **Containers side by side share a top and a bottom.** The lighter one spreads its content through the height. Padding it with filler is the opposite failure.
 

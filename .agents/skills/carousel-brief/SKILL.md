@@ -1,3 +1,9 @@
+---
+name: carousel-brief
+description: "Interview the human until the deck's question, reader and evidence are written down."
+disable-model-invocation: true
+---
+
 # carousel-brief
 
 Job: interview the human until the deck's question, reader and evidence are written down. It is the only stage that asks questions.

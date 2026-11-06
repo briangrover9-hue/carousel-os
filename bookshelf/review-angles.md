@@ -12,7 +12,7 @@ Read the headlines in order and nothing else. Is there a beginning, a turn and a
 
 ### 3. One window, one source
 
-Does every number come from one window and one source family? Find any slide that quietly uses a different date range, market or data pull.
+Does every number come from one window and one source family? Find any slide that quietly uses a different date range, population or data pull.
 
 ### 4. Story sequence
 
@@ -52,7 +52,7 @@ Find every verb that implies cause. Does the evidence support cause, or only a p
 
 ### 13. Quote and name fidelity
 
-Is every quote exact, with attribution? Is every name, brand and category spelled as the source spells it?
+Is every quote exact, with attribution? Is every name, program and segment spelled as the source spells it?
 
 ### 14. Length and cuts
 

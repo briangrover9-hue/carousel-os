@@ -32,7 +32,7 @@ Every template must hold `{deck}` (the path named on Build's `Deck:` line) and `
 
 The Check section holds the same lines. Four hashes sit beside them: the deck before the tools ran, the deck after, the ledger and the Build section.
 
-`node scripts/check-process.js` compares Check with the config and with `tools.json`. Every registered tool needs a result. A result for a tool that is not registered, a status that does not match the recorded exit code, a command that differs from the config, and a deck whose hash changed during the tools are all errors. A config that registers tools makes the rubric path an error, and an engine path with no registered engine is an error. The check trusts the results file, so an agent that writes both by hand can defeat it. The reviewer and the human are the backstop.
+`node scripts/check-process.js` compares Check with the config and with `tools.json`. Every registered tool needs a result. A result from an unregistered tool is an error, and so is a status that differs from the recorded exit code. So are a command that differs from the config and a deck whose hash changed while the tools ran. A config that registers tools makes the rubric path an error, and an engine path with no registered engine is an error. The check trusts the results file, so an agent that writes both by hand can defeat it. The reviewer and the human are the backstop.
 
 ## Without an engine
 

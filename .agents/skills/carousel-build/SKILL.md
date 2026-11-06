@@ -1,3 +1,9 @@
+---
+name: carousel-build
+description: "Build the deck from the challenged plan, one slide at a time, checking each ledger row as its slide is finished."
+disable-model-invocation: true
+---
+
 # carousel-build
 
 Job: build the deck from the challenged plan, one slide at a time, checking each ledger row as its slide is finished.

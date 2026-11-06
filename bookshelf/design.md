@@ -36,7 +36,7 @@ Pick the form per slide, for speed of comprehension. Each row names the form, an
 | One fact that must land | A statement slide or a single large metric |
 | A trend over time | A line chart with printed values, or vertical bars for a few periods |
 | A ranking | Horizontal bars sorted by the story's key measure |
-| Two series compared inside each category | Grouped bars, two to four series at most |
+| Two series compared inside each group | Grouped bars, two to four series at most |
 | How each row splits across the same parts | A 100 percent stacked bar, which keeps rows comparable and replaces pie and donut data |
 | Entities against attributes, where the claim is a comparison | A shaded matrix, with the claim cells outlined and bold |
 | The same rows in two states | A dumbbell for the gap, or a slope chart when the crossings are the story |
@@ -50,9 +50,9 @@ Pick the form per slide, for speed of comprehension. Each row names the form, an
 | A sequence or dependency | A timeline or process, with every arrow starting and ending somewhere |
 | A human voice | A quote block, verbatim and attributed |
 | Positioning across players | A positioning map with labeled points, axes at the data midpoints and named quadrants |
-| Items across several trailing windows | A momentum table: growth beside its own window's sales, with a drawn arrow and a word |
+| Items across several trailing windows | A momentum table: growth beside its own window's total, with a drawn arrow and a word |
 | A zero or very small count that is the finding | One card holding the figure, its base and a coverage line, with up to three comparison rows |
-| A rating against what the text says | A 2x2 of rating against sentiment, with the two mismatch cells emphasized and the percent and N in every cell |
+| A score against what the comments say | A 2x2 of score against comment sentiment, with the two mismatch cells emphasized and the percent and N in every cell |
 | The same themes in two windows around a dated change | A before and after table: both rates, the change in points and the N for each window |
 | A path where each step keeps a share of the one before | A funnel with bars scaled to the first stage and the count and percent printed |
 | How the work was built and what it leaves out | A method slide: one card of labeled rows that ends with what is not covered |
@@ -67,4 +67,4 @@ A table is the right form when the reader needs to look up a value. When the poi
 
 The topic shows in the drawing. Cover the words, and the slide should still say what it is about. If only the title carries the meaning, the representation is wrong.
 
-Chart orientation: horizontal bars compare unlike things (categories, brands, themes), vertical bars show change over time, a table serves lookups, and a line serves a true trend with enough points. Every chart carries headers on its axes or columns and a one-line method note under or beside the title (base, window, source), so it survives a screenshot out of the deck.
+Chart orientation: horizontal bars compare unlike things (groups, programs, themes), vertical bars show change over time, a table serves lookups, and a line serves a true trend with enough points. Every chart carries headers on its axes or columns and a one-line method note under or beside the title (base, window, source), so it survives a screenshot out of the deck.

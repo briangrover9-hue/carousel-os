@@ -13,7 +13,7 @@ You expected a deck in ten minutes and the full chain takes much longer. It is s
 
 ## What keeps the context small
 
-- `RULES.md` stays under 8000 bytes and each command under 7000. `node scripts/check-process.js` fails when one grows past its cap.
+- `RULES.md` and each stage file stay under the byte caps set in `scripts/check-process.js`, and that script fails when one grows past its cap.
 - A session loads `RULES.md`, then one command at a time. Bookshelf pages load when a stage names them. Wiki pages load through the index.
 - The log rotates weekly, so the log you read at start holds this week only.
 

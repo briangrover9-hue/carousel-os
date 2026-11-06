@@ -40,14 +40,16 @@ function sha(s) { return crypto.createHash('sha256').update(s).digest('hex'); }
 function manifestOf(t) { return JSON.parse(fs.readFileSync(path.join(t, '.carousel-install.json'), 'utf8')); }
 function writeManifest(t, m) { fs.writeFileSync(path.join(t, '.carousel-install.json'), JSON.stringify(m)); }
 
-const NINE = ['start', 'brief', 'storyboard', 'challenge-plan', 'build', 'check', 'review', 'wrap', 'handoff'].map((n) => `carousel-${n}.md`);
+const STAGES = ['start', 'brief', 'storyboard', 'challenge-plan', 'build', 'check', 'review', 'wrap', 'handoff'].map((n) => `carousel-${n}`);
+const REVIEWERS = ['carousel-reviewer.md', 'carousel-fidelity.md'];
+const skill = (dir, n) => `${dir}/${n}/SKILL.md`;
 
 // ------------------------------------------------------------------ init and the argument rules
 test('init installs the process, with no engine and no Python files', () => {
   const t = tmp();
   const r = run(['init', t]);
   eq(r.code, 0, 'exit code\n' + r.out);
-  ['RULES.md', 'commands/carousel-build.md', 'plans/plan.template.md', 'memory/wiki/lessons.md', 'bookshelf/rubric.md', 'scripts/check-process.js', 'tests/process/run.js', '.carousel-install.json'].forEach((f) => yes(fs.existsSync(path.join(t, f)), 'missing ' + f));
+  ['RULES.md', '.agents/skills/carousel-build/SKILL.md', 'agents/carousel-reviewer.md', 'plans/plan.template.md', 'memory/wiki/lessons.md', 'bookshelf/rubric.md', 'scripts/check-process.js', 'tests/process/run.js', '.carousel-install.json'].forEach((f) => yes(fs.existsSync(path.join(t, f)), 'missing ' + f));
   yes(!fs.existsSync(path.join(t, 'engine')), 'an engine folder was installed');
   yes(!walk(t, '', []).some((f) => f.endsWith('.py')), 'a Python file was installed');
 });
@@ -271,90 +273,143 @@ test('lessons.history starts as its header only, the example config ships and a 
   yes(!pkg.files.includes('carousel.config.json'), 'package.json lists a real config');
 });
 
-// ------------------------------------------------------------------ agent commands
-test('init copies the nine commands to .claude/commands and keeps commands/', () => {
+// ------------------------------------------------------------------ stages, skills and reviewer agents
+test('init installs the nine stages in .agents/skills, manual-only, with byte-identical copies in .claude/skills', () => {
   const t = tmp();
-  run(['init', t]);
-  NINE.forEach((f) => {
-    yes(fs.existsSync(path.join(t, '.claude', 'commands', f)), 'missing .claude/commands/' + f);
-    eq(fs.readFileSync(path.join(t, '.claude', 'commands', f), 'utf8'), fs.readFileSync(path.join(t, 'commands', f), 'utf8'), f + ' differs between the two copies');
+  eq(run(['init', t]).code, 0);
+  STAGES.forEach((n) => {
+    const src = path.join(t, skill('.agents/skills', n));
+    yes(fs.existsSync(src), 'missing ' + skill('.agents/skills', n));
+    yes(fs.readFileSync(src).equals(fs.readFileSync(path.join(t, skill('.claude/skills', n)))), n + ' differs between .agents/skills and .claude/skills');
+    yes(/^---\nname: carousel-[a-z-]+\ndescription: ".+"\ndisable-model-invocation: true\n---\n/.test(fs.readFileSync(src, 'utf8')), n + ' front matter');
+    eq(fs.readFileSync(path.join(t, '.agents/skills', n, 'agents', 'openai.yaml'), 'utf8'), 'policy:\n  allow_implicit_invocation: false\n', n + ' openai.yaml');
   });
   const m = manifestOf(t);
   eq(m.agents, true, 'manifest does not record agents');
-  yes(NINE.every((f) => m.files['.claude/commands/' + f]), 'manifest does not track every agent command');
-  yes(!fs.existsSync(path.join(t, '.claude', 'commands', 'README.md')), 'the commands README was copied as a command');
+  yes(STAGES.every((n) => m.files[skill('.agents/skills', n)] && m.files[skill('.claude/skills', n)] && m.files[`.agents/skills/${n}/agents/openai.yaml`]), 'manifest does not track every stage file');
+  yes(!fs.existsSync(path.join(t, '.claude', 'skills', 'README.md')), 'the stage index was copied as a skill');
+  yes(!fs.existsSync(path.join(t, 'commands')) && !fs.existsSync(path.join(t, '.claude', 'commands')), 'a commands folder was installed');
+  eq(node(path.join(t, 'scripts', 'check-process.js'), [], t).code, 0, 'the installed project does not pass its own checks');
 });
 
-test('--no-agents skips .claude/commands and an update keeps skipping it', () => {
+test('init installs the reviewer agents in agents/ and .claude/agents/, tracked in the manifest', () => {
+  const t = tmp();
+  run(['init', t]);
+  const m = manifestOf(t);
+  REVIEWERS.forEach((f) => {
+    yes(fs.readFileSync(path.join(t, 'agents', f)).equals(fs.readFileSync(path.join(t, '.claude', 'agents', f))), f + ' differs between agents/ and .claude/agents/');
+    yes(/^tools: Read, Grep, Glob, Bash$/m.test(fs.readFileSync(path.join(t, 'agents', f), 'utf8')), f + ' is not limited to read-only tools');
+    yes(m.files['agents/' + f] && m.files['.claude/agents/' + f], 'manifest does not track ' + f);
+  });
+});
+
+test('--no-agents skips the .claude/ copies but keeps the stages and reviewers; an update keeps skipping', () => {
   const t = tmp();
   eq(run(['init', t, '--no-agents']).code, 0);
   yes(!fs.existsSync(path.join(t, '.claude')), '.claude was created with --no-agents');
+  yes(fs.existsSync(path.join(t, skill('.agents/skills', 'carousel-build'))) && fs.existsSync(path.join(t, 'agents', 'carousel-fidelity.md')), 'the process itself was skipped');
   run(['update', t]);
   yes(!fs.existsSync(path.join(t, '.claude')), 'an update added agents after --no-agents');
   run(['update', t, '--agents']);
-  yes(fs.existsSync(path.join(t, '.claude', 'commands', 'carousel-build.md')), '--agents did not add them later');
+  yes(fs.existsSync(path.join(t, skill('.claude/skills', 'carousel-build'))) && fs.existsSync(path.join(t, '.claude/agents/carousel-reviewer.md')), '--agents did not add them later');
 });
 
-test('a user file of the same name in .claude/commands is never replaced, even with --overwrite', () => {
+test('a user file of the same name in .claude/skills, .claude/agents or .agents/skills is never replaced, even with --overwrite', () => {
   const t = tmp();
-  fs.mkdirSync(path.join(t, '.claude', 'commands'), { recursive: true });
-  const mine = path.join(t, '.claude', 'commands', 'carousel-build.md');
-  fs.writeFileSync(mine, 'my own build command\n');
+  const mine = [skill('.claude/skills', 'carousel-build'), '.claude/agents/carousel-reviewer.md', skill('.agents/skills', 'carousel-wrap')];
+  mine.forEach((rel) => { fs.mkdirSync(path.dirname(path.join(t, rel)), { recursive: true }); fs.writeFileSync(path.join(t, rel), 'my own file\n'); });
   const r = run(['init', t]);
-  yes(/exists\s+\.claude\/commands\/carousel-build\.md/.test(r.out), 'no "exists" line:\n' + r.out);
+  mine.forEach((rel) => yes(new RegExp('exists\\s+' + rel.replace(/[.]/g, '\\.')).test(r.out), 'no "exists" line for ' + rel + ':\n' + r.out));
   run(['init', t, '--overwrite']);
-  eq(fs.readFileSync(mine, 'utf8'), 'my own build command\n', '--overwrite replaced the user file');
-  yes(fs.existsSync(path.join(t, '.claude', 'commands', 'carousel-check.md')), 'the other commands were not installed');
+  mine.forEach((rel) => eq(fs.readFileSync(path.join(t, rel), 'utf8'), 'my own file\n', '--overwrite replaced ' + rel));
+  yes(fs.existsSync(path.join(t, skill('.claude/skills', 'carousel-check'))), 'the other skills were not installed');
 });
 
-test('an edited agent command is kept on update; an unedited stale one is updated', () => {
+test('an edited skill copy is kept on update; an unedited stale one is updated', () => {
   const t = tmp();
   run(['init', t]);
-  const edited = path.join(t, '.claude', 'commands', 'carousel-wrap.md');
+  const edited = path.join(t, skill('.claude/skills', 'carousel-wrap'));
   fs.appendFileSync(edited, '\nMy addition.\n');
-  const stale = path.join(t, '.claude', 'commands', 'carousel-start.md');
+  const stale = path.join(t, skill('.claude/skills', 'carousel-start'));
   fs.writeFileSync(stale, 'older text\n');
   const m = manifestOf(t);
-  m.files['.claude/commands/carousel-start.md'] = sha('older text\n');
+  m.files[skill('.claude/skills', 'carousel-start')] = sha('older text\n');
   writeManifest(t, m);
   const r = run(['update', t]);
-  yes(/kept\s+\.claude\/commands\/carousel-wrap\.md/.test(r.out), r.out);
+  yes(/kept\s+\.claude\/skills\/carousel-wrap\/SKILL\.md/.test(r.out), r.out);
   yes(fs.readFileSync(edited, 'utf8').includes('My addition.'), 'edit lost');
-  yes(fs.readFileSync(stale, 'utf8') !== 'older text\n', 'stale command not updated');
+  yes(fs.readFileSync(stale, 'utf8') !== 'older text\n', 'stale skill not updated');
+});
+
+test('an update from a 0.1.0 install removes the old command files it wrote, keeps edited ones and leaves unrelated files', () => {
+  const t = tmp();
+  run(['init', t]);
+  const m = manifestOf(t);
+  const old = {};
+  STAGES.forEach((n) => { old[`commands/${n}.md`] = `# ${n}\nold text\n`; old[`.claude/commands/${n}.md`] = `# ${n}\nold text\n`; });
+  old['commands/README.md'] = '# Commands\n';
+  Object.keys(old).forEach((rel) => {
+    fs.mkdirSync(path.dirname(path.join(t, rel)), { recursive: true });
+    fs.writeFileSync(path.join(t, rel), old[rel]);
+    m.files[rel] = sha(old[rel]);
+  });
+  writeManifest(t, m);
+  fs.appendFileSync(path.join(t, '.claude/commands/carousel-wrap.md'), 'my edit\n');
+  fs.writeFileSync(path.join(t, '.claude/commands/my-own.md'), 'mine\n');      // never recorded: not ours
+  const dry = run(['update', t, '--dry-run']);
+  yes(/would remove\s+\.claude\/commands\/carousel-start\.md/.test(dry.out) && fs.existsSync(path.join(t, 'commands/carousel-start.md')), 'a dry run removed files:\n' + dry.out);
+  const r = run(['update', t]);
+  eq(r.code, 0, r.out);
+  yes(!fs.existsSync(path.join(t, 'commands')), 'commands/ was left behind');
+  yes(/kept\s+\.claude\/commands\/carousel-wrap\.md/.test(r.out) && /duplicates a stage/.test(r.out), r.out);
+  eq(fs.readFileSync(path.join(t, '.claude/commands/carousel-wrap.md'), 'utf8'), old['.claude/commands/carousel-wrap.md'] + 'my edit\n', 'the edited command changed');
+  eq(fs.readFileSync(path.join(t, '.claude/commands/my-own.md'), 'utf8'), 'mine\n', 'an unrelated file was touched');
+  eq(fs.readdirSync(path.join(t, '.claude/commands')).sort().join(','), 'carousel-wrap.md,my-own.md');
+  const after = manifestOf(t);
+  yes(!Object.keys(after.files).some((k) => k.startsWith('commands/') || k === '.claude/commands/carousel-start.md'), 'the manifest still lists removed files');
+  const d = run(['doctor', t]);
+  yes(/note\s+\.claude\/commands\/ still holds 1 carousel stage file/.test(d.out), d.out);
 });
 
 // ------------------------------------------------------------------ doctor
-test('doctor passes on an install, and checks the files the commands call', () => {
+test('doctor passes on an install, and checks the files the stages call', () => {
   const t = tmp();
   run(['init', t]);
   const r = run(['doctor', t]);
   eq(r.code, 0, r.out);
-  yes(/ok\s+\.claude\/commands: 9 commands/.test(r.out), r.out);
+  yes(/ok\s+\.agents\/skills: 9 stages/.test(r.out) && /ok\s+9 stages marked manual-only/.test(r.out) && /ok\s+agents: 2 reviewer agents/.test(r.out) && /ok\s+\.claude\/: 9 skills and 2 agents/.test(r.out), r.out);
   yes(!/MISSING/.test(r.out), r.out);
-  fs.appendFileSync(path.join(t, 'commands', 'carousel-check.md'), '\nRun `scripts/not_installed.js` and `tests/not_installed.js`.\n');
+  fs.appendFileSync(path.join(t, skill('.agents/skills', 'carousel-check')), '\nRun `scripts/not_installed.js` and `tests/not_installed.js`.\n');
   const bad = run(['doctor', t]);
   eq(bad.code, 1, bad.out);
-  yes(/MISSING\s+scripts\/not_installed\.js \(called by commands\/carousel-check\.md\)/.test(bad.out), bad.out);
+  yes(/MISSING\s+scripts\/not_installed\.js \(called by \.agents\/skills\/carousel-check\/SKILL\.md\)/.test(bad.out), bad.out);
   yes(/MISSING\s+tests\/not_installed\.js/.test(bad.out), bad.out);
+  yes(/MISSING\s+\.claude\/skills\/carousel-check\/SKILL\.md differs from/.test(bad.out), 'a drifted copy was not reported:\n' + bad.out);
 });
 
-test('doctor names what is missing, and a missing agent command', () => {
+test('doctor names what is missing: a stage, its Codex file, a reviewer and a Claude Code copy', () => {
   const t = tmp();
   run(['init', t]);
   fs.unlinkSync(path.join(t, 'RULES.md'));
-  fs.unlinkSync(path.join(t, '.claude', 'commands', 'carousel-review.md'));
+  fs.unlinkSync(path.join(t, skill('.claude/skills', 'carousel-review')));
+  fs.unlinkSync(path.join(t, '.agents/skills/carousel-brief/agents/openai.yaml'));
+  fs.unlinkSync(path.join(t, 'agents/carousel-fidelity.md'));
+  fs.rmSync(path.join(t, '.agents/skills/carousel-wrap'), { recursive: true });
   const r = run(['doctor', t]);
   eq(r.code, 1);
   yes(/MISSING\s+RULES\.md/.test(r.out), r.out);
-  yes(/MISSING\s+\.claude\/commands: found 8 of 9/.test(r.out), r.out);
+  yes(/MISSING\s+\.agents\/skills: found 8 of 9 stages/.test(r.out), r.out);
+  yes(/MISSING\s+\.agents\/skills: 1 stage\(s\) lack agents\/openai\.yaml/.test(r.out), r.out);
+  yes(/MISSING\s+agents: found 1 of 2 reviewer agents/.test(r.out), r.out);
+  yes(/MISSING\s+\.claude\/: found 10 of 11/.test(r.out), r.out);
 });
 
-test('doctor treats a missing .claude/commands as optional after --no-agents', () => {
+test('doctor treats a missing .claude/ as optional after --no-agents', () => {
   const t = tmp();
   run(['init', t, '--no-agents']);
   const r = run(['doctor', t]);
   eq(r.code, 0, r.out);
-  yes(/agents\s+\.claude\/commands has 0 of 9/.test(r.out), r.out);
+  yes(/agents\s+\.claude\/ has 0 of 11/.test(r.out), r.out);
 });
 
 test('doctor says plainly when the folder does not exist or is a file', () => {
@@ -395,7 +450,7 @@ test('a folder where a file should be (EISDIR) and a file where a folder should 
   eq(r.code, 1, r.out);
   yes(/a folder is where a file should be/.test(r.out) && !/\n\s+at /.test(r.out), r.out);
   const b = tmp();
-  fs.writeFileSync(path.join(b, 'commands'), 'i am a file');
+  fs.writeFileSync(path.join(b, 'bookshelf'), 'i am a file');
   r = run(['init', b]);
   eq(r.code, 1, r.out);
   yes(/a file is where a folder should be/.test(r.out) && !/\n\s+at /.test(r.out), r.out);
@@ -411,10 +466,10 @@ if (process.platform !== 'win32') {
     yes(/refusing to write through a symlink/.test(r.out), r.out);
     eq(fs.readdirSync(outside).length, 0, 'files were written through the target symlink');
     const t = tmp();
-    fs.symlinkSync(outside, path.join(t, 'commands'));
+    fs.symlinkSync(outside, path.join(t, 'bookshelf'));
     r = run(['init', t]);
     eq(r.code, 1, r.out);
-    yes(/refusing to write through a symlink: .*commands/.test(r.out), r.out);
+    yes(/refusing to write through a symlink: .*bookshelf/.test(r.out), r.out);
     eq(fs.readdirSync(outside).length, 0, 'files were written through a folder symlink');
     const t2 = tmp();
     const victim = path.join(outside, 'victim.md');
@@ -497,14 +552,16 @@ test('package.json asks for Node 20, keeps the publish checklist out of the pack
   yes(/node: \[20, 22\]/.test(ci) && /ubuntu-latest, macos-latest, windows-latest/.test(ci), 'the CI matrix is not 3 systems by Node 20 and 22');
 });
 
-test('the skill wrapper obeys the upload rules: name, no angle brackets, 1024 characters or fewer', () => {
-  const text = fs.readFileSync(path.join(ROOT, 'skills', 'carousel-os', 'SKILL.md'), 'utf8');
-  const fm = (/^---\n([\s\S]*?)\n---/.exec(text) || [])[1] || '';
-  yes(/^name:\s*carousel-os\s*$/m.test(fm), 'the frontmatter name is not carousel-os');
-  const d = /^description:\s*"(.*)"\s*$/m.exec(fm);
-  yes(d, 'no quoted description');
-  yes(!/[<>]/.test(d[1]), 'the description has an angle bracket');
-  yes(d[1].length <= 1024 && d[1].length >= 40, 'the description is ' + d[1].length + ' characters');
+test('each stage skill and reviewer agent obeys the skill upload rules: name, no angle brackets, 1024 characters or fewer', () => {
+  STAGES.map((n) => [n, skill('.agents/skills', n)]).concat(REVIEWERS.map((f) => [f.replace(/\.md$/, ''), 'agents/' + f])).forEach(([name, rel]) => {
+    const text = fs.readFileSync(path.join(ROOT, rel), 'utf8').replace(/\r\n/g, '\n');
+    const fm = (/^---\n([\s\S]*?)\n---/.exec(text) || [])[1] || '';
+    yes(new RegExp('^name:\\s*' + name + '\\s*$', 'm').test(fm), rel + ': the front matter name is not ' + name);
+    const d = /^description:\s*"(.*)"\s*$/m.exec(fm);
+    yes(d, rel + ': no quoted description');
+    yes(!/[<>]/.test(d[1]), rel + ': the description has an angle bracket');
+    yes(d[1].length <= 1024 && d[1].length >= 40, rel + ': the description is ' + d[1].length + ' characters');
+  });
 });
 
 // ------------------------------------------------------------------ safety round: manifest, backups, partial installs
@@ -559,10 +616,10 @@ test('the EISDIR message names the real path of the folder that is in the way', 
   eq(r.code, 1, r.err);
   yes(r.err.includes(path.join(t, 'RULES.md')) && /a folder is where a file should be/.test(r.err), r.err);
   const t2 = tmp();
-  fs.writeFileSync(path.join(t2, 'commands'), 'a file');
+  fs.writeFileSync(path.join(t2, 'bookshelf'), 'a file');
   const r2 = runSplit(['init', t2]);
   eq(r2.code, 1, r2.err);
-  yes(r2.err.includes(path.join(t2, 'commands')) && /a file is where a folder should be/.test(r2.err), r2.err);
+  yes(r2.err.includes(path.join(t2, 'bookshelf')) && /a file is where a folder should be/.test(r2.err), r2.err);
 });
 
 test('--overwrite saves your copy as .carousel-backup before replacing a file the tool never installed', () => {
@@ -596,19 +653,19 @@ test('a file the tool installed and you never touched is replaced without a back
 
 test('a partial install records what it wrote, and a rerun after the fix recognizes its own files', () => {
   const t = tmp();
-  fs.mkdirSync(path.join(t, 'commands'));
-  fs.mkdirSync(path.join(t, 'commands', 'carousel-build.md'));          // stops the install partway through commands/
+  fs.mkdirSync(path.join(t, 'bookshelf'));
+  fs.mkdirSync(path.join(t, 'bookshelf', 'rubric.md'));                 // stops the install partway through bookshelf/
   let r = runSplit(['init', t]);
   eq(r.code, 1, r.err);
   const m = manifestOf(t);
   yes(m.files['RULES.md'] && m.files['cheatsheet.md'], 'the manifest does not hold the files written before the failure');
-  yes(!m.files['commands/carousel-build.md'], 'the manifest holds the file that failed');
-  fs.rmSync(path.join(t, 'commands', 'carousel-build.md'), { recursive: true });
+  yes(!m.files['bookshelf/rubric.md'], 'the manifest holds the file that failed');
+  fs.rmSync(path.join(t, 'bookshelf', 'rubric.md'), { recursive: true });
   r = runSplit(['init', t]);
   eq(r.code, 0, r.err);
   yes(!/not installed by this tool/.test(r.out + r.err), 'the rerun did not recognize its own files:\n' + r.out);
   yes(/0 kept \(edited\), 0 left alone/.test(r.out), r.out);
-  yes(fs.existsSync(path.join(t, 'commands', 'carousel-build.md')), 'the rerun did not finish the install');
+  yes(fs.existsSync(path.join(t, 'bookshelf', 'rubric.md')), 'the rerun did not finish the install');
 });
 
 test('new projects get a header-only lessons.history and an empty log even when the source holds entries', () => {
@@ -690,6 +747,19 @@ test('control: converting a hashed file to CRLF is what breaks a check, so the -
   hashed.forEach((f) => fs.writeFileSync(path.join(t, f), fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\r?\n/g, '\r\n')));
   const r = node(path.join(t, 'scripts', 'check-process.js'), [], t);
   if (r.code === 0) console.log('note  the control did not fail: the checks do not depend on the hashed file bytes, so the rule is a safeguard only');
+});
+
+test('no .png ships in the npm package, and the gallery stays out of the package and out of installs', () => {
+  const r = cp.spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32' });
+  if (r.error) { console.log('note  skipped: npm is not available'); return; }
+  eq(r.status, 0, 'npm pack --dry-run failed\n' + (r.stderr || '').slice(-800));
+  const files = JSON.parse(r.stdout)[0].files.map((f) => f.path);
+  yes(files.includes('README.md') && files.includes('scripts/install.js'), 'the pack listing looks wrong: ' + files.slice(0, 5).join(', '));
+  const bad = files.filter((f) => /\.png$/i.test(f) || f.startsWith('docs/gallery/'));
+  eq(bad.length, 0, 'these ship in the package: ' + bad.join(', '));
+  const t = tmp();
+  eq(run(['init', t]).code, 0, 'init');
+  yes(!fs.existsSync(path.join(t, 'docs', 'gallery')), 'init copied docs/gallery into the project');
 });
 
 fs.rmSync(RUN_DIR, { recursive: true, force: true });

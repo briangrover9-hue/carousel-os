@@ -1,6 +1,12 @@
+---
+name: carousel-review
+description: "Have reviewers with fresh context try to disprove the deck, and record PASS, REJECT or UNVERIFIABLE with pasted evidence."
+disable-model-invocation: true
+---
+
 # carousel-review
 
-Job: have a reviewer with fresh context try to disprove the deck, and record PASS, REJECT or UNVERIFIABLE with pasted evidence.
+Job: have reviewers with fresh context try to disprove the deck, and record PASS, REJECT or UNVERIFIABLE with pasted evidence.
 Reads: Check in the plan, the deck, the ledger, the sources the ledger names, the Brief section.
 Writes: Review in the plan (verdict, pasted evidence, findings), `Status: reviewed`, a line in Reports. The builder records what the reviewer returned and edits none of it.
 Exit check: Review holds the reviewer's verdict with pasted evidence, and Reports holds the `Review verdict:` line.
@@ -15,8 +21,8 @@ Decline, name the cause, and stop when:
 ## Steps
 
 1. Run `node scripts/check-process.js --hashes plans/<slug>.md` and compare its three lines with Check.
-2. Start the reviewer as a separate agent with none of this conversation (fresh context). Give it only the bar (`RULES.md, "The bar"` and `bookshelf/rubric.md`) and the file list: the deck, the ledger, the sources the ledger names, and the Brief section copied to a scratch file. Withhold the Challenge log, Deviations and your reasoning. Why: it must have nothing to be anchored by.
-3. Tell it to try to disprove the deck. It must at least:
+2. Start the reviewers as separate agents with none of this conversation (fresh context): `carousel-reviewer` (`agents/carousel-reviewer.md`) and `carousel-fidelity` (`agents/carousel-fidelity.md`). Claude Code finds both in `.claude/agents/`. In another tool, paste the file's body as the agent's instructions. If you can start only one, give it both files. Give each only the bar (`RULES.md, "The bar"` and `bookshelf/rubric.md`) and the file list: the deck, the ledger, the sources the ledger names, and the Brief section copied to a scratch file. Withhold the Challenge log, Deviations and your reasoning. Why: it must have nothing to be anchored by.
+3. Tell them to try to disprove the deck. Between them they must at least:
    - recompute every ledger number from its source;
    - run `node scripts/check-process.js --plan plans/<slug>.md`, which reads the slide text out of the deck file;
    - read the headlines alone;
@@ -24,8 +30,8 @@ Decline, name the cause, and stop when:
    - confirm one window;
    - run `node scripts/check-process.js --ledger plans/<slug>.ledger.json --final`;
    - open the render, when one exists.
-   `bookshelf/review-angles.md` lists more angles it may add.
-4. It returns one verdict.
+   `bookshelf/review-angles.md` lists more angles they may add.
+4. Each returns one verdict, and the review takes the worst: any REJECT is REJECT, else any UNVERIFIABLE is UNVERIFIABLE, else PASS. The fidelity reviewer's per-number lines are the number evidence.
    - Any number unreconciled, any slide contradicting the brief, or any bar item failing: REJECT.
    - Something it cannot check (a missing source, a render that will not open): UNVERIFIABLE, naming what it needs. UNVERIFIABLE is never rounded up to PASS.
    - Evidence pasted for every bar item and no failure: PASS. The evidence holds the `Ledger:` summary line, the lines `PASS ledger` and `PASS plan`, and one line per ledger number in the form `- <slide id> <value>: <what the reviewer did>, found <value>`. The found value equals the ledger value.

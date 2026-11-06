@@ -12,13 +12,13 @@ Each item ends with a tag that says how it can be checked.
 
 ## A. Structure and flow
 
-1. Story order follows the requester's question. Their literal ask is answered first, then evidence narrows from widest scope to narrowest and stays narrow. Voice evidence (quotes, reviews) is its own lane. (read)
+1. Story order follows the requester's question. Their literal ask is answered first, then evidence narrows from widest scope to narrowest and stays narrow. Voice evidence (quotes, survey comments, support tickets) is its own lane. (read)
 2. The headline is one claim, said the way you would say it out loud, and it is a finding with a subject and a verb. (read)
    - Test: say it on a phone call with no slide visible. If it needs the slide, rewrite it.
    - Length: it fits on one rendered line at the size your design tokens set. About 8 words is a good target. A second line needs a stated reason, and three lines is too many. (render)
    - Color: one text color for every headline and title. (scan)
    - Avoid method mechanics, a statistic used as an adjective, an internal construct as the actor, and referents the reader cannot resolve yet.
-3. Use your framing and the requester's vocabulary. Their taxonomy names the category, brand and metric. Their request text never ships: no run of eight or more consecutive words from the request appears anywhere in the deck, notes included. Private asides are never reproduced. (read)
+3. Use your framing and the requester's vocabulary. Their taxonomy names the segment, program and metric. Their request text never ships: no run of eight or more consecutive words from the request appears anywhere in the deck, notes included. Private asides are never reproduced. (read)
 4. The front of the deck states what it covers. A "what this is not" section waits for the method slide and the source lines. (read)
 5. Every slide answers five questions: why it exists, what question it answers, the one thing to remember, why it sits here, and what is lost if it is cut. (read)
 6. Every appendix slide names the slide it defends. An appendix slide that defends nothing is cut. (read)
@@ -28,33 +28,33 @@ Each item ends with a tag that says how it can be checked.
 ## B. Scope and taxonomy
 
 9. Every data slide carries a scope tag that names exactly what its numbers cover. (read)
-10. Categories, brands and products use the source's own names, spelled as the source spells them, accents included. The market on the source line is named exactly as the data names it. (read)
+10. Segments, programs and plans use the source's own names, spelled as the source spells them, accents included. The population on the source line is named exactly as the data names it. (read)
 11. One measurement basis per deck: one window, one growth metric, one provenance, stated on every source line. Use the full standard window the source offers, and label the true length when less exists. (read)
-12. Where the requester named categories or examples, show their list and what the wider sweep found, or say on the method slide why you did not widen. (read)
+12. Where the requester named segments or examples, show their list and what the wider sweep found, or say on the method slide why you did not widen. (read)
 13. A finding is never dismissed as expected on prevalence alone. Show the response evidence too. (read)
-14. Use metrics the audience already reads. A bespoke metric does not become a labeled column. (read)
+14. Use metrics the audience already reads. A metric you made up does not become a labeled column. (read)
 
 ## C. Numbers
 
 15. Every percent change has its base on the same slide: the total the growth is measured on, printed beside it. (read)
-16. Unit tiers are fixed for the deck: at or above 1,000 million write billions with one decimal ("$8.1B"), write millions below that ("$412M"), and write K or full digits below 1M. (read)
+16. Unit tiers are fixed for the deck: at or above 1,000 million write billions with one decimal ("$2.3B"), write millions below that ("$146M"), and write K or full digits below 1M. (read)
 17. An index column carries a stated threshold. Growth takes the same sign color everywhere, and a decline never takes a positive color. (render)
-18. Provenance stays honest. What a product claims, what it contains and what people say are different lanes, built from matching fields and never blended into one number. (read)
+18. Provenance stays honest. What a service promises, what its logs record and what people say about it are different lanes, built from matching fields and never blended into one number. (read)
 19. Overlapping segments are labeled as overlapping and never shown as summing to a total. (read)
 20. A note that explains how a figure was built must reconcile itself. Do the arithmetic before printing it. (read)
 21. Every named grouping prints its definition: the field it comes from, the rule or list, and what it leaves out. (read)
-22. Check coverage before showing a dramatic segment, because a segment that looks empty may be missing records. A growth above 500 percent, or a base under 1 percent of the category total, carries a small-base mark. (read)
+22. Check coverage before showing a dramatic segment, because a segment that looks empty may be missing records. A growth above 500 percent, or a base under 1 percent of the whole population, carries a small-base mark. (read)
 23. The deck lands at or under the agreed slide budget. Overflow moves to the appendix. (read)
 24. A slide carries at most about 120 words of prose and three evidence blocks. A key-takeaways slide holds two to six takeaways and at most eight numbers in all. (read)
-25. Comparisons are drawn, not narrated. A block whose prose carries three or more numbers becomes a chart, a table or a KPI band. A reader finds the numbers that carry the claim within ten seconds. Past about twenty numbers of equal weight on one slide, emphasize the few that matter or shade the grid. (render)
+25. Draw comparisons instead of narrating them. A block whose prose carries three or more numbers becomes a chart, a table or a KPI band. A reader finds the numbers that carry the claim within ten seconds. Past about twenty numbers of equal weight on one slide, emphasize the few that matter or shade the grid. (render)
 26. Body sentences run to about 35 words at most. Check again after any text sweep. (read)
 
 ## D. Voice and quotes
 
-27. Quotes are byte-exact with attribution (rating or engagement, platform, date). A truncation gets an ellipsis, and a misspelling stays with the note "spelling as written". Protect quotes during any text sweep. (read)
+27. Quotes are byte-exact with attribution (source, score or engagement, date). A truncation gets an ellipsis, and a misspelling stays with the note "spelling as written". Protect quotes during any text sweep. (read)
 28. A voice section leads with a quantified language hierarchy over a stated N, with the quotes as support. (read)
 29. Causal wording needs causal evidence. Otherwise write "worth testing". (read)
-30. Safe wording: no like-for-like claims, no "nobody noticed", no swearing in quotes (censor it), no mocking of weak results, no "exotic" framing of foods, no line saying the work was machine made, a year on every named month, no retailer named as the data source in a source line or table header, and no username or handle in a quote. (read)
+30. Safe wording: no like-for-like claims, no "nobody noticed", no mocking of weak results and no "exotic" framing of a place or culture. Censor swearing in quotes, and keep usernames and handles out of them. Put a year on every named month. No line says the work was machine made, and no source line or table header names a partner or vendor as the data source. (read)
 
 ## E. Design
 

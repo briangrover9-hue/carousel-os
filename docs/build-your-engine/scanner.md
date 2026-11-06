@@ -1,6 +1,6 @@
 # The scanner
 
-The scanner opens a finished deck file and measures it. It checks the exact file that will ship, whoever built it and whatever kit drew it, which makes it the one tool that can catch a defect introduced after the kit was done: a hand edit, an import into another app, a find-and-replace.
+The scanner opens a finished deck file and measures it. It checks the exact file that will ship, whoever built it and whatever kit drew it. That makes it the one tool that can catch a defect introduced after the kit was done, such as a hand edit, an import into another app or a find-and-replace.
 
 Write each check so it reads the file's XML or its parsed shapes, never a description of the deck. Write the report to a folder, and end with one summary line.
 
@@ -56,7 +56,7 @@ Why: one number that fails to match its source costs more trust than a dozen mis
 Why: a label that is hard to read on its own background is the defect a reader notices first, and a scanner that checks only the slide ground misses it. Composite transparency before you measure.
 
 ### Request text echoed into the deliverable
-- Any run of eight or more consecutive words from the client's request, found anywhere in the deck: slides, appendix and speaker notes. FAIL, with an exemption for runs made only of category, market and metric names.
+- Any run of eight or more consecutive words from the client's request, found anywhere in the deck: slides, appendix and speaker notes. FAIL, with an exemption for runs made only of segment, place and metric names.
 
 Why: a deck that pastes the question back to the person who asked it reads as if nobody thought about it.
 

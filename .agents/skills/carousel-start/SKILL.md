@@ -1,3 +1,9 @@
+---
+name: carousel-start
+description: "Open a session from files, choose the path, and record the direction in a new plan."
+disable-model-invocation: true
+---
+
 # carousel-start
 
 Job: open a session from files, choose the path, and record the direction in a new plan.

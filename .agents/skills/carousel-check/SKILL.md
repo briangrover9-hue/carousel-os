@@ -1,3 +1,9 @@
+---
+name: carousel-check
+description: "Run the complete check on the built deck, reading the deck itself, and record exact results."
+disable-model-invocation: true
+---
+
 # carousel-check
 
 Job: run the complete check on the built deck, reading the deck itself, and record exact results.

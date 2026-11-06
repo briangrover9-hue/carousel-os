@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "description": "A deck process for agents, with a ledger for every number.",
   "license": "MIT",
-  "author": "Brian Grover",
+  "author": {
+    "name": "Brian Grover",
+    "email": "briangrover9@gmail.com",
+    "url": "https://www.linkedin.com/in/briantgrover/"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/briangrover9-hue/carousel-os.git"
@@ -20,6 +24,8 @@
     "deck",
     "ai-agents",
     "agent-skills",
+    "codex",
+    "cursor",
     "workflow",
     "claude-code",
     "claim-ledger"
@@ -34,9 +40,11 @@
     "README.md",
     "LICENSE",
     "CONTRIBUTING.md",
+    "CHANGELOG.md",
     "cheatsheet.md",
     "carousel.config.example.json",
-    "commands/",
+    ".agents/",
+    "agents/",
     "plans/",
     "memory/handoff.md",
     "memory/handoff.template.md",
@@ -45,7 +53,6 @@
     "memory/wiki/",
     "bookshelf/",
     "docs/",
-    "skills/",
     "scripts/",
     "tests/process/",
     "tests/installer/",
@@ -53,6 +60,8 @@
     "tests/helpers/",
     "tests/scripts/",
     "!**/.DS_Store",
+    "!**/*.png",
+    "!docs/gallery/**",
     "!docs/publish-checklist.md"
   ],
   "scripts": {

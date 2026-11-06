@@ -32,9 +32,46 @@ test('budget: RULES.md over its cap fails', () => {
   const d = fresh(); edit(d, 'RULES.md', (t) => t + pad(400));
   mustFail(d, 'budget', 'RULES.md is');
 });
-test('budget: a command over its cap fails', () => {
-  const d = fresh(); edit(d, 'commands/carousel-build.md', (t) => t + pad(300));
-  mustFail(d, 'budget', 'commands/carousel-build.md is');
+test('budget: a stage file over its cap fails', () => {
+  const d = fresh(); edit(d, '.agents/skills/carousel-build/SKILL.md', (t) => t + pad(300));
+  mustFail(d, 'budget', '.agents/skills/carousel-build/SKILL.md is');
+});
+test('budget: a reviewer agent over the stage cap fails', () => {
+  const d = fresh(); edit(d, 'agents/carousel-fidelity.md', (t) => t + pad(300));
+  mustFail(d, 'budget', 'agents/carousel-fidelity.md is');
+});
+test('budget: the caps leave headroom over today and stay well under the 32 KiB AGENTS.md read', () => {
+  const src = fs.readFileSync(path.join(h.SCRIPTS, 'check-process.js'), 'utf8');
+  const cap = (k) => Number(new RegExp(k + ': (\\d+)').exec(src)[1]);
+  const rules = fs.statSync(path.join(h.ROOT, 'RULES.md')).size;
+  assert.ok(cap('rulesMaxBytes') > rules, `RULES.md is ${rules} bytes, over its cap`);
+  assert.ok(cap('rulesMaxBytes') + cap('pointerMaxBytes') <= 32 * 1024 / 3, 'the rules cap is no longer under a third of 32 KiB');
+  assert.ok(cap('stageMaxBytes') < cap('rulesMaxBytes'), 'a stage may be larger than the rules');
+});
+test('budget: --only budget runs the budget check alone', () => {
+  const d = fresh(); edit(d, 'README.md', (t) => t + '\n[gone](docs/gone.md)\n');
+  const r = h.check(d, ['--only', 'budget']);
+  assert.strictEqual(r.code, 0, r.out);
+  assert.ok(r.out.includes('PASS budget') && !r.out.includes('deadrefs'), r.out);
+  edit(d, 'RULES.md', (t) => t + pad(400));
+  assert.strictEqual(h.check(d, ['--only', 'budget']).code, 1);
+  assert.strictEqual(h.check(d, ['--only', 'nonsense']).code, 2);
+});
+test('contract: a stage file is read below its front matter', () => {
+  const d = fresh(); edit(d, '.agents/skills/carousel-start/SKILL.md', (t) => t.replace(/^---\n[\s\S]*?\n---\n\n/, '---\nname: x\n---\n\n'));
+  mustPass(d);
+  edit(d, '.agents/skills/carousel-start/SKILL.md', (t) => t.replace('# carousel-start\n', '# start\n'));
+  mustFail(d, 'contract', 'first line must be "# carousel-start"');
+});
+test('deadrefs: a backticked reviewer agent name passes, a missing one fails', () => {
+  let d = fresh(); edit(d, 'README.md', (t) => t + '\nThe `carousel-fidelity` agent traces numbers.\n');
+  mustPass(d);
+  d = fresh(); fs.unlinkSync(path.join(d, 'agents/carousel-fidelity.md'));
+  mustFail(d, 'deadrefs', '`carousel-fidelity` is not a stage');
+});
+test('prose: the stage sources in .agents/skills are prose-checked', () => {
+  const d = fresh(); edit(d, '.agents/skills/carousel-wrap/SKILL.md', (t) => t + '\nWe leverage the log.\n');
+  mustFail(d, 'prose', '.agents/skills/carousel-wrap/SKILL.md');
 });
 test('budget: a pointer file over its cap fails', () => {
   const d = fresh(); edit(d, 'AGENTS.md', (t) => t + pad(60));
@@ -105,35 +142,35 @@ test('wiki: a listed new page passes', () => {
 
 // ---- contract
 test('contract: a changed report string fails', () => {
-  const d = fresh(); edit(d, 'commands/carousel-build.md', (t) => t.replace('slides built', 'slides done'));
+  const d = fresh(); edit(d, '.agents/skills/carousel-build/SKILL.md', (t) => t.replace('slides built', 'slides done'));
   mustFail(d, 'contract', 'exact report string not found');
 });
 test('contract: a missing No-rubber-stamp guard fails', () => {
-  const d = fresh(); edit(d, 'commands/carousel-check.md', (t) => t.replace('## No-rubber-stamp guard', '## Notes'));
+  const d = fresh(); edit(d, '.agents/skills/carousel-check/SKILL.md', (t) => t.replace('## No-rubber-stamp guard', '## Notes'));
   mustFail(d, 'contract', 'No-rubber-stamp guard');
 });
 test('contract: a guard that does not describe a fake pass fails', () => {
   const d = fresh();
-  edit(d, 'commands/carousel-wrap.md', (t) => t.replace(/## No-rubber-stamp guard[\s\S]*?## Rationale/, '## No-rubber-stamp guard\n\nBe careful.\n\n## Rationale'));
+  edit(d, '.agents/skills/carousel-wrap/SKILL.md', (t) => t.replace(/## No-rubber-stamp guard[\s\S]*?## Rationale/, '## No-rubber-stamp guard\n\nBe careful.\n\n## Rationale'));
   mustFail(d, 'contract', 'fake pass');
 });
 test('contract: sections out of order fail', () => {
-  const d = fresh(); edit(d, 'commands/carousel-brief.md', (t) => t.replace('## Guards', '## Steps2').replace('## Steps\n', '## Guards\n'));
-  mustFail(d, 'contract', 'carousel-brief.md');
+  const d = fresh(); edit(d, '.agents/skills/carousel-brief/SKILL.md', (t) => t.replace('## Guards', '## Steps2').replace('## Steps\n', '## Guards\n'));
+  mustFail(d, 'contract', 'carousel-brief/SKILL.md');
 });
-test('contract: a command not linked in commands/README fails; one not named in RULES fails', () => {
-  let d = fresh(); edit(d, 'commands/README.md', (t) => t.replace('(carousel-handoff.md)', '(carousel-wrap.md)'));
+test('contract: a stage not linked in the stage index fails; one not named in RULES fails', () => {
+  let d = fresh(); edit(d, '.agents/skills/README.md', (t) => t.replace('(carousel-handoff/SKILL.md)', '(carousel-wrap/SKILL.md)'));
   mustFail(d, 'contract', 'does not link carousel-handoff');
   d = fresh(); edit(d, 'RULES.md', (t) => t.replace(/`carousel-handoff`/g, '`carousel-wrap`'));
   mustFail(d, 'contract', 'RULES.md does not name carousel-handoff');
 });
 test('contract: the empty handoff sentence must stay in the handoff command', () => {
-  const d = fresh(); edit(d, 'commands/carousel-handoff.md', (t) => t.split('Nothing to hand off this time.').join('Nothing.'));
+  const d = fresh(); edit(d, '.agents/skills/carousel-handoff/SKILL.md', (t) => t.split('Nothing to hand off this time.').join('Nothing.'));
   mustFail(d, 'contract', 'Nothing to hand off this time.');
 });
 test('contract: a missing command file fails', () => {
-  const d = fresh(); fs.unlinkSync(path.join(d, 'commands/carousel-review.md'));
-  mustFail(d, 'contract', 'carousel-review.md is missing');
+  const d = fresh(); fs.unlinkSync(path.join(d, '.agents/skills/carousel-review/SKILL.md'));
+  mustFail(d, 'contract', 'carousel-review/SKILL.md is missing');
 });
 
 // ---- prose gate
@@ -715,29 +752,29 @@ test('engine: the rubric checklist must be 10 items, or 9 with item 9 deferred',
 
 // ---- contract additions: each pinned guard and prohibition
 test('contract: every command needs an Exit check line, and guards must key on the previous report line', () => {
-  let d = fresh(); edit(d, 'commands/carousel-review.md', (t) => t.replace(/^Exit check: .*$/m, ''));
+  let d = fresh(); edit(d, '.agents/skills/carousel-review/SKILL.md', (t) => t.replace(/^Exit check: .*$/m, ''));
   mustFail(d, 'contract', 'Exit check');
-  d = fresh(); edit(d, 'commands/carousel-storyboard.md', (t) => t.replace('`Brief report:`', '`the brief`'));
+  d = fresh(); edit(d, '.agents/skills/carousel-storyboard/SKILL.md', (t) => t.replace('`Brief report:`', '`the brief`'));
   mustFail(d, 'contract', "Guards must key on the previous stage's line: Brief report:");
-  d = fresh(); edit(d, 'commands/carousel-wrap.md', (t) => t.replace(/Stopped at <start[^`]*`/g, 'Stopped.`'));
+  d = fresh(); edit(d, '.agents/skills/carousel-wrap/SKILL.md', (t) => t.replace(/Stopped at <start[^`]*`/g, 'Stopped.`'));
   mustFail(d, 'contract', 'required text not found');
 });
 test('contract: the pinned guards and prohibitions cannot be dropped', () => {
   const pins = [
-    ['commands/carousel-review.md', 'two `Review verdict: REJECT`', 'Guards must keep: two `Review verdict: REJECT`'],
-    ['commands/carousel-review.md', 'second REJECT', 'Steps must keep: second REJECT'],
-    ['commands/carousel-review.md', 'recompute', 'Steps must keep: recompute'],
-    ['commands/carousel-review.md', 'never rounded up', 'Steps must keep: never rounded up'],
-    ['commands/carousel-review.md', 'latest `Check report:` line', 'latest `Check report:` line'],
-    ['commands/carousel-build.md', 'Never set', 'Steps must keep: Never set'],
-    ['commands/carousel-build.md', 'Parked claims: none open', 'Guards must keep: Parked claims: none open'],
-    ['commands/carousel-check.md', 'Never loosen', 'Steps must keep: Never loosen'],
-    ['commands/carousel-check.md', '--plan', 'Steps must keep: --plan'],
-    ['commands/carousel-handoff.md', 'Never append', 'Steps must keep: Never append'],
-    ['commands/carousel-handoff.md', 'latest `Wrap report:` line', 'latest `Wrap report:` line'],
-    ['commands/carousel-challenge-plan.md', 'Never delete a parked entry', 'Never delete a parked entry'],
-    ['commands/carousel-wrap.md', 'Never run `repeat`', 'Never run `repeat`'],
-    ['commands/carousel-start.md', 'Start never resumes a plan', 'Start never resumes a plan'],
+    ['.agents/skills/carousel-review/SKILL.md', 'two `Review verdict: REJECT`', 'Guards must keep: two `Review verdict: REJECT`'],
+    ['.agents/skills/carousel-review/SKILL.md', 'second REJECT', 'Steps must keep: second REJECT'],
+    ['.agents/skills/carousel-review/SKILL.md', 'recompute', 'Steps must keep: recompute'],
+    ['.agents/skills/carousel-review/SKILL.md', 'never rounded up', 'Steps must keep: never rounded up'],
+    ['.agents/skills/carousel-review/SKILL.md', 'latest `Check report:` line', 'latest `Check report:` line'],
+    ['.agents/skills/carousel-build/SKILL.md', 'Never set', 'Steps must keep: Never set'],
+    ['.agents/skills/carousel-build/SKILL.md', 'Parked claims: none open', 'Guards must keep: Parked claims: none open'],
+    ['.agents/skills/carousel-check/SKILL.md', 'Never loosen', 'Steps must keep: Never loosen'],
+    ['.agents/skills/carousel-check/SKILL.md', '--plan', 'Steps must keep: --plan'],
+    ['.agents/skills/carousel-handoff/SKILL.md', 'Never append', 'Steps must keep: Never append'],
+    ['.agents/skills/carousel-handoff/SKILL.md', 'latest `Wrap report:` line', 'latest `Wrap report:` line'],
+    ['.agents/skills/carousel-challenge-plan/SKILL.md', 'Never delete a parked entry', 'Never delete a parked entry'],
+    ['.agents/skills/carousel-wrap/SKILL.md', 'Never run `repeat`', 'Never run `repeat`'],
+    ['.agents/skills/carousel-start/SKILL.md', 'Start never resumes a plan', 'Start never resumes a plan'],
   ];
   pins.forEach(([file, str, needle]) => {
     const d = fresh();
@@ -907,7 +944,7 @@ test('ledger claim and storyboard: digits in the claim, and the source named, mu
 test('contract: no stage but the brief may tell the agent to ask the human', () => {
   ['carousel-storyboard', 'carousel-build', 'carousel-challenge-plan', 'carousel-check', 'carousel-review', 'carousel-wrap'].forEach((n) => {
     const d = fresh();
-    edit(d, `commands/${n}.md`, (t) => t.replace('## Steps\n', '## Steps\n\n0. Ask the human which slides to cut if unsure.\n'));
+    edit(d, `.agents/skills/${n}/SKILL.md`, (t) => t.replace('## Steps\n', '## Steps\n\n0. Ask the human which slides to cut if unsure.\n'));
     mustFail(d, 'contract', 'only carousel-brief asks questions');
   });
 });
@@ -922,27 +959,27 @@ test('storyboard: digits in the storyboard must be ledger values', () => {
   assert.ok(r.out.includes('slide s02: the storyboard prints 4100, which is not in the ledger'), r.out);
 });
 test('build guard: Build declines after a Stopped at line, and Check says a re-check needs a new Build', () => {
-  const d = fresh(); const b = fs.readFileSync(path.join(d, 'commands/carousel-build.md'), 'utf8');
+  const d = fresh(); const b = fs.readFileSync(path.join(d, '.agents/skills/carousel-build/SKILL.md'), 'utf8');
   assert.ok(b.includes('`Stopped at` line'));
-  const c = fs.readFileSync(path.join(d, 'commands/carousel-check.md'), 'utf8');
+  const c = fs.readFileSync(path.join(d, '.agents/skills/carousel-check/SKILL.md'), 'utf8');
   assert.ok(!/replacing any earlier run/.test(c));
   assert.ok(c.includes('A second check needs a new Build first'));
 });
 test('contract: the remaining prohibitions are pinned in the commands and in RULES.md', () => {
   const pins = [
-    ['commands/carousel-review.md', 'Withhold the Challenge log', 'Steps must keep: Withhold the Challenge log'],
-    ['commands/carousel-review.md', 'a FAIL, a MISSING tool or a checklist short of its total', 'Guards must keep: a FAIL, a MISSING tool'],
-    ['commands/carousel-wrap.md', 'latest review line is `Review verdict: PASS`', 'Guards must keep: latest review line is `Review verdict: PASS`'],
-    ['commands/carousel-build.md', 'holds a `NEEDS HUMAN:` marker', 'Guards must keep: holds a `NEEDS HUMAN:` marker'],
-    ['commands/carousel-check.md', 'differs from the line before the tools', 'Steps must keep: differs from the line before the tools'],
+    ['.agents/skills/carousel-review/SKILL.md', 'Withhold the Challenge log', 'Steps must keep: Withhold the Challenge log'],
+    ['.agents/skills/carousel-review/SKILL.md', 'a FAIL, a MISSING tool or a checklist short of its total', 'Guards must keep: a FAIL, a MISSING tool'],
+    ['.agents/skills/carousel-wrap/SKILL.md', 'latest review line is `Review verdict: PASS`', 'Guards must keep: latest review line is `Review verdict: PASS`'],
+    ['.agents/skills/carousel-build/SKILL.md', 'holds a `NEEDS HUMAN:` marker', 'Guards must keep: holds a `NEEDS HUMAN:` marker'],
+    ['.agents/skills/carousel-check/SKILL.md', 'differs from the line before the tools', 'Steps must keep: differs from the line before the tools'],
     ['RULES.md', 'Only `carousel-brief` asks the human anything.', 'RULES.md must keep: Only `carousel-brief` asks the human anything.'],
-    ['commands/carousel-build.md', 'open its source and recompute it', 'Steps must keep: open its source and recompute it'],
-    ['commands/carousel-build.md', 'Deck sha256 at build:', 'Steps must keep: Deck sha256 at build:'],
-    ['commands/carousel-build.md', '`Stopped at` line', 'Guards must keep: Stopped at'],
-    ['commands/carousel-check.md', 'Never record exit 2 as PASS', 'Steps must keep: Never record exit 2 as PASS'],
-    ['commands/carousel-check.md', 'No tool may edit the deck', 'Steps must keep: No tool may edit the deck'],
-    ['commands/carousel-check.md', 'scripts/run-tools.js', 'Steps must keep: scripts/run-tools.js'],
-    ['commands/carousel-check.md', 'needs a new `carousel-build`', 'needs a new `carousel-build`'],
+    ['.agents/skills/carousel-build/SKILL.md', 'open its source and recompute it', 'Steps must keep: open its source and recompute it'],
+    ['.agents/skills/carousel-build/SKILL.md', 'Deck sha256 at build:', 'Steps must keep: Deck sha256 at build:'],
+    ['.agents/skills/carousel-build/SKILL.md', '`Stopped at` line', 'Guards must keep: Stopped at'],
+    ['.agents/skills/carousel-check/SKILL.md', 'Never record exit 2 as PASS', 'Steps must keep: Never record exit 2 as PASS'],
+    ['.agents/skills/carousel-check/SKILL.md', 'No tool may edit the deck', 'Steps must keep: No tool may edit the deck'],
+    ['.agents/skills/carousel-check/SKILL.md', 'scripts/run-tools.js', 'Steps must keep: scripts/run-tools.js'],
+    ['.agents/skills/carousel-check/SKILL.md', 'needs a new `carousel-build`', 'needs a new `carousel-build`'],
     ['RULES.md', 'Never commit, push, send or publish a deck.', 'RULES.md must keep: Never commit, push, send or publish a deck.'],
     ['RULES.md', 'A tool that exits 2 is MISSING, never PASS.', 'RULES.md must keep: A tool that exits 2 is MISSING, never PASS.'],
   ];
