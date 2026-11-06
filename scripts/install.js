@@ -190,12 +190,23 @@ function logEntry() {
 }
 
 // With core.autocrlf=true (git on Windows), git checks text out with CRLF line endings and could mangle the example
-// deck by treating it as text. This file tells git to store and check out every text file with LF endings and to
-// leave the deck's bytes alone. The tools compare text with CRLF read as LF either way (see lfBytes), so a checkout
-// made before this file existed still counts as unedited. It is installed only where the project has no
-// .gitattributes, and never replaces one.
-const GITATTRIBUTES = '# Written by the Carousel OS installer. Text is stored and checked out with LF endings; the deck is binary.\n* text=auto eol=lf\n*.pptx binary\n';
-function gitattributesEntry() { return { rel: '.gitattributes', onlyIfAbsent: true, content: Buffer.from(GITATTRIBUTES) }; }
+// deck by treating it as text. This file tells git to store and check out the Carousel OS text files with LF endings
+// and to leave the deck's bytes alone. It names only the paths Carousel OS installs (each stage and reviewer by name,
+// each script it ships), so the line endings of the rest of your repository stay as they were. The tools compare text
+// with CRLF read as LF either way (see lfBytes), so a checkout made before this file existed still counts as unedited.
+// It is installed only where the project has no .gitattributes, and never replaces one.
+function gitattributesText() {
+  const scripts = fs.readdirSync(path.join(SOURCE, 'scripts')).filter((f) => !PROCESS.find((x) => x.dir === 'scripts').exclude.includes(f) && !SKIP_NAMES.has(f)).sort();
+  const paths = ['RULES.md', 'cheatsheet.md', 'carousel.config.example.json', 'plans/**', 'memory/**', 'bookshelf/**',
+    'docs/short-run.md', 'docs/cost.md', 'docs/how-it-thinks.md', 'docs/build-your-engine/**', 'tests/process/**', `${skills.SKILLS}/README.md`, `${skills.AGENTS}/README.md`]
+    .concat(LIST.stages.map((n) => `${skills.SKILLS}/${n}/**`), LIST.stages.map((n) => `${CLAUDE_SKILLS}/${n}/**`))
+    .concat(LIST.agents.map((f) => `${skills.AGENTS}/${f}`), LIST.agents.map((f) => `${CLAUDE_AGENTS}/${f}`))
+    .concat(scripts.map((f) => `scripts/${f}`));
+  return '# Written by the Carousel OS installer. Carousel OS text is stored and checked out with LF endings; the deck is binary.\n' +
+    '# Only Carousel OS paths are listed, so the rest of your repository keeps its own line endings.\n' +
+    paths.map((p) => p + ' text=auto eol=lf\n').join('') + '*.pptx binary\n';
+}
+function gitattributesEntry() { return { rel: '.gitattributes', onlyIfAbsent: true, content: Buffer.from(gitattributesText()) }; }
 
 // memory/wiki/lessons.history starts as its header comment only, whatever the repository's own copy holds.
 function lessonsHistoryEntry() {
@@ -554,6 +565,8 @@ function install(o, updating) {
     });
     if (behind.length) say('next     ' + behind.length + ' .claude/ cop' + (behind.length === 1 ? 'y differs' : 'ies differ') + ' from ' + (behind.length === 1 ? 'its source' : 'their sources') + ' (left by an earlier version). To rebuild ' + (behind.length === 1 ? 'it' : 'them') + ': ' + checks.regenAdvice(o.target).text + '; it saves each one the tool cannot prove it wrote as a .carousel-backup file first.');
   }
+  // A CLAUDE.md or AGENTS.md of yours was kept, and nothing else points the agent at RULES.md. Say the line to add.
+  checks.pointerProblems(o.target).forEach((p) => say('next     ' + p));
   say(`${verb}done: ${counts.added} added, ${counts.updated} updated, ${counts.same} unchanged, ${counts.kept} kept (edited), ${counts.exists} left alone, ${counts.skippedDeleted} skipped (deleted by you), ${counts.removed} removed.`);
   if (!o.dry) writeManifest();
   return 0;
@@ -737,6 +750,8 @@ function doctor(o) {
     differs(c.rel + ' differs from ' + c.from + ' (to rebuild it from ' + c.from + ': ' + advice.text +
       (edited ? '; it saves the current copy as a .carousel-backup file beside it first, so you can carry any edit of yours into ' + c.from + ')' : ')'));
   });
+
+  checks.pointerProblems(target).forEach((p) => fail(p));
 
   // The same checks check-process runs, so doctor never says all good while check-process fails. A stage file you
   // kept (edited) that names a retired stage, or no longer meets this version's stage contract, gets a plain message.

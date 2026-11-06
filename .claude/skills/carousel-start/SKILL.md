@@ -14,7 +14,7 @@ Exit check: `plans/<slug>.md` exists, its Request is filled, and Reports holds t
 ## Guards
 
 Start has no earlier stage, so it has no earlier report line to key on. Decline, name the cause, and stop when:
-1. `RULES.md` or `memory/wiki/INDEX.md` is missing. Say the folder is not set up and name `node scripts/install.js`.
+1. `RULES.md` or `memory/wiki/INDEX.md` is missing. Say the folder is not set up and name `npx carousel-os init .`.
 2. A plan with this slug exists. Read its Status line, say it, and name the next command. Start never resumes a plan.
 3. The human gave no deck request and the handoff has no `Next focus`. Ask for the request in one sentence.
 

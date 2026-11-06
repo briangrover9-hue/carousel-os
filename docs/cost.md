@@ -4,7 +4,7 @@ You expected a deck in ten minutes and the full run takes much longer. It is slo
 
 ## Where it goes, largest first
 
-1. **Review.** The reviewer starts with nothing, so it reads the deck, the ledger, the brief and every source the ledger names, and it recomputes every number. This is usually the biggest single bill, and it is the price of an independent read.
+1. **Review.** The two reviewers start with nothing, so they read the deck, the ledger, the brief and every source the ledger names, and the fidelity reviewer recomputes every number. This is usually the biggest single bill, and it is the price of an independent read.
 2. **Critique rounds.** Each round reopens the plan and the sources behind the claims it touches. Three rounds mean three passes over the weakest numbers.
 3. **Build.** Every number gets re-derived once as its slide is finished, which doubles the reading of the sources.
 4. **Check.** Your engine's tools run in seconds to minutes of machine time, and the plan gate reads the deck file in well under a second. Looking at a render costs tokens.

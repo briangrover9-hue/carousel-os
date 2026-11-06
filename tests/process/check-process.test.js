@@ -5,6 +5,9 @@ const cp = require(path.join(h.SCRIPTS, 'check-process.js'));
 const zlibDeflate = (b) => require('zlib').deflateRawSync(b);
 
 const fresh = () => h.copyRepo();
+// The repository itself checks every prose file. A copy made inside an installed project has no scripts/check.js, the
+// repository's marker, so a test of that behavior adds one.
+const asRepository = (d) => { const f = path.join(d, 'scripts/check.js'); if (!fs.existsSync(f)) fs.writeFileSync(f, '// the repository marker\n'); return d; };
 const EX = 'plans/example/wrenmoor-skip-cancel.md';
 const EXL = 'plans/example/wrenmoor-skip-cancel.ledger.json';
 const ex = (d, fn) => edit(d, EX, fn);
@@ -214,11 +217,41 @@ test('prose: the banned list is configurable', () => {
   mustFail(d, 'prose', 'widget');
 });
 test('prose: files listed as unchecked are skipped', () => {
-  const d = fresh();
+  const d = asRepository(fresh());
   edit(d, 'docs/publish-checklist.md', (t) => t + '\nThis — that.\n');
   mustPass(d);
   edit(d, 'scripts/check-process.config.json', (t) => { const c = JSON.parse(t); c.unchecked = []; return JSON.stringify(c); });
   mustFail(d, 'prose', 'docs/publish-checklist.md');
+});
+
+test('prose: text in straight or curly double quotes is exempt from banned words and spelling, and a word outside the quote still fails', () => {
+  let d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nThe client wrote "we leverage colour data" and \u201ca seamless colour story\u201d.\n');
+  mustPass(d);
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nThe client wrote "fine", and the colour is off.\n');
+  mustFail(d, 'prose', 'British spelling "colour", write "color"');
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nThe client wrote \u201cfine\u201d, and we leverage it.\n');
+  mustFail(d, 'prose', 'banned word "leverage"');
+});
+test('prose: the value of a Literal ask line is exempt from banned words and spelling, and other Brief lines are not', () => {
+  let d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nLiteral ask: leverage the colour data to show why members leave\n\n- **Literal ask:** we want to leverage colour\n');
+  mustPass(d);
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nDecision: leverage the colour data\n');
+  mustFail(d, 'prose', 'banned word "leverage"');
+});
+test('prose: without a manifest, outside the repository, only plans, memory and the shipped files are house style', () => {
+  const d = fresh(); fs.rmSync(path.join(d, 'scripts/check.js'), { force: true });
+  edit(d, 'src/CHANGELOG.md', () => '# Changes\n\nWe leverage a new flow \u2014 faster.\n');
+  mustPass(d);
+  edit(d, 'docs/cost.md', (t) => t + '\nWe leverage it.\n');
+  mustFail(d, 'prose', 'docs/cost.md');
+  assert.ok(!h.check(d).out.includes('src/CHANGELOG.md'), 'a file of the user\'s own was prose-checked');
+});
+test('budget: a CLAUDE.md or AGENTS.md that does not mention RULES.md fails, with the line to add', () => {
+  let d = fresh(); edit(d, 'CLAUDE.md', () => 'My own notes for Claude.\n');
+  mustFail(d, 'budget', 'Add this line to CLAUDE.md: ' + cp.POINTER_LINES['CLAUDE.md']);
+  d = fresh(); edit(d, 'AGENTS.md', () => '# Agents\n\nMy own notes.\n');
+  mustFail(d, 'budget', 'Add this line to AGENTS.md: ' + cp.POINTER_LINES['AGENTS.md']);
+  ['CLAUDE.md', 'AGENTS.md'].forEach((f) => assert.ok(fs.readFileSync(path.join(h.ROOT, f), 'utf8').includes(cp.POINTER_LINES[f]), f + ' does not hold the line check-process tells people to add'));
 });
 
 // ---- state
@@ -947,7 +980,7 @@ test('state: LOG.template.md holds the header and no entries', () => {
 
 // ---- folders the check must not read
 test('skip: generated and git-ignored folders, dot folders and engine output are not prose', () => {
-  const d = fresh(); const bad = 'Generated text with a dash — here.\n';
+  const d = asRepository(fresh()); const bad = 'Generated text with a dash — here.\n';
   ['out/report.md', 'build/x.md', 'node_modules/p/readme.md', '.carousel-venv/x.md', '.claude/notes/y.md', 'decks/q3.check/notes.md', 'scratch/z.md'].forEach((f) => edit(d, f, () => bad));
   edit(d, '.gitignore', (t) => t + '\nscratch/\n');
   mustPass(d);

@@ -9,6 +9,12 @@
 - **A release zip.** `node scripts/make-release-zip.js` builds `dist/carousel-os-<version>.zip`, holding exactly what `init` installs into an empty project, manifest included, so a later `update` works on the unzipped folder. A test unzips it and runs the process checks, the process tests, `generate-skills.js --confirm` and `doctor` on the result.
 - The README's Install section lists the four ways to install: the one skill, npm, the release zip and a clone. A new section, Where you're needed, names the three points where the process waits on you.
 - The reviewer agents are described as they are: read and search tools plus Bash for running checks, told to change nothing. The stage index names both reviewers.
+- **House style stays in its lane.** In an installed project the prose check reads only `plans/`, `memory/` and the files the package installed (the manifest says which; without one, the list of what ships). A file of your own, such as `src/CHANGELOG.md`, is never prose-checked, so it can no longer stop `carousel-start`. The repository itself still checks all its prose.
+- Text inside straight or curly double quotation marks, and the value of a Brief's `Literal ask:` line, is exempt from the banned-word and spelling checks, so a verbatim quote can keep its words. A word outside the quote on the same line is still checked.
+- `init` and `update` print the line to add when a `CLAUDE.md` or `AGENTS.md` of yours was kept and does not mention `RULES.md`, and `doctor` and `check-process.js` fail until it does.
+- The installed `.gitattributes` names only Carousel OS paths, so the rest of your repository keeps its own line endings.
+- `carousel-start` names `npx carousel-os init .` when a folder is not set up.
+- The README, the package description and the docs describe Carousel OS as a system for building presentations with an AI agent, with the number ledger as one part of it, and say what the number check really compares: each slide's printed numbers against that slide's ledger entry, both ways, without checking where on the slide a number sits.
 
 ## 1.0.0
 

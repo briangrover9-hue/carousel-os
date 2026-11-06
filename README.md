@@ -3,9 +3,9 @@
 [![npm](https://img.shields.io/npm/v/carousel-os)](https://www.npmjs.com/package/carousel-os) [![check](https://github.com/briangrover9-hue/carousel-os/actions/workflows/check.yml/badge.svg)](https://github.com/briangrover9-hue/carousel-os/actions/workflows/check.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ![A slide carousel tray of example slides about an invented city bike share, projecting one slide onto a screen beside the Carousel OS wordmark](https://raw.githubusercontent.com/briangrover9-hue/carousel-os/main/docs/hero.png)
-*Slides drawn by the author's own engine, which is not included.*
+*Example slides from the author's own engine, built with this process. The blueprint for building yours is included.*
 
-An agent process for building slide decks you can defend. It interviews you, storyboards and critiques the plan before any slide exists, traces every number to its source, and has a reviewer that didn't build the deck sign off. Includes a blueprint for your own design system, engine and agent team. Works in Claude Code, Cursor and Codex.
+An operating system for building presentations with an AI agent. It interviews you for the brief, plans the story slide by slide, critiques that plan before anything is drawn, builds the deck, checks every number against its source, has two reviewers who didn't build it try to break it, and remembers your corrections for the next deck. Works in Claude Code, Cursor and Codex.
 
 ## Install
 
@@ -24,37 +24,35 @@ Install Carousel OS in this project by running npx carousel-os init . and then r
 
 Then open that project in Claude Code, Cursor or Codex and start your first deck with `carousel-start` (in Claude Code, type `/carousel-start`). The package is on [npm](https://www.npmjs.com/package/carousel-os), and [Getting started](#getting-started) covers what happens next.
 
-Every slide gets one ledger entry, and every number printed on the slide is listed in it with its source, its window and a check that has to pass before the entry counts. A script then reads the slide text out of the deck file and compares it with the ledger.
-
 I built a deck by hand, swore I would never do it that way again, and turned the habits I had picked up into this process.
 
 ## Moments it is built for
 
-You tell the agent a number is wrong. It says it is fixed, and it is not. In Carousel OS an entry becomes `checked` only after someone recomputes the number from its source and writes down what they did, and a script opens the .pptx and compares the printed slide with the ledger.
+It built what you said instead of what you meant. The brief stage interviews you about the reader, the question and the sources before anything gets planned, and it is the only stage that asks questions.
 
-A slide carries a figure nobody can trace. Every number sits in the ledger with its source and window, and a number on a slide that the ledger lacks fails the check.
+The slides look fine and the argument does not land. The storyboard writes one headline per slide, the critique attacks that story from new angles before any slide exists, and the headlines read alone have to make the case.
 
-The check passes and the mistake is still there. A reviewer starts with fresh context, sees only the bar and the files, and tries to disprove the deck. It pastes the value it found for every number.
+You tell the agent a number is wrong. It says it is fixed, and it is not. In Carousel OS every number sits in the ledger with its source and window, and an entry becomes `checked` only after someone recomputes the number from its source and writes down what they did. A script opens the .pptx and compares each slide's numbers with that slide's ledger entry, so a figure nobody can trace fails the check.
+
+The check passes and the mistake is still there. Two reviewers who didn't build the deck start with fresh context, see only the bar and the files, and try to disprove it. One of them recomputes every number and pastes the value it found.
 
 You tell it the same thing for the third time. Each correction becomes a dated lesson, and a lesson corrected twice becomes a rule after you approve it.
 
-It looked done until someone else read it. Before anyone else sees it, the headlines read alone have to make the argument, and two fresh reviewers have to fail to break it.
-
 ## Who it is for
 
-People who ship decks with numbers in them: analysts, consultants, product and strategy leads, anyone who presents a readout to readers who will ask where a figure came from. It runs inside an agent such as Cursor, Codex or Claude Code and needs Node 20 or newer.
-
-## Two ways to use it
-
-- **You have a deck due.** Install the process as it ships and let it carry one deck from brief to review.
-- **You run a team.** Treat the process as the backbone and build your own pieces around it: your brand as a design system in code, an engine, the questions your team keeps getting asked, and connectors to your data. [Build your engine](docs/build-your-engine/README.md) and [the agent system](docs/build-your-engine/agent-system.md) are the blueprint, and the two reviewer agents in `agents/` are working examples to copy.
+Anyone who makes presentations with an AI agent and wants them built the way a good team builds them. Carousel OS gives the agent a whole system for a deck, from the brief interview to the fresh review, and it remembers what you corrected for the next one. Use it for a board update, a client readout, a pitch, a strategy review or an all-hands. If you have one deck due, run it as it ships. If you run a team, make it the backbone and add your own design system, slide engine and data connections: [Build your engine](docs/build-your-engine/README.md) and [the agent system](docs/build-your-engine/agent-system.md) are the blueprint, and the two reviewer agents in `agents/` are working examples to copy.
 
 ## What you get
 
-- A finished, checked deck in PowerPoint or Google Slides.
-- A claim ledger for it: one entry per slide, each number in it with its source and window, each entry marked checked only after someone recomputed it.
-- A plan file that records every stage, so you can read how the deck got made.
-- A memory that carries your corrections from one deck to the next.
+- A finished deck in PowerPoint or Google Slides that was briefed, storyboarded, critiqued, checked and reviewed before anyone else saw it.
+- A claim ledger with one entry per slide, listing every number on that slide with its source and window. An entry counts as checked only after someone recomputes the number. A script reads the deck file, including native chart values and number words like "six in ten", and fails a number a slide prints that its ledger entry lacks, or a ledger number its slide does not print. It does not check where on the slide a number sits.
+- A critique stage that attacks the storyboard from new angles before any slide is drawn, while a weak argument is still cheap to fix.
+- Two reviewers with fresh context who try to disprove the finished deck: one judges the argument against the bar, and one recomputes every number from its source and pastes the value it found.
+- A 77-item preflight checklist and short guides on design, writing and story structure, which the stages read as they work.
+- A plan file that records every stage, so anyone can read how the deck got made.
+- A memory that carries your corrections from one deck to the next. A correction made twice becomes a standing rule once you approve it.
+- A short run for small internal decks, which keeps all nine stages, the full brief, the check and the review, and runs one critique round instead of three.
+- For teams, a blueprint for the parts that make it yours: guides to a design system in code, a drawing kit and a scanner, a small working engine example with a scan script and a render script, and the two reviewer agents to copy.
 
 ## Getting started
 
@@ -88,6 +86,8 @@ You type nine commands, one at a time. No command starts the next, and each decl
 7. `carousel-review` hands the deck to two reviewers with fresh context who try to disprove it.
 8. `carousel-wrap` runs one more check, logs the session and records lessons.
 9. `carousel-handoff` writes the note the next session starts from.
+
+Every slide gets one ledger entry, and every number printed on the slide is listed in it with its source, its window and a check that has to pass before the entry counts. `carousel-check` then reads the text and native chart values out of the deck file and compares each slide with its ledger entry both ways: a number the slide prints must be in that entry, and a number in the entry must be printed on that slide. It does not check where on the slide a number sits, so two figures swapped within one slide still pass. A swap like that is left to the fidelity reviewer, who compares each recomputed value with what the slide prints.
 
 A single prompt would interpret the request, pick the story, find the numbers, draw the slides and grade itself in one pass, so its mistakes go into the deck with its own approval. [How it thinks](docs/how-it-thinks.md) explains what each piece of the process targets. A short internal deck can take the [short run](docs/short-run.md): the same nine stages with one critique round.
 
@@ -146,7 +146,7 @@ The exit code is 1, and the Check stage reports `plan FAIL` until a new Build fi
 
 ## Evidence you can read
 
-- [The plan](plans/example/wrenmoor-skip-cancel.md) holds the brief, storyboard, three critique rounds with their change lists, the pasted check output and the reviewer's evidence.
+- [The plan](plans/example/wrenmoor-skip-cancel.md) holds the brief, storyboard, three critique rounds with their change lists, the pasted check output and the reviewers' evidence.
 - [The ledger](plans/example/wrenmoor-skip-cancel.ledger.json) holds 16 numbers across 6 slides, each with its source and the check that confirmed it.
 - `node scripts/check-process.js` reads that plan as a state machine and opens the deck file. It fails when a report line is out of order or a printed number is missing from the ledger. It also fails when a deck changes after its check, or when a review passes without pasted evidence. `node tests/process/run.js` holds the broken variants it must reject, including a plan that passed every stage without doing the work.
 
@@ -161,7 +161,7 @@ You can build your own, or plug in one you already have. Register it in `carouse
 
 ## Time and tokens
 
-The full run is slow and uses many tokens. The review costs the most because the reviewer re-reads everything with no shared context. [Time and tokens](docs/cost.md) says where the tokens go and what you can trim. I have not measured what trimming saves. Run targeted checks while you work, then one complete check at the check stage and another at wrap.
+The full run is slow and uses many tokens. The review costs the most because the two reviewers re-read everything with no shared context. [Time and tokens](docs/cost.md) says where the tokens go and what you can trim. I have not measured what trimming saves. Run targeted checks while you work, then one complete check at the check stage and another at wrap.
 
 ## Limits
 
@@ -197,6 +197,8 @@ MIT. See the LICENSE file.
 
 - **[carousel-reviewer](agents/carousel-reviewer.md)**: tries to disprove the deck against the bar.
 - **[carousel-fidelity](agents/carousel-fidelity.md)**: recomputes every number on the slides from the ledger's sources.
+
+Both have read and search tools plus Bash for running checks, and both are told to change nothing.
 
 **Bookshelf**
 

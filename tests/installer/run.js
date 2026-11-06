@@ -1565,7 +1565,10 @@ test('init writes a .gitattributes (deck binary, text LF) and records it, but ne
   const t = tmp();
   eq(run(['init', t]).code, 0, 'init');
   const ga = fs.readFileSync(path.join(t, '.gitattributes'), 'utf8');
-  ['*.pptx binary', '* text=auto eol=lf'].forEach((l) => yes(ga.split('\n').includes(l), 'no "' + l + '" line'));
+  ['*.pptx binary', 'RULES.md text=auto eol=lf', 'plans/** text=auto eol=lf', 'memory/** text=auto eol=lf', '.agents/skills/carousel-build/** text=auto eol=lf',
+    '.claude/agents/carousel-reviewer.md text=auto eol=lf', 'scripts/check-process.js text=auto eol=lf'].forEach((l) => yes(ga.split('\n').includes(l), 'no "' + l + '" line'));
+  // Only Carousel OS paths: no rule may reach a file of the user's own elsewhere in the repository.
+  yes(!ga.split('\n').some((l) => /^\*\s/.test(l) || /^(scripts|tests|\.agents\/skills|\.claude\/skills|agents)\/\*\*/.test(l)), 'a rule reaches beyond Carousel OS paths:\n' + ga);
   eq(manifestOf(t).files['.gitattributes'], sha(ga), 'not recorded');
   const t2 = tmp();
   fs.writeFileSync(path.join(t2, '.gitattributes'), '* -text\n');
@@ -1574,6 +1577,52 @@ test('init writes a .gitattributes (deck binary, text LF) and records it, but ne
   eq(u.code, 0, u.out);
   eq(fs.readFileSync(path.join(t2, '.gitattributes'), 'utf8'), '* -text\n', 'the project\'s own .gitattributes changed');
   yes(!('.gitattributes' in manifestOf(t2).files), 'the project\'s own .gitattributes was recorded');
+});
+
+test('in an installed project, files of the user\'s own outside plans/ and memory/ are not house style, and plans/ and installed files still are', () => {
+  const t = tmp();
+  fs.writeFileSync(path.join(t, 'CLAUDE.md'), 'Read RULES.md first \u2014 then my own notes, which leverage colour.\n');
+  fs.mkdirSync(path.join(t, 'src'));
+  fs.writeFileSync(path.join(t, 'src', 'CHANGELOG.md'), '# Changes\n\nWe leverage a new flow \u2014 faster.\n');
+  fs.writeFileSync(path.join(t, 'notes.md'), 'A seamless colour plan.\n');
+  eq(run(['init', t]).code, 0, 'init');
+  const cpr = path.join(t, 'scripts', 'check-process.js');
+  let r = node(cpr, [], t);
+  eq(r.code, 0, 'check-process failed on the user\'s own files\n' + r.out);
+  eq(run(['doctor', t]).code, 0, 'doctor failed on the user\'s own files');
+  fs.writeFileSync(path.join(t, 'plans', 'notes.md'), 'We leverage the data.\n');
+  r = node(cpr, ['--only', 'prose'], t);
+  eq(r.code, 1, 'a banned word in plans/ passed\n' + r.out);
+  yes(/plans\/notes\.md:1: banned word "leverage"/.test(r.out), r.out);
+  fs.rmSync(path.join(t, 'plans', 'notes.md'));
+  fs.appendFileSync(path.join(t, 'bookshelf', 'README.md'), '\nWe leverage it.\n');
+  r = node(cpr, ['--only', 'prose'], t);
+  yes(r.code === 1 && /bookshelf\/README\.md:\d+: banned word "leverage"/.test(r.out), 'an installed file is no longer house style\n' + r.out);
+});
+
+test('a kept CLAUDE.md or AGENTS.md that does not mention RULES.md: init prints the line to add, and doctor and check-process fail until it is there', () => {
+  const t = tmp();
+  fs.writeFileSync(path.join(t, 'CLAUDE.md'), 'My claude file.\n');
+  fs.writeFileSync(path.join(t, 'AGENTS.md'), 'My agents file.\n');
+  const { POINTER_LINES } = require(path.join(ROOT, 'scripts', 'check-process.js'));
+  const i = run(['init', t]);
+  eq(i.code, 0, i.out);
+  ['CLAUDE.md', 'AGENTS.md'].forEach((f) => {
+    yes(i.out.includes('Add this line to ' + f + ': ' + POINTER_LINES[f]), 'init does not print the line for ' + f + ':\n' + i.out);
+    yes(fs.readFileSync(path.join(ROOT, f), 'utf8').includes(POINTER_LINES[f]), 'the shipped ' + f + ' does not hold the line');
+  });
+  let d = run(['doctor', t]);
+  eq(d.code, 1, 'doctor passed with no pointer to RULES.md\n' + d.out);
+  yes(/FAIL\s+CLAUDE\.md does not mention RULES\.md/.test(d.out) && d.out.includes(POINTER_LINES['CLAUDE.md']), d.out);
+  eq(node(path.join(t, 'scripts', 'check-process.js'), [], t).code, 1, 'check-process passed with no pointer to RULES.md');
+  fs.appendFileSync(path.join(t, 'CLAUDE.md'), POINTER_LINES['CLAUDE.md'] + '\n');
+  d = run(['doctor', t]);
+  eq(d.code, 1, 'doctor passed while AGENTS.md still lacks the pointer');
+  fs.appendFileSync(path.join(t, 'AGENTS.md'), POINTER_LINES['AGENTS.md'] + '\n');
+  d = run(['doctor', t]);
+  eq(d.code, 0, 'doctor after both lines were added\n' + d.out);
+  const u = run(['update', t]);
+  yes(!/Add this line/.test(u.out), 'update still prints the line after it was added:\n' + u.out);
 });
 
 test('generate-skills refuses to write through a symlinked folder that points outside the project, and writes nothing', () => {

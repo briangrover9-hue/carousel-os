@@ -1,6 +1,6 @@
 # Build your own engine
 
-Carousel OS ships the process: the rules, the nine stage commands, the plan, the claim ledger, a reviewer with fresh context, and memory with a lessons loop. It does not ship an engine. This guide shows how to build one in your own visual style, and the agent system around it. The decks it produces should hold up to a skeptical reader and look as if someone chose every element.
+Carousel OS ships the process: the rules, the nine stage commands, the plan, the claim ledger, two reviewers with fresh context, and memory with a lessons loop. It does not ship an engine. This guide shows how to build one in your own visual style, and the agent system around it. The decks it produces should hold up to a skeptical reader and look as if someone chose every element.
 
 I built my own engine over two months and 27 releases, and every rule in these pages came from a failure I met along the way. I have taken out my own visual identity, the clients and the specific values, and kept each principle with the moment a reader would feel it.
 

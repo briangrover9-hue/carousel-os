@@ -41,7 +41,7 @@ const STOP_TEMPLATE = 'Stopped at <start|brief|storyboard|critique|build|check|r
 const STAGES = [
   {
     name: 'carousel-start', id: 'start', report: 'Start report: plan <path> created; path <full|short>; handoff <read|none>; lessons loaded <N>.', guard: [],
-    must: { Guards: ['node scripts/install.js', 'Start never resumes a plan'], Steps: ['node scripts/check-process.js'] },
+    must: { Guards: ['npx carousel-os init .', 'Start never resumes a plan'], Steps: ['node scripts/check-process.js'] },
   },
   {
     name: 'carousel-brief', id: 'brief', report: 'Brief report: <N> questions asked, <M> answers recorded, <K> ASK markers open.', guard: ['Start report:'],
@@ -1144,6 +1144,17 @@ function analyzePlan(ctx, rel, text, example) {
 
 // ---------------------------------------------------------------- checks
 
+// CLAUDE.md and AGENTS.md are how an agent finds RULES.md. The installer keeps a pointer file you already had, so each
+// one must name RULES.md itself; when it does not, the line to add is the one the package ships in that file.
+const POINTER_LINES = {
+  'CLAUDE.md': 'Read `RULES.md` first: it is the one rules file for this repo.',
+  'AGENTS.md': 'The one rules file for this repo is `RULES.md`. Read it first, then run only the stage the human starts.',
+};
+function pointerProblems(root) {
+  return Object.keys(POINTER_LINES).filter((f) => { const t = readIf(path.join(root, f)); return t !== null && !/\bRULES\.md\b/.test(t); })
+    .map((f) => `${f} does not mention RULES.md, so the agent may never read the rules. Add this line to ${f}: ${POINTER_LINES[f]}`);
+}
+
 function budget(ctx) {
   const out = [];
   const c = ctx.config;
@@ -1162,6 +1173,7 @@ function budget(ctx) {
     const s = size(rel);
     if (s > c.stageMaxBytes) out.push(`${rel} is ${s} bytes, the cap is ${c.stageMaxBytes}`);
   });
+  pointerProblems(ctx.root).forEach((p) => out.push(p));
   const boot = size(BOOTSTRAP);
   if (boot !== null && boot > c.stageMaxBytes) out.push(`${BOOTSTRAP} is ${boot} bytes, the cap is ${c.stageMaxBytes}`);
   return out;
@@ -1352,7 +1364,7 @@ const blank = (m) => m.replace(/[^\n]/g, ' ');
 
 function spellingProblems(text, extraAllow) {
   const allow = AM_ALLOW.concat((extraAllow || []).map((s) => s.toLowerCase()));
-  let masked = scanLines(text).map((l) => (l.fence || l.fenced ? blank(l.line) : l.line.replace(/`[^`]*`/g, blank))).join('\n');
+  let masked = scanLines(text).map((l) => (l.fence || l.fenced ? blank(l.line) : maskQuoted(l.line.replace(/`[^`]*`/g, blank)))).join('\n');
   AM_QUOTED.forEach((re) => { masked = masked.replace(re, blank); });
   const low = masked.toLowerCase();
   const allowed = [];
@@ -1379,6 +1391,16 @@ function spellingProblems(text, extraAllow) {
 
 function stripInline(line) {
   return line.replace(/`[^`]*`/g, '');
+}
+
+// A verbatim quote keeps the words its speaker used, so the banned-word and spelling checks read past it: text inside
+// straight or curly double quotation marks, and the value of a Brief's `Literal ask:` line, which the brief stage
+// requires verbatim. Each quote is blanked to spaces, so a word outside it on the same line is still checked.
+const LITERAL_ASK = /^(\s*(?:[-*]\s+)?(?:\*\*)?Literal ask:(?:\*\*)?)(.*)$/;
+function maskQuoted(line) {
+  const m = LITERAL_ASK.exec(line);
+  const l = m ? m[1] + blank(m[2]) : line;
+  return l.replace(/"[^"\n]*"/g, blank).replace(/\u201c[^\u201d\n]*\u201d/g, blank);
 }
 
 // ---- scrub: nothing in shipped prose may describe a particular private engine.
@@ -1426,7 +1448,7 @@ function prose(ctx) {
   const words = ctx.config.bannedWords.map((w) => ({ w, re: new RegExp('(^|[^A-Za-z0-9])' + esc(w) + '(?![A-Za-z0-9])', 'i') }));
   const pats = ctx.config.bannedPatterns.map((p) => ({ p, re: new RegExp(p, 'i') }));
   const allowed = scrubAllowed(ctx);
-  ctx.prose.forEach((rel) => {
+  (ctx.house || ctx.prose).forEach((rel) => {
     const text = readIf(path.join(ctx.root, rel));
     scanLines(text).forEach((l) => {
       const where = `${rel}:${l.n}`;
@@ -1436,8 +1458,9 @@ function prose(ctx) {
       if (/(?<=\S) -{1,2} (?=\S)/.test(plain)) out.push(`${where}: spaced hyphen used as punctuation`);
       const rg = NUM_RANGE.exec(plain);
       if (rg) out.push(`${where}: hyphenated number range "${rg[0]}", write "${rg[0].replace('-', ' to ')}"`);
-      words.forEach((b) => { if (b.re.test(plain)) out.push(`${where}: banned word "${b.w}"`); });
-      pats.forEach((b) => { if (b.re.test(plain)) out.push(`${where}: banned pattern ${b.p}`); });
+      const said = maskQuoted(plain);
+      words.forEach((b) => { if (b.re.test(said)) out.push(`${where}: banned word "${b.w}"`); });
+      pats.forEach((b) => { if (b.re.test(said)) out.push(`${where}: banned pattern ${b.p}`); });
     });
     if (!rel.startsWith('docs/gallery/')) scrubProblems(rel, text, allowed).forEach((p) => out.push(p));
     spellingProblems(text, ctx.config.americanAllow).forEach((h) => out.push(`${rel}:${h.line}: British spelling "${h.word}", write "${h.better}"`));
@@ -1806,6 +1829,27 @@ function migrationHint(root) {
     .concat(renames.map((r) => `  - ${r}`));
 }
 
+// The files the house style (the prose check) reads. The Carousel OS repository itself (no manifest, and scripts/check.js
+// beside the others) checks every prose file, as it always has. In an installed project the user's own files are
+// theirs to write as they like: only plans/, memory/ and the files the package installed are checked. The manifest
+// says which files those are; without one, the list of what the package ships stands in for it.
+const SHIPPED_PROSE = ['RULES.md', 'cheatsheet.md', 'bookshelf/', 'docs/short-run.md', 'docs/cost.md', 'docs/how-it-thinks.md', 'docs/build-your-engine/', `${STAGE_DIR}/README.md`, `${skills.AGENTS}/README.md`];
+function houseScope(root, files) {
+  const manifestFile = path.join(root, '.carousel-install.json');
+  const hasManifest = fs.existsSync(manifestFile);
+  if (!hasManifest && fs.existsSync(path.join(root, 'scripts', 'check.js'))) return files;
+  const installed = new Set();
+  if (hasManifest) {
+    let m = null;
+    try { m = JSON.parse(fs.readFileSync(manifestFile, 'utf8')); } catch (e) { m = null; }
+    [m && m.files, m && m.generated, m && m.unverified].forEach((x) => { if (x && typeof x === 'object' && !Array.isArray(x)) Object.keys(x).forEach((k) => installed.add(k)); });
+  }
+  const shippedStage = (p) => skills.stageNames(root).some((n) => p.startsWith(`${STAGE_DIR}/${n}/`)) || skills.agentNames(root).some((f) => p === `${skills.AGENTS}/${f}`);
+  const inScope = (p) => p.startsWith('plans/') || p.startsWith('memory/') ||
+    (hasManifest ? installed.has(p) : SHIPPED_PROSE.some((s) => (s.endsWith('/') ? p.startsWith(s) : p === s)) || shippedStage(p));
+  return files.filter(inScope);
+}
+
 // Every check on a project folder, the same run the command line makes. doctor in install.js calls it too, so the two
 // never disagree. Returns { lines, failed, problems }, where problems maps a check name to its problem lines.
 function checkProject(root, o) {
@@ -1822,12 +1866,12 @@ function checkProject(root, o) {
   const skip = new Set([...SKIP_DIRS, ...ignoredNames(root)]);
   // walkMd skips dot folders, so the stage sources are added by name. The .claude/ copies are generated and skipped.
   const proseFiles = walkMd(root, skip).concat(walkAny(root, STAGE_DIR, '.md')).filter((p) => !config.unchecked.includes(p)).sort();
-  const result = runChecks({ root, config, today, prose: proseFiles, skip: opt.skip || [], only: opt.only || null });
+  const result = runChecks({ root, config, today, prose: proseFiles, house: houseScope(root, proseFiles), skip: opt.skip || [], only: opt.only || null });
   result.migration = result.failed ? migrationHint(root) : [];
   if (result.migration.length) result.lines.splice(result.lines.length - 1, 0, ...result.migration);
   return result;
 }
 
-module.exports = { BOOTSTRAP, regenAdvice, shq, migrationHint, LIMITS, DeckError, pptxCoreProperties, STAGES, reportRegex, validateLedger, validateHandoff, HANDOFF_LAYOUT, checkProject, validateEngineConfig, readPptxSlides, ledgerMd, checkTextProblem, spellingProblems, ratioPhrases, main };
+module.exports = { BOOTSTRAP, POINTER_LINES, pointerProblems, regenAdvice, shq, migrationHint, LIMITS, DeckError, pptxCoreProperties, STAGES, reportRegex, validateLedger, validateHandoff, HANDOFF_LAYOUT, checkProject, validateEngineConfig, readPptxSlides, ledgerMd, checkTextProblem, spellingProblems, ratioPhrases, main };
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));

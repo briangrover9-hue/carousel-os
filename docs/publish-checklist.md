@@ -19,7 +19,7 @@ The repository ships the process and a blueprint for building your own engine. I
 
 ## Repository settings
 
-- Description: "A deck process for agents, with a ledger for every number." (one line).
+- Description: "An operating system for building presentations with an AI agent." (one line).
 - Topics: `presentations`, `powerpoint`, `pptx`, `slides`, `deck`, `ai-agents`, `agent-skills`, `claude-code`, `workflow`.
 - Enable issues. Turn off the wiki.
 

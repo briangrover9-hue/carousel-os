@@ -1,11 +1,11 @@
 ---
 name: carousel-os
-description: "Set up Carousel OS and point the human to its first stage. Use when the human is building a slide deck someone will scrutinize, where every number has to trace to a source and a reviewer who did not build it has to pass it, or when the human asks to set up or install Carousel OS in a project."
+description: "Set up Carousel OS and point the human to its first stage. Use when the human is building a presentation with an AI agent and wants the story planned and critiqued, every number traced to a source and two reviewers who did not build it to pass it, or when the human asks to set up or install Carousel OS in a project."
 ---
 
 # carousel-os
 
-Carousel OS is an agent process for building slide decks you can defend. Nine stages carry a deck from brief to review, every number on a slide is traced to its source in a ledger, and a reviewer that did not build the deck has to pass it.
+Carousel OS is an operating system for building presentations with an AI agent. Nine stages carry a deck from brief to review, every number on a slide is traced to its source in a ledger, two reviewers who did not build the deck have to pass it, and your corrections carry to the next deck.
 
 This skill is the front door. It installs the whole system into a project and points the human to the first stage. It never runs a stage.
 

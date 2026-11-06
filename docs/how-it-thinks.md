@@ -1,6 +1,6 @@
 # How it thinks
 
-You ask an agent for a deck. It comes back fast, the slides look right, and then you find a number on slide 9 that disagrees with slide 3. You say so. The agent says it is fixed, and it is not. Carousel OS is the process I built to stop that sequence. It is nine commands, a plan file per deck, a claim ledger, a memory, and a few scripts that enforce what instructions alone cannot. An engine is optional: a program that draws slides or checks them, which you build or plug in through a small config file (`bookshelf/engine-contract.md`). The carousel-os repository holds a blueprint for building one in its build-your-engine docs.
+You ask an agent for a deck. It comes back fast, the slides look right, and then you find a number on slide 9 that disagrees with slide 3. You say so. The agent says it is fixed, and it is not. Carousel OS is the process I built to stop that sequence. The wrong number is only where it starts: the same habit of planning the story, attacking it early, checking it and keeping what you learned applies to the whole deck. It is nine commands, a plan file per deck, a claim ledger, a memory, and a few scripts that enforce what instructions alone cannot. An engine is optional: a program that draws slides or checks them, which you build or plug in through a small config file (`bookshelf/engine-contract.md`). The carousel-os repository holds a blueprint for building one in its build-your-engine docs.
 
 ## Why one prompt does not hold
 
@@ -8,7 +8,7 @@ A single prompt asks one pass to interpret the request, pick a story, find the n
 
 ## Same look, same thinking
 
-A deck should look the same every time, and it should think the same way every time. An engine handles the look: one set of type sizes, one palette, and scans that fail when a slide leaves them. The process handles the thinking. A brief settles the question before anyone draws, a ledger ties numbers to sources, each critique round attacks from a new angle, and a reviewer reads work they have not seen. A consistent look over inconsistent thinking gives you handsome decks that fall over in the room.
+A deck should look the same every time, and it should think the same way every time. An engine handles the look: one set of type sizes, one palette, and scans that fail when a slide leaves them. The process handles the thinking. A brief settles the question before anyone draws, a ledger ties numbers to sources, each critique round attacks from a new angle, and two reviewers read work they have not seen. A consistent look over inconsistent thinking gives you handsome decks that fall over in the room.
 
 ## What each mechanism is for
 
@@ -21,7 +21,7 @@ Each row starts from a moment you have probably felt.
 | Three review rounds find the same thing | Each round must declare an angle nobody has used |
 | A round reports progress and changes nothing | The change list and the count line |
 | A number on a slide has no source, or differs from it | The claim ledger, and a script that reads the deck file against it |
-| The check passes and the mistake is still there | A reviewer with fresh context who tries to disprove the deck |
+| The check passes and the mistake is still there | Two reviewers with fresh context who try to disprove the deck |
 | "Could not tell" gets reported as "all clear" | UNVERIFIABLE is its own verdict |
 | You tell it the same thing every week | The lessons loop |
 | You cannot find what you decided last month | A dated log of each session, kept apart from a wiki of facts that stay true |

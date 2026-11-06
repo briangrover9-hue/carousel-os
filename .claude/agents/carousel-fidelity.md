@@ -1,6 +1,6 @@
 ---
 name: carousel-fidelity
-description: "Fresh-context fidelity reviewer for carousel-review. Traces every number printed on the slides to the claim ledger and recomputes it from its source, returning PASS, REJECT or UNVERIFIABLE with pasted evidence. Use only when carousel-review starts it."
+description: "Fresh-context fidelity reviewer for carousel-review. Traces every number printed on the slides to the claim ledger and recomputes it from its source, returning PASS, REJECT or UNVERIFIABLE with pasted evidence. It has read and search tools plus Bash for running checks, and is told to change nothing. Use only when carousel-review starts it."
 tools: Read, Grep, Glob, Bash
 ---
 
