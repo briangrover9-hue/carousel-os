@@ -7,6 +7,16 @@
 
 An agent process for building slide decks you can defend. It interviews you, storyboards and critiques the plan before any slide exists, traces every number to its source, and has a reviewer that didn't build the deck sign off. Includes a blueprint for your own design system, engine and agent team. Works in Claude Code, Cursor and Codex.
 
+## Install
+
+Run this in a terminal, pointing it at the folder where you make decks:
+
+```
+npx carousel-os init path/to/your-project
+```
+
+Then open that project in Claude Code, Cursor or Codex and start your first deck with `carousel-start` (in Claude Code, type `/carousel-start`). It needs Node 20 or newer. The package is on [npm](https://www.npmjs.com/package/carousel-os), and everything it installs is listed under [Getting started](#getting-started).
+
 Every slide gets one ledger entry, and every number printed on the slide is listed in it with its source, its window and a check that has to pass before the entry counts. A script then reads the slide text out of the deck file and compares it with the ledger.
 
 I built a deck by hand, swore I would never do it that way again, and turned the habits I had picked up into this process.
