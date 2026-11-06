@@ -181,15 +181,24 @@ function realOf(p) {
     }
   }
   let real;
-  try { real = fs.realpathSync(probe); } catch (e) { return null; }
+  try { real = fs.realpathSync.native(probe); } catch (e) {
+    try { real = fs.realpathSync(probe); } catch (e2) { return null; }
+  }
   return path.join(real, ...rest);
+}
+// Whether real lies at or under top. Windows paths ignore case, so the comparison does too there.
+function within(real, top) {
+  const fold = (x) => (process.platform === 'win32' ? x.toLowerCase() : x);
+  const r = fold(real);
+  const t = fold(top);
+  return r === t || r.startsWith(t.endsWith(path.sep) ? t : t + path.sep);
 }
 // Why a write to rel would land outside the project, in the installer's words, or null when it stays inside.
 function outsideProblem(root, rel) {
   const top = realOf(root);
   const real = realOf(path.join(root, rel));
   if (top === null || real === null) return 'refusing to write outside the project: ' + path.join(root, rel) + ' cannot be resolved (a broken symlink?).';
-  if (real !== top && !real.startsWith(top + path.sep)) return 'refusing to write outside the project: ' + path.join(root, rel) + ' resolves to ' + real + '.';
+  if (!within(real, top)) return 'refusing to write outside the project: ' + path.join(root, rel) + ' resolves to ' + real + '.';
   return null;
 }
 
@@ -257,6 +266,8 @@ function regenCommand(root) { return require('./check-process.js').regenAdvice(r
 function shq(p) {
   const s = String(p);
   if (/^[A-Za-z0-9_\/.,:@%+=-]+$/.test(s)) return s;
+  // cmd.exe treats backslash and tilde as plain characters, so a Windows path with 8.3 short names (RUNNER~1) stays bare.
+  if (process.platform === 'win32' && /^[A-Za-z0-9_\/\\.,:@%+=~-]+$/.test(s)) return s;
   if (process.platform === 'win32') return '"' + s.replace(/"/g, '""') + '"';
   if (!/[$`"\\!]/.test(s)) return '"' + s + '"';
   return "'" + s.replace(/'/g, "'\\''") + "'";

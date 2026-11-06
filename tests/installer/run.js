@@ -11,6 +11,8 @@ const crypto = require('crypto');
 const ROOT = path.resolve(__dirname, '..', '..');
 const INSTALL = path.join(ROOT, 'scripts', 'install.js');
 const RUN_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'carousel-test-'));
+// The tools print paths as one shell word by this rule (double quotes on Windows), so expectations use it too.
+const { shq } = require(path.join(ROOT, 'scripts', 'check-process.js'));
 let failures = 0;
 let passed = 0;
 let seq = 0;
@@ -640,7 +642,7 @@ test('package.json lists only files that exist, names no engine, and carries the
 test('a mistyped command before a folder says the first word is not a command and names the folder', () => {
   const r = run(['frob', '.']);
   eq(r.code, 2, r.out);
-  yes(/"frob" is not a command, and "\." is a folder/.test(r.out) && r.out.includes('init ' + ROOT), r.out);
+  yes(/"frob" is not a command, and "\." is a folder/.test(r.out) && r.out.includes('init ' + shq(ROOT)), r.out);
 });
 
 test('leak-scan errors carry the leak-scan: prefix', () => {
@@ -904,9 +906,9 @@ test("the repro: a --no-agents install with files of yours, doctor's suggestion 
   yes(!/node scripts\/install\.js/.test(d.out), 'doctor still points at the project\'s own installer:\n' + d.out);
   const m = /your Carousel OS clone: (node <clone>\/scripts\/install\.js update \S+ --agents), or, once the package is published: npx carousel-os update \S+ --agents/.exec(d.out);
   yes(m, 'doctor does not print a command that runs the installer from a clone:\n' + d.out);
-  const args = m[1].replace('<clone>', ROOT).split(' ');
-  const follow = cp.spawnSync(args[0] === 'node' ? process.execPath : args[0], args.slice(1), { encoding: 'utf8', cwd: t });
-  eq(follow.status, 0, 'the suggestion failed:\n' + follow.stdout + follow.stderr);
+  // Followed as a person would: pasted into the platform's shell, from inside the project.
+  const follow = viaShell(m[1].replace('<clone>/scripts/install.js', shq(INSTALL)), t);
+  eq(follow.code, 0, 'the suggestion failed:\n' + follow.out);
   yes(fs.existsSync(path.join(t, skill('.claude/skills', 'carousel-build'))), 'the suggestion did not add the .claude/ copies');
   Object.keys(USER_FILES).forEach((rel) => yes(!(rel in manifestOf(t).files), rel + ' was recorded as the tool\'s own file'));
   const u = run(['update', t]);
@@ -969,7 +971,7 @@ test('doctor run from a clone names that clone in its suggestion', () => {
   eq(run(['init', t, '--no-agents']).code, 0, 'init');
   const r = run(['doctor', t]);
   eq(r.code, 0, r.out);
-  yes(r.out.includes('node ' + INSTALL + ' update ' + t + ' --agents'), r.out);
+  yes(r.out.includes('node ' + shq(INSTALL) + ' update ' + shq(t) + ' --agents'), r.out);
 });
 
 test("doctor's .claude/ count leaves out files of yours", () => {
@@ -1161,7 +1163,7 @@ test('update never rewrites a .claude/ copy you edited, even when its source is 
   const r = run(['update', t]);
   eq(r.code, 0, r.out);
   eq(fs.readFileSync(path.join(t, skill('.claude/skills', 'carousel-wrap')), 'utf8'), before, 'update rewrote the edited .claude/ copy');
-  yes(/kept\s+\.claude\/skills\/carousel-wrap\/SKILL\.md \(you edited it; to rebuild it from \.agents\/skills\/carousel-wrap\/SKILL\.md: run node \S+\/scripts\/generate-skills\.js --root \S+; it saves your copy as a \.carousel-backup file first\)/.test(r.out), r.out);
+  yes(/kept\s+\.claude\/skills\/carousel-wrap\/SKILL\.md \(you edited it; to rebuild it from \.agents\/skills\/carousel-wrap\/SKILL\.md: run node \S+[\\\/]scripts[\\\/]generate-skills\.js --root \S+; it saves your copy as a \.carousel-backup file first\)/.test(r.out), r.out);
   yes(!fs.readdirSync(path.join(t, '.claude/skills/carousel-wrap')).some((f) => f.includes('backup')), 'a backup was made without --overwrite');
   // --overwrite rebuilds it from the kept source and saves the edited copy first.
   const o = run(['update', t, '--overwrite']);
@@ -1578,13 +1580,14 @@ test('generate-skills refuses to write through a symlinked folder that points ou
   fs.writeFileSync(path.join(ext, 'SKILL.md'), 'OUTSIDE\n');
   const link = path.join(t, '.claude/skills/carousel-brief');
   fs.rmSync(link, { recursive: true });
-  fs.symlinkSync(ext, link);
+  // Windows without the symlink privilege refuses a directory symlink; a junction is the same trap there.
+  try { fs.symlinkSync(ext, link); } catch (e) { if (process.platform !== 'win32') throw e; fs.symlinkSync(ext, link, 'junction'); }
   const src = path.join(t, skill('.agents/skills', 'carousel-wrap'));
   fs.appendFileSync(src, '\nA change to regenerate.\n');
   const wrapCopy = fs.readFileSync(path.join(t, skill('.claude/skills', 'carousel-wrap')), 'utf8');
   const r = node(path.join(t, 'scripts', 'generate-skills.js'), [], t);
   eq(r.code, 1, r.out);
-  yes(/refusing to write outside the project: \S+carousel-brief\/SKILL\.md resolves to /.test(r.out), r.out);
+  yes(/refusing to write outside the project: \S+carousel-brief[\\/]SKILL\.md resolves to /.test(r.out), r.out);
   eq(fs.readdirSync(ext).join(','), 'SKILL.md', 'a file (a backup?) was written outside the project');
   eq(fs.readFileSync(path.join(ext, 'SKILL.md'), 'utf8'), 'OUTSIDE\n', 'the file outside the project changed');
   eq(fs.readFileSync(path.join(t, skill('.claude/skills', 'carousel-wrap')), 'utf8'), wrapCopy, 'it wrote inside the project before refusing');
@@ -1662,8 +1665,9 @@ function lostFiles(t, before) {
 // One shell word as printed: bare, "double quoted" or 'single quoted'.
 const WORD = `(?:"[^"]*"|'[^']*'|[^\\s;),"'<]+)`;
 // Run a printed command through a shell from a folder that is not the project.
+// shell: true is /bin/sh -c on POSIX and cmd.exe /d /s /c on Windows, the shell each platform's user pastes into.
 function viaShell(cmd, cwd) {
-  const r = cp.spawnSync('/bin/sh', ['-c', cmd], { encoding: 'utf8', cwd: cwd || os.tmpdir(), env: Object.assign({}, process.env, { PATH: path.dirname(process.execPath) + path.delimiter + process.env.PATH }) });
+  const r = cp.spawnSync(cmd, { shell: true, encoding: 'utf8', cwd: cwd || os.tmpdir(), env: Object.assign({}, process.env, { PATH: path.dirname(process.execPath) + path.delimiter + process.env.PATH }) });
   return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
 }
 
@@ -1687,7 +1691,7 @@ test('upgrade from ' + OLD + ' with an edited generate-skills.js (L5): check-pro
   const m = new RegExp('\\((node <clone>/scripts/generate-skills\\.js --root ' + WORD + ')\\)').exec(p.out);
   yes(m, 'check-process prints no generator command:\n' + p.out);
   // Follow it as printed, with <clone> filled in, through a shell from another folder.
-  const f = viaShell(m[1].replace('<clone>', ROOT));
+  const f = viaShell(m[1].replace('<clone>/scripts/generate-skills.js', shq(path.join(ROOT, 'scripts', 'generate-skills.js'))));
   eq(f.code, 0, 'the printed command failed:\n' + f.out);
   eq(lostFiles(t, before).join(', '), '', 'files lost by following check-process\'s generator advice');
   yes(fs.readFileSync(path.join(t, 'scripts', 'generate-skills.js'), 'utf8').includes('USER EDIT generate-skills'), 'the edited generator was changed');

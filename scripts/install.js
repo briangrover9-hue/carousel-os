@@ -116,7 +116,7 @@ function warn(msg) { process.stderr.write(msg + '\n'); }       // errors go to s
 
 // Refuse to write through a symlink: the target folder itself, or any folder or file under it on the way to a path.
 function assertNoSymlink(target, rel) {
-  const parts = [''].concat(rel ? rel.split('/') : []);
+  const parts = [''].concat(rel ? rel.split(/[\\/]/) : []);
   let cur = target;
   parts.forEach((part) => {
     cur = part ? path.join(cur, part) : cur;
@@ -139,15 +139,31 @@ function realOf(p) {
     }
   }
   let real;
-  try { real = fs.realpathSync(probe); } catch (e) { throw new InstallError('cannot resolve ' + probe + ' (a broken symlink?). Nothing was written there.'); }
+  try { real = nativeReal(probe); } catch (e) { throw new InstallError('cannot resolve ' + probe + ' (a broken symlink?). Nothing was written there.'); }
   return path.join(real, ...rest);
+}
+// The native resolver gives one spelling for one folder: on Windows it expands 8.3 short names (RUNNER~1) and follows
+// junctions, so a project under a short-name temp path and its own files always compare as the same tree.
+function nativeReal(p) { try { return fs.realpathSync.native(p); } catch (e) { return fs.realpathSync(p); } }
+// Whether real lies at or under root. Windows paths ignore case, so the comparison does too there.
+function within(real, root) {
+  const fold = (x) => (process.platform === 'win32' ? x.toLowerCase() : x);
+  const r = fold(real);
+  const top = fold(root);
+  return r === top || r.startsWith(top.endsWith(path.sep) ? top : top + path.sep);
+}
+
+// Whether two paths name the same folder once resolved (case aside on Windows).
+function samePlace(a, b) {
+  const fold = (x) => (process.platform === 'win32' ? x.toLowerCase() : x);
+  return fold(realOf(a)) === fold(realOf(b));
 }
 
 // Refuse a write whose real location falls outside the project, whatever symlinks sit on the way.
 function assertInside(target, rel) {
   const root = realOf(target);
   const real = realOf(path.join(target, rel));
-  if (real !== root && !real.startsWith(root + path.sep)) throw new InstallError('refusing to write outside the project: ' + path.join(target, rel) + ' resolves to ' + real + '.');
+  if (!within(real, root)) throw new InstallError('refusing to write outside the project: ' + path.join(target, rel) + ' resolves to ' + real + '.');
 }
 
 // Every write and removal goes through both checks.
@@ -209,11 +225,13 @@ function packageFilter() {
 function trackedFilter() {
   if (!fs.existsSync(path.join(SOURCE, '.git'))) return () => true;
   const cp = require('child_process');
-  const top = cp.spawnSync('git', ['-C', SOURCE, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' });
-  if (top.error || top.status !== 0 || realOf(top.stdout.trim()) !== realOf(SOURCE)) return () => true;
+  // An empty prefix means SOURCE is the top of its clone. Asking git this way compares no path spellings, which on
+  // Windows differ (forward slashes, 8.3 short names, drive letter case) for the same folder.
+  const top = cp.spawnSync('git', ['-C', SOURCE, 'rev-parse', '--show-prefix'], { encoding: 'utf8' });
+  if (top.error || top.status !== 0 || top.stdout.trim() !== '') return () => true;
   const ls = cp.spawnSync('git', ['-C', SOURCE, 'ls-files', '-z', '--cached'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   if (ls.error || ls.status !== 0) return () => true;
-  const tracked = new Set(ls.stdout.split('\0').filter(Boolean));
+  const tracked = new Set(ls.stdout.split('\0').filter(Boolean).map((f) => f.replace(/\\/g, '/')));
   return (rel) => tracked.has(rel);
 }
 
@@ -324,7 +342,7 @@ function parseArgs(argv) {
 // install would record the project's own files (your skills, your plans) as the tool's, for a later update to delete.
 function assertRealSource(target) {
   const again = 'Run the installer from your Carousel OS clone (node <clone>/scripts/install.js ...) or from the npm package (npx carousel-os ...).';
-  if (realOf(SOURCE) === realOf(target)) throw new InstallError('install: refusing to install a folder into itself (' + target + ' is where this installer lives). ' + again);
+  if (samePlace(SOURCE, target)) throw new InstallError('install: refusing to install a folder into itself (' + target + ' is where this installer lives). ' + again);
   if (fs.existsSync(path.join(SOURCE, MANIFEST))) throw new InstallError('install: refusing to run from an installed project (' + SOURCE + ' has ' + MANIFEST + '), because it would record that project\'s own files as the tool\'s. ' + again);
 }
 
@@ -565,7 +583,7 @@ function filesCalledByCommands(target) {
 // copy, which refuses to run (it would treat the project as the source). Run from a clone, doctor names that clone.
 function installerCommand(sub, target, extra) {
   const tail = sub + ' ' + checks.shq(path.resolve(target)) + (extra ? ' ' + extra : '');
-  const fromClone = realOf(SOURCE) !== realOf(target) && !fs.existsSync(path.join(SOURCE, MANIFEST));
+  const fromClone = !samePlace(SOURCE, target) && !fs.existsSync(path.join(SOURCE, MANIFEST));
   if (fromClone) return 'node ' + checks.shq(path.join(SOURCE, 'scripts', 'install.js')) + ' ' + tail;
   return 'run the installer from your Carousel OS clone: node <clone>/scripts/install.js ' + tail + ', or, once the package is published: npx carousel-os ' + tail;
 }

@@ -1567,6 +1567,8 @@ const CHECK_NAMES = ['budget', 'deadrefs', 'wiki', 'contract', 'skills', 'prose'
 function shq(p) {
   const s = String(p);
   if (/^[A-Za-z0-9_\/.,:@%+=-]+$/.test(s)) return s;
+  // cmd.exe treats backslash and tilde as plain characters, so a Windows path with 8.3 short names (RUNNER~1) stays bare.
+  if (process.platform === 'win32' && /^[A-Za-z0-9_\/\\.,:@%+=~-]+$/.test(s)) return s;
   if (process.platform === 'win32') return '"' + s.replace(/"/g, '""') + '"';
   if (!/[$`"\\!]/.test(s)) return '"' + s + '"';
   return "'" + s.replace(/'/g, "'\\''") + "'";
@@ -1579,7 +1581,12 @@ function shq(p) {
 // itself (no manifest, and scripts/check.js beside the others) is its own source.
 const TOOL_HOME = path.resolve(__dirname, '..');
 const GENERATOR = 'scripts/generate-skills.js';
-function realish(p) { try { return fs.realpathSync(p); } catch (e) { return path.resolve(p); } }
+// The native resolver expands Windows 8.3 short names, and case is folded there, so one folder has one spelling.
+function realish(p) {
+  let r;
+  try { r = fs.realpathSync.native(p); } catch (e) { try { r = fs.realpathSync(p); } catch (e2) { r = path.resolve(p); } }
+  return process.platform === 'win32' ? r.toLowerCase() : r;
+}
 function lfTextOf(f) { try { return fs.readFileSync(f, 'utf8').replace(/\r\n/g, '\n'); } catch (e) { return null; } }
 function generatorState(root) {
   const file = path.join(root, GENERATOR);
