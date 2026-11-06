@@ -5,7 +5,7 @@ Slug: wrenmoor-skip-cancel
 Path: full
 Rounds: 3
 
-Wrenmoor Gyms is an invented gym chain, and every figure here is made up. A missed week is a calendar week with no visit to any club. This example was built without an engine. Its deck is a plain text deck, one text box per slide, made with a short script, so there is no design to judge and no tool results below. It took the rubric path, and its hashes are real. The handoff it wrote sits beside this file in `wrenmoor-skip-cancel.handoff.md`. The three exports it cites are invented too, and they sit in `plans/example/exports/`, so each path below that starts with exports/ is read from this folder. `plans/example/exports/make-exports.js` writes them from a fixed seed, and anyone can recount every number from them.
+Wrenmoor Gyms is an invented gym chain, and every figure here is made up. A missed week is a calendar week with no visit to any club. This example was built without an engine. Its deck is a plain text deck, one text box per slide, made with a short script, so there is no design to judge and no tool results below. It took the rubric path, and its hashes are real. The handoff it wrote sits beside this file in `wrenmoor-skip-cancel.handoff.md`. The three exports it cites are invented too, and they sit in `plans/example/exports/`, and each path below that starts with exports/ is relative to `plans/example/`. `plans/example/exports/make-exports.js` writes them from a fixed seed, and anyone can recount every number from them.
 
 ## Request
 

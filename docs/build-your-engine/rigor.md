@@ -18,7 +18,7 @@ Why: the test passes, the fix ships, and the same defect comes back, because who
 
 Why: a suite can exit clean while running zero cases. A fixture that cannot fail is worse than none, because it reports coverage it does not give.
 
-Carousel OS ran this round on its own checks before 1.0.0. Deliberate breaks went from 109 of 150 caught to 139 of 148 caught. The nine still missed are judgment calls that no script can see, the kind `RULES.md`, "Enforcement", hands to a person or the fresh-context reviewer.
+Carousel OS ran this round on its own checks before 1.0.0. Deliberate breaks went from 109 of 150 caught to 139 of 148 caught. The nine still missed are judgment calls no script can see, which the Enforcement section of `RULES.md` leaves to a person or the fresh-context reviewer.
 
 ## A golden gallery
 
