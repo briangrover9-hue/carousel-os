@@ -1,9 +1,11 @@
 # Carousel OS
 
+[![npm](https://img.shields.io/npm/v/carousel-os)](https://www.npmjs.com/package/carousel-os) [![check](https://github.com/briangrover9-hue/carousel-os/actions/workflows/check.yml/badge.svg)](https://github.com/briangrover9-hue/carousel-os/actions/workflows/check.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 ![A slide carousel tray of example slides about an invented city bike share, projecting one slide onto a screen beside the Carousel OS wordmark](https://raw.githubusercontent.com/briangrover9-hue/carousel-os/main/docs/hero.png)
 *Slides drawn by the author's own engine, which is not included.*
 
-A deck process for agents, with a ledger for every number.
+An agent process for building slide decks you can defend. It interviews you, storyboards and critiques the plan before any slide exists, traces every number to its source, and has a reviewer that didn't build the deck sign off. Includes a blueprint for your own design system, engine and agent team. Works in Claude Code, Cursor and Codex.
 
 Every slide gets one ledger entry, and every number printed on the slide is listed in it with its source, its window and a check that has to pass before the entry counts. A script then reads the slide text out of the deck file and compares it with the ledger.
 
@@ -117,7 +119,7 @@ The exit code is 1, and the Check stage reports `plan FAIL` until a new Build fi
 ## Evidence you can read
 
 - [The plan](plans/example/wrenmoor-skip-cancel.md) holds the brief, storyboard, three critique rounds with their change lists, the pasted check output and the reviewer's evidence.
-- [The ledger](plans/example/wrenmoor-skip-cancel.ledger.json) holds 12 numbers across 6 slides, each with its source and the check that confirmed it.
+- [The ledger](plans/example/wrenmoor-skip-cancel.ledger.json) holds 16 numbers across 6 slides, each with its source and the check that confirmed it.
 - `node scripts/check-process.js` reads that plan as a state machine and opens the deck file. It fails when a report line is out of order or a printed number is missing from the ledger. It also fails when a deck changes after its check, or when a review passes without pasted evidence. `node tests/process/run.js` holds the broken variants it must reject, including a plan that passed every stage without doing the work.
 
 ## Bring your own engine
