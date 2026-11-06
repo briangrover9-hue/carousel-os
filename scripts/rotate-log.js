@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// rotate-log: move log entries older than the current ISO week into memory/history/YYYY-Www.md.
+// rotate-log: move log entries dated before this ISO week into memory/history/YYYY-Www.md.
 //
 //   node scripts/rotate-log.js [--log memory/LOG.md] [--history memory/history]
 //                              [--today YYYY-MM-DD] [--dry-run]
@@ -98,7 +98,7 @@ function rotate(text, today) {
   return { kept: renderLog(parsed.preamble, keep), moves, moved };
 }
 
-// Merge moved entries into an existing history file's text, newest first, skipping exact duplicates.
+// Merge moved entries into an existing history file's text, newest at the top, skipping exact duplicates.
 function mergeHistory(existingText, key, newEntries) {
   let existing = [];
   if (existingText) {
@@ -125,7 +125,7 @@ function checkLogText(text) {
   }
   for (let i = 1; i < parsed.entries.length; i++) {
     if (parsed.entries[i].date > parsed.entries[i - 1].date) {
-      errors.push(`entries are not newest first: ${parsed.entries[i].date} (line ${parsed.entries[i].line}) follows ${parsed.entries[i - 1].date}`);
+      errors.push(`entries are out of order, the newest must sit at the top: ${parsed.entries[i].date} (line ${parsed.entries[i].line}) follows ${parsed.entries[i - 1].date}`);
     }
   }
   return errors;
@@ -137,7 +137,7 @@ function localToday() {
 }
 
 const HELP = [
-  'rotate-log: move log entries older than the current ISO week into memory/history/YYYY-Www.md.',
+  'rotate-log: move log entries dated before this ISO week into memory/history/YYYY-Www.md.',
   '  node scripts/rotate-log.js [--log memory/LOG.md] [--history memory/history] [--today YYYY-MM-DD] [--dry-run]',
   'An entry starts at "## YYYY-MM-DD <slug>". A "## " heading that cannot be dated stops the run and changes nothing.',
   'Exit 0 on success, 2 on a bad argument, a missing log or an undatable heading.',

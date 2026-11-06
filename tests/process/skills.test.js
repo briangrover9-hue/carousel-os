@@ -9,7 +9,8 @@ const write = (d) => h.node(GEN, ['--root', d], d);
 const confirm = (d) => h.node(GEN, ['--confirm', '--root', d], d);
 // A copy of the repository with every derived file written, whatever the copy started with.
 const fresh = () => { const d = h.copyRepo(); assert.strictEqual(write(d).code, 0); return d; };
-const NINE = ['start', 'brief', 'storyboard', 'challenge-plan', 'build', 'check', 'review', 'wrap', 'handoff'].map((n) => `carousel-${n}`);
+// The stages come from the one list the package ships.
+const NINE = gen.shipped(h.ROOT).stages;
 
 test('this folder itself has no drift', () => {
   // A project installed with --no-agents has no .claude/ copies on purpose, so only the repository is held to them.
@@ -34,10 +35,33 @@ test('every stage has front matter with its name, its Job sentence and manual-on
   });
 });
 
+test('a skill of your own beside the stages is never read, checked or written', () => {
+  const d = fresh();
+  const text = '# my-tool\n\nMine, with no front matter.\n';
+  edit(d, '.agents/skills/my-tool/SKILL.md', () => text);
+  assert.deepStrictEqual(gen.stageNames(d), NINE.slice().sort());
+  assert.strictEqual(write(d).code, 0);
+  const r = confirm(d);
+  assert.strictEqual(r.code, 0, r.out);
+  assert.strictEqual(fs.readFileSync(path.join(d, '.agents/skills/my-tool/SKILL.md'), 'utf8'), text);
+  assert.ok(!fs.existsSync(path.join(d, '.agents/skills/my-tool/agents')) && !fs.existsSync(path.join(d, '.claude/skills/my-tool')));
+});
+
+test('a carousel-* folder the list does not name, such as a retired stage you kept, is never a stage', () => {
+  const d = fresh();
+  edit(d, '.agents/skills/carousel-challenge-plan/SKILL.md', () => '# carousel-challenge-plan\n\nKept from an older version.\n');
+  assert.deepStrictEqual(gen.stageNames(d), NINE.slice().sort());
+  assert.strictEqual(write(d).code, 0);
+  assert.ok(!fs.existsSync(path.join(d, '.agents/skills/carousel-challenge-plan/agents')) && !fs.existsSync(path.join(d, '.claude/skills/carousel-challenge-plan')));
+  const r = confirm(d);
+  assert.strictEqual(r.code, 0, r.out);
+});
+
 test('Codex gets an openai.yaml that turns off implicit invocation, and Claude Code gets byte-identical copies', () => {
   const d = fresh();
   NINE.forEach((n) => {
-    assert.strictEqual(fs.readFileSync(path.join(d, `.agents/skills/${n}/agents/openai.yaml`), 'utf8'), 'policy:\n  allow_implicit_invocation: false\n');
+    // A CRLF checkout holds the same text; generate-skills leaves it as it is.
+    assert.strictEqual(fs.readFileSync(path.join(d, `.agents/skills/${n}/agents/openai.yaml`), 'utf8').replace(/\r\n/g, '\n'), 'policy:\n  allow_implicit_invocation: false\n');
     assert.ok(fs.readFileSync(path.join(d, `.agents/skills/${n}/SKILL.md`)).equals(fs.readFileSync(path.join(d, `.claude/skills/${n}/SKILL.md`))), n);
   });
   gen.agentNames(d).forEach((f) => assert.ok(fs.readFileSync(path.join(d, 'agents', f)).equals(fs.readFileSync(path.join(d, '.claude/agents', f))), f));
@@ -46,19 +70,73 @@ test('Codex gets an openai.yaml that turns off implicit invocation, and Claude C
 test('--confirm fails on an edited copy, a stale description, a missing yaml, a changed agent and a stale folder', () => {
   const cases = [
     (d) => edit(d, '.claude/skills/carousel-build/SKILL.md', (t) => t + '\nlocal edit\n'),
-    (d) => edit(d, '.agents/skills/carousel-build/SKILL.md', (t) => t.replace(/^Job: build/m, 'Job: assemble')),
+    // Whatever the Job line says, changing its first sentence changes the description the copies were made from.
+    (d) => edit(d, '.agents/skills/carousel-build/SKILL.md', (t) => t.replace(/^Job: (.*)$/m, (line, rest) => `Job: Rewritten ${rest}`)),
     (d) => fs.unlinkSync(path.join(d, '.agents/skills/carousel-wrap/agents/openai.yaml')),
     (d) => edit(d, '.agents/skills/carousel-wrap/SKILL.md', (t) => t.replace('disable-model-invocation: true', 'disable-model-invocation: false')),
     (d) => edit(d, 'agents/carousel-reviewer.md', (t) => t + '\nnew line\n'),
-    (d) => edit(d, '.claude/skills/carousel-polish/SKILL.md', () => '# carousel-polish\n'),
+    // A copy left behind for a stage stages.json retired.
+    (d) => edit(d, '.claude/skills/carousel-challenge-plan/SKILL.md', () => '# carousel-challenge-plan\n'),
   ];
   cases.forEach((mutate, i) => {
     const d = fresh();
+    // These cases test the tool's own copies. In an installed project, a copy the manifest never recorded is the
+    // user's and is left alone, so drop the manifest and every .claude/ file counts as the tool's.
+    fs.rmSync(path.join(d, '.carousel-install.json'), { force: true });
     mutate(d);
     const r = confirm(d);
     assert.strictEqual(r.code, 1, `case ${i}: ${r.out}`);
     assert.ok(r.out.includes('FAIL generate-skills'), `case ${i}: ${r.out}`);
   });
+});
+
+// The .claude/ copies the tool itself writes in d, as manifest paths.
+function claudeFiles(d) {
+  return gen.stageNames(d).map((n) => `.claude/skills/${n}/SKILL.md`).concat(gen.agentNames(d).map((f) => `.claude/agents/${f}`));
+}
+
+test('in an installed project, a carousel-* skill or agent of your own is yours; a leftover of a retired stage the tool wrote is stale', () => {
+  const d = fresh();
+  const m = { files: {}, generated: {} };
+  claudeFiles(d).forEach((rel) => { m.generated[rel] = 'x'; });
+  // A copy the tool once wrote for a stage stages.json lists as retired.
+  edit(d, '.claude/skills/carousel-challenge-plan/SKILL.md', () => '# carousel-challenge-plan\n');
+  m.generated['.claude/skills/carousel-challenge-plan/SKILL.md'] = 'x';
+  fs.writeFileSync(path.join(d, '.carousel-install.json'), JSON.stringify(m));
+  // Two of your own, which no manifest entry mentions.
+  edit(d, '.claude/skills/carousel-mine/SKILL.md', () => '# carousel-mine\n');
+  edit(d, '.claude/agents/carousel-myagent.md', () => 'my agent\n');
+  let r = write(d);
+  assert.ok(/stale\s+\.claude\/skills\/carousel-challenge-plan/.test(r.out), r.out);
+  assert.ok(!/carousel-mine|carousel-myagent/.test(r.out), r.out);
+  r = confirm(d);
+  assert.strictEqual(r.code, 1, r.out);
+  assert.ok(r.out.includes('.claude/skills/carousel-challenge-plan has no source'), r.out);
+  assert.ok(!/carousel-mine|carousel-myagent/.test(r.out), r.out);
+  fs.rmSync(path.join(d, '.claude/skills/carousel-challenge-plan'), { recursive: true });
+  r = confirm(d);
+  assert.strictEqual(r.code, 0, r.out);
+  assert.strictEqual(fs.readFileSync(path.join(d, '.claude/skills/carousel-mine/SKILL.md'), 'utf8'), '# carousel-mine\n');
+  assert.strictEqual(fs.readFileSync(path.join(d, '.claude/agents/carousel-myagent.md'), 'utf8'), 'my agent\n');
+});
+
+test('a carousel-* name stages.json does not list is never stale, even when a poisoned manifest records it', () => {
+  const d = fresh();
+  const m = { files: {}, generated: {} };
+  claudeFiles(d).forEach((rel) => { m.generated[rel] = 'x'; });
+  edit(d, '.claude/skills/carousel-mine/SKILL.md', () => '# carousel-mine\n');
+  edit(d, '.claude/agents/carousel-myagent.md', () => 'my agent\n');
+  // An older installer recorded both as its own, before any update ran.
+  m.files['.claude/skills/carousel-mine/SKILL.md'] = 'x';
+  m.generated['.claude/agents/carousel-myagent.md'] = 'x';
+  fs.writeFileSync(path.join(d, '.carousel-install.json'), JSON.stringify(m));
+  let r = write(d);
+  assert.strictEqual(r.code, 0, r.out);
+  assert.ok(!/carousel-mine|carousel-myagent/.test(r.out), r.out);
+  r = confirm(d);
+  assert.strictEqual(r.code, 0, r.out);
+  assert.ok(!/carousel-mine|carousel-myagent/.test(r.out), r.out);
+  assert.strictEqual(fs.readFileSync(path.join(d, '.claude/skills/carousel-mine/SKILL.md'), 'utf8'), '# carousel-mine\n');
 });
 
 test('a write run repairs drift in the derived files and leaves the body alone', () => {

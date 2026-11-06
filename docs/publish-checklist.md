@@ -25,6 +25,6 @@ The repository ships the process and a blueprint for building your own engine. I
 
 ## First release
 
-- Tag `v0.1.0` on the commit you publish.
+- Tag `v1.0.0` on the commit you publish.
 - Write release notes from `memory/LOG.md` and the changes in the README.
 - After publishing to npm (if you do), confirm `npx carousel-os doctor` runs in an empty folder.

@@ -63,7 +63,7 @@ test('headline length: within 10 percent of the limit is a CANDIDATE and does no
   eq(r.code, 0, r.out); eq(r.last, 'scan: 0 FAIL, 1 CANDIDATE');
 });
 test('headline length: with no named headline, the first sentence of the first text is the headline', () => {
-  const long = 'Members who miss two weeks in a row cancel at three times the base rate of everyone else here. Source: file.';
+  const long = 'Members who miss two weeks in a row cancel at three times the rate of every other member here. Source: file.';
   let r = scan(deck([slide([shape({ text: long })])]));
   eq(r.code, 1, r.out);
   r = scan(deck([slide([shape({ text: 'A short claim. ' + 'z'.repeat(200) })])]));
@@ -182,11 +182,21 @@ if (process.platform !== 'win32') {
     const cmd = cfg.engine.scan.replace('{deck}', 'plans/example/wrenmoor-skip-cancel.pptx').replace('{out}', out);
     const r = cp.spawnSync('sh', ['-c', cmd], { cwd: ROOT, encoding: 'utf8' });
     eq(r.status, 1, r.stdout);
-    eq(r.stdout.trim().split('\n').pop(), 'scan: 3 FAIL, 1 CANDIDATE');
+    eq(r.stdout.trim().split('\n').pop(), 'scan: 3 FAIL, 0 CANDIDATE');
     const readme = fs.readFileSync(path.join(EX, 'README.md'), 'utf8');
     r.stdout.trim().split('\n').forEach((line) => yes(readme.includes(line), 'the README output does not hold this line: ' + line));
   });
 }
+
+test("the README's real output block is exactly what scan.js and render.js print on the worked example", () => {
+  const deck = path.join(ROOT, 'plans', 'example', 'wrenmoor-skip-cancel.pptx');
+  const out = tmp();
+  const lines = [SCAN, RENDER].map((s) => cp.spawnSync(process.execPath, [s, deck, out], { encoding: 'utf8' }).stdout.trimEnd()).join('\n');
+  const readme = fs.readFileSync(path.join(EX, 'README.md'), 'utf8');
+  const m = /The real output:\n\n```\n([\s\S]*?)\n```/.exec(readme);
+  yes(m, 'no real output block in the README');
+  eq(m[1], lines, 'the README block');
+});
 
 fs.rmSync(RUN_DIR, { recursive: true, force: true });
 console.log(`\nexample scanner tests: ${passed} passed, ${failed} failed`);

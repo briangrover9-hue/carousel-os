@@ -17,19 +17,19 @@ Each row starts from a moment you have probably felt.
 | The moment | What stops it |
 |---|---|
 | You skipped the interview and the deck answers a different question | A stage declines to run without the previous stage's report line |
-| The agent stalls on a question halfway through the build, or guesses without telling you | The brief is the only interview, and later stages log each guess under Deviations |
+| The agent stalls on a question halfway through the build, or guesses without telling you | The brief is the only interview, and later stages log each guess under Calls made |
 | Three review rounds find the same thing | Each round must declare an angle nobody has used |
-| A round reports progress and changes nothing | The diff summary and the count line |
+| A round reports progress and changes nothing | The change list and the count line |
 | A number on a slide has no source, or differs from it | The claim ledger, and a script that reads the deck file against it |
 | The check passes and the mistake is still there | A reviewer with fresh context who tries to disprove the deck |
 | "Could not tell" gets reported as "all clear" | UNVERIFIABLE is its own verdict |
 | You tell it the same thing every week | The lessons loop |
-| You cannot find what you decided last month | A log of what happened, kept apart from a wiki of what you know |
-| The rules file grows until nobody reads it | Byte caps, and checks for dead references and prose |
+| You cannot find what you decided last month | A dated log of each session, kept apart from a wiki of facts that stay true |
+| Rules pile up past what anyone reads | Byte caps, and checks for dead references and prose |
 
 ## Where the agent still does the work
 
-The agent finds the story, chooses the evidence, writes the headlines and builds the slides. The process leaves those choices to the agent and makes them visible and checkable. You get a loop you can trust, and your part stays small: you read the brief back, skim the Deviations, glance at each round's diff summary, and decide what to do about a REJECT.
+The agent finds the story, chooses the evidence, writes the headlines and builds the slides. The process leaves those choices to the agent and makes them visible and checkable. You get a loop you can trust, and your part stays small: you read the brief back, skim the Calls made, glance at each round's change list, and decide what to do about a REJECT.
 
 ## Limits
 

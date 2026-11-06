@@ -3,7 +3,7 @@
   "window": "recent",
   "slides": [
     {
-      "id": "s01", "kind": "claim", "claim": "Sales are up.", "source": "internal data", "window": "recent",
+      "id": "s01", "kind": "claim", "claim": "Signups are up.", "source": "internal data", "window": "recent",
       "numbers": [ { "value": "42%", "source": "internal data", "reconciled": false } ],
       "status": "checked", "check": "verified", "checked_on": "2026-02-30", "note": ""
     }

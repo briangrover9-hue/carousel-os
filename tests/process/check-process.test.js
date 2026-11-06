@@ -59,7 +59,10 @@ test('budget: --only budget runs the budget check alone', () => {
 });
 test('contract: a stage file is read below its front matter', () => {
   const d = fresh(); edit(d, '.agents/skills/carousel-start/SKILL.md', (t) => t.replace(/^---\n[\s\S]*?\n---\n\n/, '---\nname: x\n---\n\n'));
-  mustPass(d);
+  // The contract reads the body only; the hand-made front matter is drift for the skills check alone.
+  const r = h.check(d);
+  assert.ok(r.out.includes('PASS contract') && !/FAIL (?!skills)/.test(r.out), r.out);
+  mustFail(d, 'skills', '.agents/skills/carousel-start/SKILL.md differs');
   edit(d, '.agents/skills/carousel-start/SKILL.md', (t) => t.replace('# carousel-start\n', '# start\n'));
   mustFail(d, 'contract', 'first line must be "# carousel-start"');
 });
@@ -151,7 +154,7 @@ test('contract: a missing Real-change check fails', () => {
 });
 test('contract: a guard that does not describe a fake pass fails', () => {
   const d = fresh();
-  edit(d, '.agents/skills/carousel-wrap/SKILL.md', (t) => t.replace(/## Real-change check[\s\S]*?## Rationale/, '## Real-change check\n\nBe careful.\n\n## Rationale'));
+  edit(d, '.agents/skills/carousel-wrap/SKILL.md', (t) => t.replace(/## Real-change check[\s\S]*?## Why it works this way/, '## Real-change check\n\nBe careful.\n\n## Why it works this way'));
   mustFail(d, 'contract', 'fake pass');
 });
 test('contract: sections out of order fail', () => {
@@ -165,8 +168,8 @@ test('contract: a stage not linked in the stage index fails; one not named in RU
   mustFail(d, 'contract', 'RULES.md does not name carousel-handoff');
 });
 test('contract: the empty handoff sentence must stay in the handoff command', () => {
-  const d = fresh(); edit(d, '.agents/skills/carousel-handoff/SKILL.md', (t) => t.split('Nothing to hand off this time.').join('Nothing.'));
-  mustFail(d, 'contract', 'Nothing to hand off this time.');
+  const d = fresh(); edit(d, '.agents/skills/carousel-handoff/SKILL.md', (t) => t.split('No open items. The next session starts clean.').join('Nothing.'));
+  mustFail(d, 'contract', 'No open items. The next session starts clean.');
 });
 test('contract: a missing command file fails', () => {
   const d = fresh(); fs.unlinkSync(path.join(d, '.agents/skills/carousel-review/SKILL.md'));
@@ -223,26 +226,26 @@ test('state: an undatable log heading fails', () => {
   const d = fresh(); edit(d, 'memory/LOG.md', () => '# Log\n\nNotes.\n\n## 2026-11-05 a\n\nx\n\n## Misc notes\n\nx\n');
   mustFail(d, 'state', 'undatable heading');
 });
-test('state: a log that is not newest first fails', () => {
+test('state: a log that does not keep the newest entry at the top fails', () => {
   const d = fresh(); edit(d, 'memory/LOG.md', () => '# Log\n\nNotes.\n\n## 2026-11-05 a\n\nx\n\n## 2026-12-01 later\n\nx\n');
-  mustFail(d, 'state', 'not newest first');
+  mustFail(d, 'state', 'the newest must sit at the top');
 });
 test('state: a handoff with six bullets fails', () => {
   const d = fresh();
-  edit(d, 'memory/handoff.md', () => '# Handoff\n\nWhere it stands.\n\n- 1\n- 2\n- 3\n- 4\n- 5\n- 6\n\n## Agent half\n\nStart with carousel-start.\n\nRecommended focus: x\n\nAgent-doable:\n- a\n\nNeeds the human:\n- b\n\nOut of scope:\n- c\n');
+  edit(d, 'memory/handoff.md', () => '# Handoff\n\n## Next session\n\nNext focus: x\nDeck state: 6 slides built; ledger rows checked 6 of 6; last verdict PASS\n\nOpen ASK markers:\n- none\n\nOpen ledger rows:\n- none\n\nWhere it stands.\n\n- 1\n- 2\n- 3\n- 4\n- 5\n- 6\n');
   mustFail(d, 'state', 'limit is 5');
 });
 test('state: a valid full handoff passes', () => {
   const d = fresh();
-  edit(d, 'memory/handoff.md', () => '# Handoff\n\nWhere it stands.\n\n- one\n\n## Agent half\n\nStart with carousel-start.\n\nRecommended focus: finish the review\n\nAgent-doable:\n- a\n\nNeeds the human:\n- b\n\nOut of scope:\n- c\n');
+  edit(d, 'memory/handoff.md', () => '# Handoff\n\n## Next session\n\nNext focus: finish the review\nDeck state: 6 slides built; ledger rows checked 5 of 6; last verdict REJECT\n\nOpen ASK markers:\n- s04: was the survey voluntary? (plans/deck.md)\n\nOpen ledger rows:\n- s03: 31% does not match the source\n\nWhere it stands.\n\n- one\n');
   mustPass(d);
 });
-test('handoff: an empty handoff with an open NEEDS HUMAN marker in a plan fails', () => {
-  const d = fresh(); realPlan(d, (t) => t.replace('## Deviations', 'NEEDS HUMAN: which month does the data start?\n\n## Deviations'));
-  mustFail(d, 'handoff', 'open NEEDS HUMAN marker');
+test('handoff: an empty handoff with an open ASK marker in a plan fails', () => {
+  const d = fresh(); realPlan(d, (t) => t.replace('## Calls made', 'ASK: which month does the data start?\n\n## Calls made'));
+  mustFail(d, 'handoff', 'open ASK marker');
 });
 test('handoff: a resolved marker and a PASS verdict leave the empty handoff valid', () => {
-  const d = fresh(); realPlan(d, (t) => t.replace('Deferred: NEEDS HUMAN:', 'Deferred: RESOLVED: NEEDS HUMAN:'));
+  const d = fresh(); realPlan(d, (t) => t.replace('Waiting on you: ASK:', 'Waiting on you: RESOLVED: ASK:'));
   mustPass(d);
 });
 test('handoff: an empty handoff with a REJECT as the last verdict fails; --skip handoff passes it; other skips are refused', () => {
@@ -290,10 +293,10 @@ test('state: more than 12 rules, and a rule past its review, fail', () => {
 });
 
 // ---- helpers for the plan tests
-const CHECK_LINE = 'Check report: path rubric; plan PASS; ledger PASS; tools none; checklist 9 of 9; Deferred: item 9, no render available.';
+const CHECK_LINE = 'Check report: path rubric; plan PASS; ledger PASS; tools none; checklist 9 of 9; Waiting on you: item 9, no render available.';
 const slides = () => cp.readPptxSlides(path.join(h.ROOT, 'plans/example/wrenmoor-skip-cancel.pptx'));
 const writeDeck = (d, texts, opts) => fs.writeFileSync(path.join(d, 'plans/example/wrenmoor-skip-cancel.pptx'), h.makePptx(texts, opts));
-const REAL_RESOLVED = (t) => t.replace('Deferred: NEEDS HUMAN:', 'Deferred: RESOLVED: NEEDS HUMAN:');
+const REAL_RESOLVED = (t) => t.replace('Waiting on you: ASK:', 'Waiting on you: RESOLVED: ASK:');
 const EXP = 'plans/example/wrenmoor-skip-cancel.md';
 // A real plan on the engine path. Two small tools are registered, run-tools.js runs them, and the Check
 // section is filled from what it printed. opts.tools: { name: { exit, line } } overrides the default tools.
@@ -313,7 +316,7 @@ function enginePlan(d, opts) {
   const toolLines = r.out.split('\n').filter((l) => l.startsWith('Tool '));
   const statuses = toolLines.map((l) => /^Tool (\S+?): (PASS|FAIL|MISSING):/.exec(l)).map((m) => `${m[1]} ${m[2]}`).join(', ');
   const clean = toolLines.every((l) => /: PASS:/.test(l));
-  const report = `Check report: path engine; plan PASS; ledger PASS; tools ${statuses}; checklist n/a; Deferred: ${clean ? 'none' : 'a tool did not pass'}.`;
+  const report = `Check report: path engine; plan PASS; ledger PASS; tools ${statuses}; checklist n/a; Waiting on you: ${clean ? 'none' : 'a tool did not pass'}.`;
   edit(d, 'plans/real.md', (t) => t.split(CHECK_LINE).join(report)
     .replace('Checklist, 9 of 9 items pass. Item 9 is deferred and the checklist has 9 items.', toolLines.join('\n')));
   return { out: r.out, toolLines };
@@ -333,9 +336,9 @@ test('plan: the fake-pass fixture fails, for the right reasons', () => {
   [
     'matches no report format: "Check passed, all good."',
     'matches no report format: "Check report: path rubric; scan looks fine',
-    'a challenge angle repeats across rounds',
+    'a critique angle repeats across rounds',
     'angle "Vibes" is not in bookshelf/review-angles.md',
-    're-verified no claims',
+    'Round 3 counts 2 Fixed but its change list has 0 "Fixed:" lines',
     'says nothing about what was done',
     'is not a real date',
     'cannot follow "build"',
@@ -356,72 +359,123 @@ test('plan: a line that is not a report format fails, including old and loose ch
   d = fresh(); ex(d, (t) => t.split('Check report: path rubric; plan PASS;').join('Check report: path rubric; scan n/a; budget n/a; render n/a; gallery n/a; plan PASS;'));
   mustFail(d, 'state', 'matches no report format');
 });
-test('plan: a repeated challenge angle fails', () => {
+test('plan: a repeated critique angle fails', () => {
   const d = fresh();
   ex(d, (t) => t.replace('angle The unreconcilable number (new)', 'angle Literal ask (new)').replace('Angle: The unreconcilable number (new)', 'Angle: Literal ask (new)'));
-  mustFail(d, 'state', 'a challenge angle repeats');
+  mustFail(d, 'state', 'a critique angle repeats');
 });
 test('plan: an angle that is not in the angle list fails', () => {
   const d = fresh();
   ex(d, (t) => t.replace('angle The unreconcilable number (new)', 'angle Vibes (new)').replace('Angle: The unreconcilable number (new)', 'Angle: Vibes (new)'));
   mustFail(d, 'state', 'is not in bookshelf/review-angles.md');
 });
-test('plan: with three rounds the last must be Parked claims, and Parked claims may not come earlier', () => {
+test('plan: with three rounds the last must be Open rows, and Open rows may not come earlier', () => {
   let d = fresh();
-  ex(d, (t) => t.replace('angle Parked claims (new)', 'angle Denominators (new)').replace('Angle: Parked claims (new)', 'Angle: Denominators (new)'));
-  mustFail(d, 'state', 'must take the angle Parked claims');
+  ex(d, (t) => t.replace('angle Open rows (new)', 'angle Denominators (new)').replace('Angle: Open rows (new)', 'Angle: Denominators (new)'));
+  mustFail(d, 'state', 'must take the angle Open rows');
   d = fresh();
-  ex(d, (t) => t.replace('angle Literal ask (new)', 'angle Parked claims (new)').replace('Angle: Literal ask (new)', 'Angle: Parked claims (new)'));
+  ex(d, (t) => t.replace('angle Literal ask (new)', 'angle Open rows (new)').replace('Angle: Literal ask (new)', 'Angle: Open rows (new)'));
   mustFail(d, 'state', 'belongs to the last round');
 });
 test('plan: a round whose log count line differs from its report line fails', () => {
-  const d = fresh(); ex(d, (t) => t.replace('Re-verified 5 claims, demoted 1 to uncertainty.\nParked', 'Re-verified 5 claims, demoted 3 to uncertainty.\nParked'));
-  mustFail(d, 'state', 'count line in Challenge log does not match');
+  const d = fresh(); ex(d, (t) => t.replace('Fixed 2; waiting 0; verified 1; ledger rows open 1.\n\n', 'Fixed 2; waiting 0; verified 2; ledger rows open 1.\n\n'));
+  mustFail(d, 'state', 'count line in Critique log does not match');
+});
+test('plan: each count must equal its change list entries, in the log and the report line alike', () => {
+  const both = (from, to) => (t) => t.split(from).join(to);
+  let d = fresh(); ex(d, both('Fixed 2; waiting 0; verified 1; ledger rows open 1.', 'Fixed 3; waiting 0; verified 1; ledger rows open 1.'));
+  mustFail(d, 'state', 'Round 2 counts 3 Fixed but its change list has 2 "Fixed:" lines');
+  d = fresh(); ex(d, both('Fixed 1; waiting 1; verified 1; ledger rows open 0.', 'Fixed 1; waiting 0; verified 1; ledger rows open 0.'));
+  mustFail(d, 'state', 'Round 1 counts 0 waiting but its change list has 1 "Waiting on you:" lines');
+  d = fresh(); ex(d, both('Fixed 1; waiting 0; verified 1; ledger rows open 0.', 'Fixed 1; waiting 0; verified 2; ledger rows open 0.'));
+  mustFail(d, 'state', 'Round 3 counts 2 verified but its change list has 1 "Verified unchanged:" lines');
+  d = fresh(); ex(d, both('Fixed 2; waiting 0; verified 1; ledger rows open 1.', 'Fixed 2; waiting 0; verified 1; ledger rows open 0.'));
+  mustFail(d, 'state', 'Round 2 counts 0 ledger rows open but its "Open rows:" line names 1');
+});
+test('plan: a round that only asks questions touched no source', () => {
+  const d = fresh();
+  ex(d, (t) => t.replace(/^Fixed: the first draft led.*\n/m, '').replace(/^Verified unchanged: slide order after slide 3.*\n/m, '')
+    .split('Fixed 1; waiting 1; verified 1; ledger rows open 0.').join('Fixed 0; waiting 1; verified 0; ledger rows open 0.'));
+  mustFail(d, 'state', 'Round 1 fixed nothing and verified nothing');
 });
 test('plan: a round that changed nothing must say what it checked', () => {
   const d = fresh();
-  ex(d, (t) => t.replace(/^Addressed: s05 reworded.*\n/m, '').replace(/^Kept as is: s06,.*$/m, 'Kept as is: s06, nothing to change (s06).'));
+  ex(d, (t) => t.replace(/^Fixed: s05 reworded.*\n/m, '').replace(/^Verified unchanged: s06,.*$/m, 'Verified unchanged: s06, nothing to change (s06).')
+    .split('Fixed 1; waiting 0; verified 1; ledger rows open 0.').join('Fixed 0; waiting 0; verified 1; ledger rows open 0.'));
   mustFail(d, 'state', 'must say what was checked');
 });
 
-// one round: the log must end with Parked claims none open, and every parked slide must be resolved
-function lightPlan(t, roundBody) {
-  const logStart = t.indexOf('### Round 1'); const logEnd = t.indexOf('## Deviations');
+// one round: its Open rows line reads none open, and every row an earlier round left open must be resolved
+function shortPlan(t, roundBody) {
+  const logStart = t.indexOf('### Round 1'); const logEnd = t.indexOf('## Calls made');
   return (t.slice(0, logStart) + roundBody + '\n' + t.slice(logEnd))
-    .replace('Path: full', 'Path: light').replace('Rounds: 3', 'Rounds: 1');
+    .replace('Path: full', 'Path: short').replace('Rounds: 3', 'Rounds: 1');
 }
 const ONE_ROUND = `### Round 1
 Angle: The unreconcilable number (new)
-Addressed: s04 divided by the wrong base and now uses the 1,428 who answered (s04).
-Kept as is: s05 reworded to worth testing, and recounted 2,562 against s02 (s05).
-Re-verified 3 claims, demoted 1 to uncertainty.
-Parked claims: s05 says a pause would keep members (s05)
-Parked claims: none open
+Fixed: s04 divided by the wrong base and now uses the 1,428 who answered (s04).
+Verified unchanged: s05 reworded to worth testing, and recounted 2,562 against s02 (s05).
+Open rows: none open
+Fixed 1; waiting 0; verified 1; ledger rows open 0.
 `;
-function toLight(d, body) {
+function toShort(d, body, counts) {
   ex(d, (t) => {
-    let u = lightPlan(t, body);
-    u = u.replace(/^- Challenge round 1 of 3:.*$/m, '- Challenge round 1 of 1: angle The unreconcilable number (new). Re-verified 3 claims, demoted 1 to uncertainty.');
-    u = u.replace(/^- Challenge round [23] of 3:.*\n/gm, '');
+    let u = shortPlan(t, body);
+    u = u.replace(/^- Critique round 1 of 3:.*$/m, `- Critique round 1 of 1: angle The unreconcilable number (new). ${counts || 'Fixed 1; waiting 0; verified 1; ledger rows open 0.'}`);
+    u = u.replace(/^- Critique round [23] of 3:.*\n/gm, '');
     return u;
   });
 }
-test('plan: a one-round plan passes when it ends with Parked claims none open and resolves what it parks', () => {
-  const d = fresh(); toLight(d, ONE_ROUND); mustPass(d);
+test('plan: a one-round plan passes when its Open rows line reads none open', () => {
+  const d = fresh(); toShort(d, ONE_ROUND); mustPass(d);
 });
-test('plan: a one-round plan must end with Parked claims none open', () => {
-  const d = fresh(); toLight(d, ONE_ROUND.replace('Parked claims: none open\n', ''));
-  mustFail(d, 'state', 'Parked claims: none open');
+test('plan: a one-round plan must end with Open rows: none open', () => {
+  let d = fresh(); toShort(d, ONE_ROUND.replace('Open rows: none open\n', ''));
+  mustFail(d, 'state', 'Open rows: none open');
+  d = fresh();
+  toShort(d, ONE_ROUND.replace('Open rows: none open', 'Open rows: s05 says a pause would keep members (s05)').replace('ledger rows open 0.', 'ledger rows open 1.'), 'Fixed 1; waiting 0; verified 1; ledger rows open 1.');
+  mustFail(d, 'state', 'the last round must end with "Open rows: none open"');
 });
-test('plan: a parked slide must appear in the last round Addressed or Kept as is lines, for one round and for three', () => {
-  let d = fresh(); toLight(d, ONE_ROUND.replace('(s05)\nRe-verified', 'later\nRe-verified').replace('Kept as is: s05 reworded to worth testing, and recounted 2,562 against s02 (s05).', 'Kept as is: s02 recounted 2,562 against the file.'));
-  mustFail(d, 'state', 'parked claim s05 is not resolved');
-  d = fresh(); ex(d, (t) => t.replace('Addressed: s05 reworded to "worth testing", and the retention figure removed (s05).', 'Addressed: the wording was softened.'));
-  mustFail(d, 'state', 'parked claim s05 is not resolved');
+test('plan: a row an earlier round left open must appear in the last round Fixed or "Verified unchanged" lines', () => {
+  const d = fresh(); ex(d, (t) => t.replace('Fixed: s05 reworded to "worth testing", and the retention figure removed (s05).', 'Fixed: the wording was softened.'));
+  mustFail(d, 'state', 'open row s05 is not resolved');
 });
-test('plan: the log must end with Parked claims none open when there are three rounds', () => {
-  const d = fresh(); ex(d, (t) => replaceLast(t, 'Parked claims: none open', 'Parked claims: s05'));
-  mustFail(d, 'state', 'Parked claims: none open');
+test('plan: the last of three rounds must leave no row open', () => {
+  const d = fresh(); ex(d, (t) => replaceLast(t, 'Open rows: none open', 'Open rows: s05 (s05)'));
+  mustFail(d, 'state', 'Open rows: none open');
+});
+test('plan: an open row must be a ledger row, and between rounds the ledger must mark the same rows "unconfirmed"', () => {
+  let d = fresh(); ex(d, (t) => t.replace('a retention effect (s05).', 'a retention effect (s09).'));
+  mustFail(d, 'state', 'Round 2 leaves s09 open, but the ledger has no row s09');
+  // Stop the example after round 2: the plan is between rounds, so the ledger must hold s05 open and unconfirmed.
+  const cut = (t) => {
+    const r3 = t.indexOf('### Round 3'); const calls = t.indexOf('## Calls made');
+    let u = t.slice(0, r3) + t.slice(calls);
+    u = u.slice(0, u.indexOf('- Critique round 3 of 3')).trimEnd() + '\n';
+    return u.replace(/^Status: .*$/m, 'Status: storyboarded');
+  };
+  d = fresh(); ex(d, cut);
+  mustFail(d, 'state', 'Round 2 leaves open s05, but the ledger\'s open rows marked "unconfirmed" are none');
+  d = fresh(); ex(d, cut);
+  edit(d, 'plans/example/wrenmoor-skip-cancel.ledger.json', (t) => {
+    const j = JSON.parse(t); const row = j.slides.find((x) => x.id === 's05');
+    Object.assign(row, { status: 'open', check: '', checked_on: '', note: 'unconfirmed: no source shows a retention effect' });
+    return JSON.stringify(j, null, 2) + '\n';
+  });
+  const r = h.check(d);
+  assert.ok(!/marked "unconfirmed"/.test(r.out), r.out);
+});
+test('plan: the first section is Request, in the plan and in the template', () => {
+  let d = fresh(); ex(d, (t) => t.replace('## Request', '## Opening'));
+  mustFail(d, 'state', 'Request');
+  d = fresh(); edit(d, 'plans/plan.template.md', (t) => t.replace('## Request', '## Opening'));
+  mustFail(d, 'state', 'sections must be: Request, Brief');
+});
+test('plan: the example handoff Deck state must agree with the plan and the ledger', () => {
+  const hand = (from, to) => { const d = fresh(); edit(d, 'plans/example/wrenmoor-skip-cancel.handoff.md', (t) => t.replace(from, to)); return d; };
+  mustFail(hand('6 slides built', '7 slides built'), 'state', 'example handoff says 7 slides built but the latest Build report says 6');
+  mustFail(hand('checked 6 of 6', 'checked 5 of 6'), 'state', 'example handoff says ledger rows checked 5 of 6 but the ledger has 6 of 6');
+  mustFail(hand('last verdict PASS', 'last verdict UNVERIFIABLE'), 'state', 'example handoff says last verdict UNVERIFIABLE but the latest review verdict is PASS');
 });
 test('plan: the Rounds line must match the round lines, and extra rounds need a finding ledger', () => {
   const d = fresh(); ex(d, (t) => t.replace('Rounds: 3', 'Rounds: 4'));
@@ -446,8 +500,11 @@ test('plan: a second REJECT must be followed by a Stopped at review line, and no
   const lines = (t) => t.replace('- Review verdict: REJECT; unreconciled numbers 1; findings 1.\n- Build report', '- Review verdict: REJECT; unreconciled numbers 1; findings 1.\n- Build report');
   mustFail(d, 'state', 'cannot follow "review"');
   d = fresh(); ex(d, (t) => second(t).replace('- Wrap report:', '- Stopped at review: second REJECT, blocker.\n- Wrap report:'));
-  assert.strictEqual(h.check(d, ['--skip', 'handoff']).code, 0);
-  d = fresh(); ex(d, (t) => t.replace(/^- Review verdict: PASS.*$/m, '- Review verdict: REJECT; unreconciled numbers 1; findings 1.\n- Build report: 6 slides built, 6 ledger rows checked, 2 deviations logged.\n- Check report: path rubric; plan PASS; ledger PASS; tools none; checklist 9 of 9; Deferred: item 9, no render available.\n- Review verdict: PASS; unreconciled numbers 0; findings 0.'));
+  // The example's handoff records the last verdict, so it changes with it.
+  edit(d, 'plans/example/wrenmoor-skip-cancel.handoff.md', (t) => t.replace('last verdict PASS', 'last verdict REJECT'));
+  const r = h.check(d, ['--skip', 'handoff']);
+  assert.strictEqual(r.code, 0, r.out);
+  d = fresh(); ex(d, (t) => t.replace(/^- Review verdict: PASS.*$/m, '- Review verdict: REJECT; unreconciled numbers 1; findings 1.\n- Build report: 6 slides built, 6 ledger rows checked, 2 calls logged.\n- Check report: path rubric; plan PASS; ledger PASS; tools none; checklist 9 of 9; Waiting on you: item 9, no render available.\n- Review verdict: PASS; unreconciled numbers 0; findings 0.'));
   mustFail(d, 'state', 'cannot follow "review"');
   d = fresh(); ex(d, (t) => t.replace(/^- Review verdict: PASS.*$/m, '- Review verdict: REJECT; unreconciled numbers 1; findings 1.\n- Stopped at review: second REJECT, blocker.\n- Review verdict: PASS; unreconciled numbers 0; findings 0.'));
   mustFail(d, 'state', 'cannot follow "stopped"');
@@ -496,15 +553,15 @@ test('plan: ledger check text that says nothing fails, and so does a date that d
   d = fresh(); exLedger(d, (o) => { o.slides[1].checked_on = '2026-06-01'; });
   mustFail(d, 'state', 'is earlier than the window end');
 });
-test('plan: Build deviations must equal the D lines', () => {
-  const d = fresh(); ex(d, (t) => replaceLast(t, '2 deviations logged', '3 deviations logged'));
-  mustFail(d, 'state', 'Build report says 3 deviations but Deviations lists 2');
+test('plan: Build calls must equal the D lines', () => {
+  const d = fresh(); ex(d, (t) => replaceLast(t, '2 calls logged', '3 calls logged'));
+  mustFail(d, 'state', 'Build report says 3 calls but Calls made lists 2');
 });
 test('plan: the brief must hold its three blocking fields before a storyboard exists', () => {
   let d = fresh(); ex(d, (t) => t.replace(/^Evidence: the three exports.*$/m, 'Evidence:'));
   mustFail(d, 'state', 'Brief field "Evidence" is empty');
-  d = fresh(); ex(d, (t) => t.replace('Reader and venue: three leaders, shared screen in a meeting, no pre-read.', 'Reader and venue: NEEDS HUMAN: who reads it?'));
-  mustFail(d, 'state', 'still a NEEDS HUMAN marker');
+  d = fresh(); ex(d, (t) => t.replace('Reader and venue: three leaders, shared screen in a meeting, no pre-read.', 'Reader and venue: ASK: who reads it?'));
+  mustFail(d, 'state', 'still an ASK marker');
 });
 test('plan: a PASS review must paste both gates and one found line per number, and found must equal the ledger value', () => {
   let d = fresh(); ex(d, (t) => t.replace(/^PASS ledger$/gm, '').replace(/^Ledger: 6 slides.*$/gm, ''));
@@ -513,14 +570,20 @@ test('plan: a PASS review must paste both gates and one found line per number, a
   mustFail(d, 'state', 'must paste the plan gate output');
   d = fresh(); ex(d, (t) => { const i = t.indexOf('### Pass 2'); return t.slice(0, i) + t.slice(i).replace(/^- s04 300:.*$/m, ''); });
   mustFail(d, 'state', 'a line "- s04 300:');
-  d = fresh(); ex(d, (t) => t.replace('2,562 over 4,200 is 0.61, found 61%.', '2,562 over 4,200 is 0.61, found 60%.'));
+  d = fresh(); ex(d, (t) => t.replace('is 0.61, found 61%.', 'is 0.61, found 60%.'));
   mustFail(d, 'state', 'says found "60%"');
-  d = fresh(); ex(d, (t) => t.replace('- s05 2,562: same count as s02, found 2,562.', '- s05 2,562: same count as s02.'));
+  d = fresh(); ex(d, (t) => t.replace(/^(- s05 2,562: .*), found 2,562\.$/m, '$1.'));
   mustFail(d, 'state', 'says found "null"');
   d = fresh(); ex(d, (t) => t.replace('Review verdict: PASS; unreconciled numbers 0', 'Review verdict: PASS; unreconciled numbers 2'));
   mustFail(d, 'state', 'cannot report unreconciled numbers');
   d = fresh(); ex(d, (t) => t.replace('Review verdict: REJECT; unreconciled numbers 1; findings 1', 'Review verdict: REJECT; unreconciled numbers 0; findings 0'));
   mustFail(d, 'state', 'names at least one finding');
+});
+test('example: every number source in the worked ledger names at least one exports/ file', () => {
+  const ledger = JSON.parse(fs.readFileSync(path.join(h.ROOT, 'plans/example/wrenmoor-skip-cancel.ledger.json'), 'utf8'));
+  const vague = [];
+  ledger.slides.forEach((s) => (s.numbers || []).forEach((n) => { if (!/\bexports\/[\w.-]+\.csv\b/.test(n.source)) vague.push(`${s.id} ${n.value}: ${n.source}`); }));
+  assert.deepStrictEqual(vague, [], 'number sources that name no exports/ file:\n' + vague.join('\n'));
 });
 test('plan: Path and Rounds must be plain values', () => {
   let d = fresh(); ex(d, (t) => t.replace('Path: full', 'Path: medium'));
@@ -533,7 +596,7 @@ test('plan: the example handoff file must exist and agree with the Handoff repor
   mustFail(d, 'state', "the example's handoff");
   d = fresh(); edit(d, 'plans/example/wrenmoor-skip-cancel.handoff.md', (t) => t.replace(/^- Item 9.*$/m, ''));
   mustFail(d, 'state', 'Handoff report says 2 bullets but the handoff file has 1');
-  d = fresh(); edit(d, 'plans/example/wrenmoor-skip-cancel.handoff.md', (t) => t.replace('Recommended focus: confirm whether the exit survey was voluntary', 'Recommended focus: polish the deck'));
+  d = fresh(); edit(d, 'plans/example/wrenmoor-skip-cancel.handoff.md', (t) => t.replace('Next focus: confirm whether the exit survey was voluntary', 'Next focus: polish the deck'));
   mustFail(d, 'state', 'but the handoff file says');
 });
 
@@ -721,7 +784,7 @@ test('engine: run-tools.js with no engine writes an empty results file, and bad 
 });
 test('engine: path and registration must agree for a real plan', () => {
   let d = fresh(); enginePlan(d);
-  edit(d, 'plans/real.md', (t) => t.replace(/Check report: path engine; plan PASS; ledger PASS; tools [^;]*; checklist n\/a; Deferred: none\./g, 'Check report: path rubric; plan PASS; ledger PASS; tools none; checklist 9 of 9; Deferred: item 9, no render available.'));
+  edit(d, 'plans/real.md', (t) => t.replace(/Check report: path engine; plan PASS; ledger PASS; tools [^;]*; checklist n\/a; Waiting on you: none\./g, 'Check report: path rubric; plan PASS; ledger PASS; tools none; checklist 9 of 9; Waiting on you: item 9, no render available.'));
   mustFail(d, 'state', 'registers tools, so Check must take the engine path');
   d = fresh(); realPlan(d, REAL_RESOLVED);
   edit(d, 'plans/real.md', (t) => t.split('path rubric; plan PASS; ledger PASS; tools none; checklist 9 of 9').join('path engine; plan PASS; ledger PASS; tools none; checklist n/a'));
@@ -735,19 +798,19 @@ test('engine: engine path rules: the checklist is n/a, and the rubric path runs 
   d = fresh(); ex(d, (t) => t.split('tools none').join('tools scan PASS'));
   mustFail(d, 'state', 'the rubric path runs no tools');
 });
-test('engine: a MISSING tool needs a Deferred entry, and MISSING blocks the review', () => {
+test('engine: a MISSING tool needs a Waiting on you entry, and MISSING blocks the review', () => {
   const d = fresh(); enginePlan(d, { tools: { scan: { exit: 2, line: 'python: not found' }, render: { exit: 0, line: 'render: ok' } } });
-  edit(d, 'plans/real.md', (t) => t.split('Deferred: a tool did not pass.').join('Deferred: none.'));
+  edit(d, 'plans/real.md', (t) => t.split('Waiting on you: a tool did not pass.').join('Waiting on you: none.'));
   const r = h.check(d); assert.strictEqual(r.code, 1);
-  assert.ok(r.out.includes('is MISSING, so Deferred cannot be none'), r.out);
+  assert.ok(r.out.includes('is MISSING, so Waiting on you cannot be none'), r.out);
 });
 test('engine: the rubric checklist must be 10 items, or 9 with item 9 deferred', () => {
   let d = fresh(); ex(d, (t) => t.split('checklist 9 of 9').join('checklist n/a'));
   mustFail(d, 'state', 'carries the checklist count');
   d = fresh(); ex(d, (t) => t.split('checklist 9 of 9').join('checklist 9 of 12'));
   mustFail(d, 'state', 'has 10 items');
-  d = fresh(); ex(d, (t) => t.split('checklist 9 of 9; Deferred: item 9, no render available').join('checklist 9 of 9; Deferred: none'));
-  mustFail(d, 'state', 'must list item 9 under Deferred');
+  d = fresh(); ex(d, (t) => t.split('checklist 9 of 9; Waiting on you: item 9, no render available').join('checklist 9 of 9; Waiting on you: none'));
+  mustFail(d, 'state', 'must list item 9 under Waiting on you');
 });
 
 // ---- contract additions: each pinned guard and prohibition
@@ -767,12 +830,12 @@ test('contract: the pinned guards and prohibitions cannot be dropped', () => {
     ['.agents/skills/carousel-review/SKILL.md', 'never rounded up', 'Steps must keep: never rounded up'],
     ['.agents/skills/carousel-review/SKILL.md', 'latest `Check report:` line', 'latest `Check report:` line'],
     ['.agents/skills/carousel-build/SKILL.md', 'Never set', 'Steps must keep: Never set'],
-    ['.agents/skills/carousel-build/SKILL.md', 'Parked claims: none open', 'Guards must keep: Parked claims: none open'],
+    ['.agents/skills/carousel-build/SKILL.md', 'Open rows: none open', 'Guards must keep: Open rows: none open'],
     ['.agents/skills/carousel-check/SKILL.md', 'Never loosen', 'Steps must keep: Never loosen'],
     ['.agents/skills/carousel-check/SKILL.md', '--plan', 'Steps must keep: --plan'],
     ['.agents/skills/carousel-handoff/SKILL.md', 'Never append', 'Steps must keep: Never append'],
     ['.agents/skills/carousel-handoff/SKILL.md', 'latest `Wrap report:` line', 'latest `Wrap report:` line'],
-    ['.agents/skills/carousel-challenge-plan/SKILL.md', 'Never delete a parked entry', 'Never delete a parked entry'],
+    ['.agents/skills/carousel-critique/SKILL.md', 'Never drop an open row', 'Never drop an open row'],
     ['.agents/skills/carousel-wrap/SKILL.md', 'Never run `repeat`', 'Never run `repeat`'],
     ['.agents/skills/carousel-start/SKILL.md', 'Start never resumes a plan', 'Start never resumes a plan'],
   ];
@@ -789,9 +852,9 @@ test('spelling: a British spelling in prose fails, and quotes, code and proper n
   mustFail(d, 'prose', 'British spelling "cancelled", write "canceled"');
   d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\n> A reader wrote that it was cancelled.\n\nA `cancelled` flag, and ColourPop.\n\n```\ncancelled\n```\n');
   mustPass(d);
-  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nThe Acmecolour brand.\n');
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nThe Acmecolour app.\n');
   mustPass(d);
-  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nWe saw Pinkcolour Co. sales.\n');
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nWe saw Pinkcolour Co. signups.\n');
   edit(d, 'scripts/check-process.config.json', (t) => { const c = JSON.parse(t); c.americanAllow = ['pinkcolour co']; return JSON.stringify(c); });
   mustPass(d);
   assert.ok(cp.spellingProblems('whilst and amongst').length === 2);
@@ -885,7 +948,7 @@ test('state: LOG.template.md holds the header and no entries', () => {
 // ---- folders the check must not read
 test('skip: generated and git-ignored folders, dot folders and engine output are not prose', () => {
   const d = fresh(); const bad = 'Generated text with a dash — here.\n';
-  ['out/report.md', 'build/x.md', 'node_modules/p/readme.md', '.carousel-venv/x.md', '.claude/commands/y.md', 'decks/q3.check/notes.md', 'scratch/z.md'].forEach((f) => edit(d, f, () => bad));
+  ['out/report.md', 'build/x.md', 'node_modules/p/readme.md', '.carousel-venv/x.md', '.claude/notes/y.md', 'decks/q3.check/notes.md', 'scratch/z.md'].forEach((f) => edit(d, f, () => bad));
   edit(d, '.gitignore', (t) => t + '\nscratch/\n');
   mustPass(d);
   edit(d, '.gitignore', (t) => t.replace('scratch/', ''));
@@ -938,25 +1001,61 @@ test('number words: percent, fractions, doubled and tripled are read and checked
 test('ledger claim and storyboard: digits in the claim, and the source named, must agree', () => {
   let d = fresh(); exLedger(d, (o) => { o.slides[1].claim = 'Forty one point two percent cancelled after two missed weeks in a row (41.2%).'; });
   assert.ok(h.check(d, ['--plan', EXP]).out.includes('the ledger claim holds 41.2, which is not among'));
-  d = fresh(); ex(d, (t) => t.replace('| exports/visits.csv | 12 months ending 2026-06-30 | two bars |', '| exports/exit-survey.csv | 12 months ending 2026-06-30 | two bars |'));
-  assert.ok(h.check(d, ['--plan', EXP]).out.includes('the storyboard names the source "exports/exit-survey.csv" but the ledger says "exports/visits.csv"'));
+  const s03row = '| exports/cancellations.csv, exports/visits.csv | 12 months ending 2026-06-30 | two bars |';
+  d = fresh(); ex(d, (t) => { assert.ok(t.includes(s03row), 'the s03 storyboard row moved'); return t.replace(s03row, '| exports/exit-survey.csv | 12 months ending 2026-06-30 | two bars |'); });
+  assert.ok(h.check(d, ['--plan', EXP]).out.includes('the storyboard names the source "exports/exit-survey.csv" but the ledger says "exports/cancellations.csv, exports/visits.csv"'));
 });
 test('contract: no stage but the brief may tell the agent to ask the human', () => {
-  ['carousel-storyboard', 'carousel-build', 'carousel-challenge-plan', 'carousel-check', 'carousel-review', 'carousel-wrap'].forEach((n) => {
+  ['carousel-storyboard', 'carousel-build', 'carousel-critique', 'carousel-check', 'carousel-review', 'carousel-wrap'].forEach((n) => {
     const d = fresh();
     edit(d, `.agents/skills/${n}/SKILL.md`, (t) => t.replace('## Steps\n', '## Steps\n\n0. Ask the human which slides to cut if unsure.\n'));
     mustFail(d, 'contract', 'only carousel-brief asks questions');
   });
 });
-test('contract: the RULES chain table must key each stage on its previous report line', () => {
+test('contract: the RULES stage order table must key each stage on its previous report line', () => {
   const d = fresh(); edit(d, 'RULES.md', (t) => t.replace('| `carousel-review` | a clean latest `Check report:` |', '| `carousel-review` | a clean latest `Build report:` |'));
-  mustFail(d, 'contract', 'RULES.md chain table row for carousel-review must key on: Check report:');
+  mustFail(d, 'contract', 'RULES.md stage order table row for carousel-review must key on: Check report:');
 });
 test('storyboard: digits in the storyboard must be ledger values', () => {
-  const d = fresh(); ex(d, (t) => t.replace('| 2,562 of 4,200 cancellations followed two missed weeks |', '| 2,562 of 4,100 cancellations followed two missed weeks |'));
+  const row = '| 2,562 of 4,200 cancellations followed two missed weeks in a row |';
+  const d = fresh(); ex(d, (t) => { assert.ok(t.includes(row), 'the example storyboard row moved'); return t.replace(row, row.replace('4,200', '4,100')); });
   const r = h.check(d, ['--plan', EXP]);
   assert.strictEqual(r.code, 1, r.out);
   assert.ok(r.out.includes('slide s02: the storyboard prints 4100, which is not in the ledger'), r.out);
+});
+test('example: s05 reuses the s02 count, so it cites both files everywhere, and the s02 claim says "in a row"', () => {
+  const md = fs.readFileSync(path.join(h.ROOT, EXP), 'utf8');
+  const ledger = JSON.parse(fs.readFileSync(path.join(h.ROOT, EXL), 'utf8'));
+  const row = (id) => ledger.slides.find((x) => x.id === id);
+  const both = 'exports/cancellations.csv, exports/visits.csv';
+  assert.strictEqual(row('s02').source, both);
+  assert.strictEqual(row('s05').source, both);
+  assert.ok(md.includes('| s02 | Six in ten cancellations follow two missed weeks in a row | 2,562 of 4,200 cancellations followed two missed weeks in a row | ' + both + ' |'), 'the s02 storyboard row');
+  assert.ok(/^\| s05 \| .* \| The same 2,562 members \| exports\/cancellations\.csv, exports\/visits\.csv \|/m.test(md), 'the s05 storyboard row');
+  assert.ok(/^\| s05 \| .*Source: exports\/cancellations\.csv, exports\/visits\.csv \|$/m.test(md), 'the s05 Build row');
+  const s5 = slides()[4];
+  assert.ok((s5.text || s5).endsWith('Source: ' + both), 'the s05 slide source line');
+});
+test('example: s03 prints cancel rates, so it cites the cancellation file and the visit file everywhere its sources appear', () => {
+  const md = fs.readFileSync(path.join(h.ROOT, EXP), 'utf8');
+  const ledger = JSON.parse(fs.readFileSync(path.join(h.ROOT, EXL), 'utf8'));
+  const s3 = ledger.slides.find((x) => x.id === 's03');
+  const both = 'exports/cancellations.csv, exports/visits.csv';
+  assert.strictEqual(s3.source, both);
+  s3.numbers.filter((n) => /%$/.test(n.value)).forEach((n) => assert.ok(n.source.includes('exports/cancellations.csv') && n.source.includes('exports/visits.csv'), 's03 ' + n.value + ' number source: ' + n.source));
+  assert.ok(/cancellation and visit files/.test(s3.check), 'the s03 check line: ' + s3.check);
+  assert.ok(/^\| s03 \| .* \| 2,562 of 8,212 .*\(31\.2%\), against 1,638 of 15,750 .*\(10\.4%\) \| exports\/cancellations\.csv, exports\/visits\.csv \|/m.test(md), 'the s03 storyboard row');
+  // The rates print with their bases, and the bases add up to the s02 total and the member count.
+  ['2,562', '8,212', '1,638', '15,750'].forEach((v) => assert.ok(s3.numbers.some((n) => n.value === v), 's03 ledger lacks ' + v));
+  assert.strictEqual(2562 + 1638, 4200);
+  assert.strictEqual((2562 / 8212 * 100).toFixed(1), '31.2');
+  assert.strictEqual((1638 / 15750 * 100).toFixed(1), '10.4');
+  assert.ok(/^\| s03 \| .*Source: exports\/cancellations\.csv, exports\/visits\.csv \|$/m.test(md), 'the s03 Build row');
+  assert.ok(md.includes('- s03 31.2%: recomputed from cancellations.csv and visits.csv, found 31.2%.'), 'the s03 pass 1 review line');
+  assert.ok(/^- s03 31\.2%: .*exports\/cancellations\.csv.*exports\/visits\.csv.*found 31\.2%\.$/m.test(md) && /^- s03 10\.4%: .*exports\/cancellations\.csv.*exports\/visits\.csv.*found 10\.4%\.$/m.test(md), 'the s03 pass 2 review lines');
+  md.split('\n').filter((l) => /\bs03\b/.test(l) && /visits\.csv/.test(l)).forEach((l) => assert.ok(/cancellations\.csv/.test(l), 'an s03 line cites visits.csv alone: ' + l));
+  const s = slides()[2];
+  assert.ok((s.text || s).endsWith('Source: ' + both), 'the s03 slide source line');
 });
 test('build guard: Build declines after a Stopped at line, and Check says a re-check needs a new Build', () => {
   const d = fresh(); const b = fs.readFileSync(path.join(d, '.agents/skills/carousel-build/SKILL.md'), 'utf8');
@@ -967,10 +1066,10 @@ test('build guard: Build declines after a Stopped at line, and Check says a re-c
 });
 test('contract: the remaining prohibitions are pinned in the commands and in RULES.md', () => {
   const pins = [
-    ['.agents/skills/carousel-review/SKILL.md', 'Withhold the Challenge log', 'Steps must keep: Withhold the Challenge log'],
+    ['.agents/skills/carousel-review/SKILL.md', 'Withhold the Critique log', 'Steps must keep: Withhold the Critique log'],
     ['.agents/skills/carousel-review/SKILL.md', 'a FAIL, a MISSING tool or a checklist short of its total', 'Guards must keep: a FAIL, a MISSING tool'],
     ['.agents/skills/carousel-wrap/SKILL.md', 'latest review line is `Review verdict: PASS`', 'Guards must keep: latest review line is `Review verdict: PASS`'],
-    ['.agents/skills/carousel-build/SKILL.md', 'holds a `NEEDS HUMAN:` marker', 'Guards must keep: holds a `NEEDS HUMAN:` marker'],
+    ['.agents/skills/carousel-build/SKILL.md', 'holds an `ASK:` marker', 'Guards must keep: holds an `ASK:` marker'],
     ['.agents/skills/carousel-check/SKILL.md', 'differs from the line before the tools', 'Steps must keep: differs from the line before the tools'],
     ['RULES.md', 'Only `carousel-brief` asks the human anything.', 'RULES.md must keep: Only `carousel-brief` asks the human anything.'],
     ['.agents/skills/carousel-build/SKILL.md', 'open its source and recompute it', 'Steps must keep: open its source and recompute it'],
@@ -1017,7 +1116,7 @@ test('ranges: a hyphenated number range fails in prose, and dates, ids, code and
   mustFail(d, 'prose', 'hyphenated number range "5-10", write "5 to 10"');
   d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nA 10-20% change.\n');
   mustFail(d, 'prose', 'hyphenated number range');
-  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nOn 2026-06-28 the 52-week window and the id R-3fa91c, a link (docs/a-1-2.md), and `5-10` in code.\n\n```\n5-10\n```\n');
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nOn 2026-06-28 the 12-month window and the id R-3fa91c, a link (docs/a-1-2.md), and `5-10` in code.\n\n```\n5-10\n```\n');
   mustPass(d);
 });
 

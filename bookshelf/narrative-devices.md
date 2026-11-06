@@ -8,7 +8,7 @@ A library of named moves for `carousel-storyboard`. These are candidates, never 
 2. **Voice prevalence**: the quantified language hierarchy (concept, mentions, trend, sentiment over a stated N). It leads voice sections. Anecdotes follow prevalence and never stand in for it.
 3. **The umbrella**: total-scope framing before narrowing (every district, then the region, then the one school), so every later number has a visible denominator.
 4. **Share-of-growth flip**: a segment small in volume and large in its share of growth, or the reverse. It shows how something small can still matter.
-5. **Expected-share gap**: a segment's share of one outcome against its share of the whole, as an index, converted to what the gap costs (patients, dollars, hours). The standard device for over- and under-indexing.
+5. **Expected-share gap**: a segment's share of one outcome against its share of the whole, as an index, converted to what the gap costs (patients, dollars, hours). Use it when a group shows up more or less often than its size predicts.
 6. **Claim against credit**: what the provider says against what users repeat back, counted on both sides. Use it wherever the provider's language and the user's language can be measured separately.
 7. **The 2x2 interaction**: two factors that behave differently together than alone. Use it only when all four quadrants hold data and show their size.
 8. **The honesty beat**: the strongest point AGAINST the thesis, answered directly with its size. It sits before the recommendation, because a deck that hides its weakness gets found out in the room.

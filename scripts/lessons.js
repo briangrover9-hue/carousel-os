@@ -364,7 +364,7 @@ function appendArchive(file, header, line) {
 }
 
 function needHuman(what) {
-  console.log(`NEEDS HUMAN: ${what}. Ask the human. After a yes, run the command again with --human-confirmed "<their words>".`);
+  console.log(`ASK: ${what}. Ask the human. After a yes, run the command again with --human-confirmed "<their words>".`);
   return 3;
 }
 

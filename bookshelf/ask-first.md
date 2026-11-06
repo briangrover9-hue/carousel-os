@@ -27,7 +27,7 @@
 
 ## After the interview
 
-Later stages meet gaps the interview missed. They never ask. They take the conservative default from this table, or the smaller claim when the table is silent, and add a line to Deviations. The human reads Deviations at handoff and overturns what they disagree with.
+Later stages meet gaps the interview missed. They never ask. They take the conservative default from this table, or the smaller claim when the table is silent, and add a line to Calls made. The human reads Calls made at handoff and overturns what they disagree with.
 
 ## What makes a fake interview
 

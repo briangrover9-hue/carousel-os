@@ -21,15 +21,17 @@ test('a date that does not exist is rejected', () => {
   assert.ok(rotate.parseIsoDate('2024-02-29'));
 });
 
+// The preamble a new project's log starts with, read from the template it ships.
+const PREAMBLE = fs.readFileSync(path.join(h.ROOT, 'memory/LOG.template.md'), 'utf8').replace(/\r\n/g, '\n').trim();
 function fixture(entries, preamble) {
   const dir = h.tmpDir();
   const log = path.join(dir, 'LOG.md');
-  fs.writeFileSync(log, (preamble || '# Log\n\nNewest first.') + '\n\n' + entries.join('\n\n') + '\n');
+  fs.writeFileSync(log, (preamble || PREAMBLE) + '\n\n' + entries.join('\n\n') + '\n');
   return { dir, log, hist: path.join(dir, 'history') };
 }
 const run = (f, today, extra) => h.node(path.join(h.SCRIPTS, 'rotate-log.js'), ['--log', f.log, '--history', f.hist, '--today', today].concat(extra || []));
 
-test('moves entries older than the current ISO week and keeps the rest', () => {
+test('moves entries dated before this ISO week and keeps the rest', () => {
   const f = fixture(['## 2026-11-05 now\n\nCurrent week.', '## 2026-10-20 old\n\nOld one.', '## 2026-10-19 older\n\nOlder one.']);
   const r = run(f, '2026-11-05');
   assert.strictEqual(r.code, 0, r.out);
@@ -106,7 +108,7 @@ test('bad --today and a missing log both exit 2', () => {
   assert.strictEqual(run(f, '2026-11-05').code, 2);
 });
 
-test('checkLogText flags an entry that is not newest first', () => {
+test('checkLogText flags an entry that is not in order with the newest at the top', () => {
   assert.deepStrictEqual(rotate.checkLogText('# Log\n\n## 2026-11-05 a\n\nx\n\n## 2026-11-01 b\n\ny\n'), []);
   assert.strictEqual(rotate.checkLogText('# Log\n\n## 2026-11-01 a\n\nx\n\n## 2026-11-05 b\n\ny\n').length, 1);
   assert.strictEqual(rotate.checkLogText('# Log\n\n## Today\n\nx\n').length, 1);

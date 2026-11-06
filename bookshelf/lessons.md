@@ -52,4 +52,4 @@ The id is a short hash of the text. A lesson has no pipe character, 3 to 240 cha
 
 ## What does not belong
 
-A fact about a reader, source or window is knowledge, so it goes in a wiki page. A choice for one deck goes in that plan's Deviations.
+A fact about a reader, source or window is knowledge, so it goes in a wiki page. A choice for one deck goes in that plan's Calls made.

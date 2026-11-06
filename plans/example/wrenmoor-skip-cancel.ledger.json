@@ -23,7 +23,7 @@
       "numbers": [
         {
           "value": "2,562",
-          "source": "cancellations with two missed weeks in the prior 60 days, counted from both files",
+          "source": "cancellations that followed two missed weeks in a row, matched across exports/cancellations.csv and exports/visits.csv",
           "reconciled": true
         },
         {
@@ -33,7 +33,7 @@
         },
         {
           "value": "61%",
-          "source": "2,562 divided by 4,200",
+          "source": "2,562 divided by 4,200: cancellations after two missed weeks (exports/cancellations.csv, exports/visits.csv) over all cancellations (exports/cancellations.csv)",
           "reconciled": true,
           "words": [
             "six in ten"
@@ -48,23 +48,43 @@
     {
       "id": "s03",
       "kind": "claim",
-      "claim": "Members who miss two weeks in a row cancel at three times the base rate.",
-      "source": "exports/visits.csv",
+      "claim": "Members who miss two weeks in a row cancel at three times the rate of other members.",
+      "source": "exports/cancellations.csv, exports/visits.csv",
       "window": "12 months ending 2026-06-30",
       "numbers": [
         {
+          "value": "2,562",
+          "source": "members who missed two weeks in a row and canceled, matched across exports/cancellations.csv and exports/visits.csv, same count as s02",
+          "reconciled": true
+        },
+        {
+          "value": "8,212",
+          "source": "members who missed two weeks in a row, from exports/visits.csv",
+          "reconciled": true
+        },
+        {
           "value": "31.2%",
-          "source": "cancel rate among members who missed two weeks in a row, on the one member base",
+          "source": "2,562 divided by 8,212: cancellations from exports/cancellations.csv over members from exports/visits.csv",
+          "reconciled": true
+        },
+        {
+          "value": "1,638",
+          "source": "all other members who canceled: the 4,200 rows of exports/cancellations.csv less the 2,562, checked against exports/visits.csv",
+          "reconciled": true
+        },
+        {
+          "value": "15,750",
+          "source": "all other members, from exports/visits.csv; with the 8,212 they make the 23,962 members in the window",
           "reconciled": true
         },
         {
           "value": "10.4%",
-          "source": "cancel rate among all other members, on the same member base",
+          "source": "1,638 divided by 15,750: cancellations from exports/cancellations.csv over members from exports/visits.csv",
           "reconciled": true
         },
         {
           "value": "3x",
-          "source": "31.2 divided by 10.4",
+          "source": "31.2 divided by 10.4: the two rates above, each from exports/cancellations.csv over exports/visits.csv",
           "reconciled": true,
           "words": [
             "three times"
@@ -72,7 +92,7 @@
         }
       ],
       "status": "checked",
-      "check": "recomputed both rates from the visit file on one member base, ratio 3.0",
+      "check": "recounted all four counts from the cancellation and visit files on one member base of 23,962, divided (2,562 over 8,212 is 0.312, 1,638 over 15,750 is 0.104), and confirmed 2,562 plus 1,638 is the 4,200 on s02; ratio 3.0",
       "checked_on": "2026-07-06",
       "note": ""
     },
@@ -80,22 +100,22 @@
       "id": "s04",
       "kind": "claim",
       "claim": "About one in five of the members who answered the exit survey gave price as the reason.",
-      "source": "exports/exit-survey.csv",
+      "source": "exports/exit-survey.csv, exports/cancellations.csv",
       "window": "12 months ending 2026-06-30",
       "numbers": [
         {
           "value": "300",
-          "source": "survey rows with reason equal to price",
+          "source": "rows of exports/exit-survey.csv with reason equal to price",
           "reconciled": true
         },
         {
           "value": "1,428",
-          "source": "survey rows, which is the number of members who answered",
+          "source": "rows of exports/exit-survey.csv, which is the number of members who answered",
           "reconciled": true
         },
         {
           "value": "21.0%",
-          "source": "300 divided by 1,428",
+          "source": "300 divided by 1,428, both counted from exports/exit-survey.csv",
           "reconciled": true,
           "words": [
             "one in five"
@@ -103,12 +123,12 @@
         },
         {
           "value": "34%",
-          "source": "1,428 divided by 4,200 cancellations",
+          "source": "1,428 survey rows in exports/exit-survey.csv divided by the 4,200 rows of exports/cancellations.csv",
           "reconciled": true
         },
         {
           "value": "4,200",
-          "source": "all cancellations in the window, same count as s02",
+          "source": "all cancellations in the window, row count of exports/cancellations.csv, same count as s02",
           "reconciled": true
         }
       ],
@@ -121,17 +141,17 @@
       "id": "s05",
       "kind": "claim",
       "claim": "A one-month freeze is worth testing for members who miss two weeks in a row.",
-      "source": "exports/cancellations.csv",
+      "source": "exports/cancellations.csv, exports/visits.csv",
       "window": "12 months ending 2026-06-30",
       "numbers": [
         {
           "value": "2,562",
-          "source": "same count as s02",
+          "source": "same count as s02, matched across exports/cancellations.csv and exports/visits.csv",
           "reconciled": true
         }
       ],
       "status": "checked",
-      "check": "compared the 2,562 count with the s02 figure and opened the brief for the freeze length",
+      "check": "compared the 2,562 count with the s02 figure, and took the one-month freeze length from the Constraints line of the Brief",
       "checked_on": "2026-07-06",
       "note": ""
     },

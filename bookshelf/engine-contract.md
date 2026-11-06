@@ -1,10 +1,10 @@
 # The engine contract
 
-An engine is a program you write or plug in that draws slides, checks them, or both. Carousel OS does not ship one. It talks to yours through shell commands and exit codes, so any language works. This page is the one authority for the config keys and exit codes. `commands/carousel-check.md` is the procedure that uses them, and the build-your-engine docs in the carousel-os repository say what an engine should check.
+An engine is a program you write or plug in that draws slides, checks them, or both. Carousel OS does not ship one. It talks to yours through shell commands and exit codes, so any language works. This page is the one authority for the config keys and exit codes. `.agents/skills/carousel-check/SKILL.md` is the procedure that uses them, and the build-your-engine docs in the carousel-os repository say what an engine should check.
 
 ## carousel.config.json
 
-The file sits at the project root and is optional. `carousel.config.example.json`, in the carousel-os repository, is a sample to copy.
+The file sits at the project root and is optional. `carousel.config.example.json`, in the carousel-os repository, is a sample to copy. It registers the small example engine in `docs/build-your-engine/example/`, so a copy runs as it is.
 
 | Key | Meaning |
 |---|---|

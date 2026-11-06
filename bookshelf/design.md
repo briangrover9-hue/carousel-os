@@ -15,7 +15,7 @@ Your design tokens file is the one style authority, for every deck. This file co
 
 - Tracking depends on size. Tighten large display text slightly and keep body text near zero. One letter-spacing for every size is wrong somewhere.
 - Leading shrinks as size grows: tight on large headlines, looser on body and table text.
-- Build hierarchy from weight, size and leading together. Reach for weight before color when you emphasize.
+- Set rank with weight first, then size, and adjust leading to match. Reach for weight before color when you emphasize.
 - Use one type scale in real numbers everywhere, and keep it short. A 16:9 deck runs four to six sizes. Sizes improvised per slide ("big, medium, small") are a tell, and nine steps between 7 and 11 points read as error. Your tokens file owns the count and the numbers. Adding a size means removing one, or raising the count with a written reason.
 
 ## Layout

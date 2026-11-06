@@ -15,7 +15,7 @@ The ledger holds one entry per slide. It is how the deck proves that every numbe
 | `status` | `open`, `checked` or `rejected`. |
 | `check` | Once checked, the named check that passed, in a sentence. |
 | `checked_on` | The date of that check. |
-| `note` | Required when `rejected`. Marks an `open` row "uncertain" when a critique round demotes it. |
+| `note` | Required when `rejected`. Reads "unconfirmed" on an `open` row a critique round left open. |
 
 ## Rules
 
@@ -24,7 +24,7 @@ The ledger holds one entry per slide. It is how the deck proves that every numbe
 - Every number printed on a slide has a row entry. A figure on a slide that is missing from `numbers` is an unreconciled number. `check-process --plan` reads the slide text out of the .pptx file itself and compares it with the ledger in both directions. Every ledger value must be printed on its slide, and every figure printed must be a ledger value. It compares the same figures with the Build table too.
 - A figure in words ("six in ten", "three times", "half") is a figure. Record it as `words` on the number it describes, as in `{"value": "61%", "words": ["six in ten"]}`. The words must be printed on the slide, must agree with the number (within 5 points for a percentage, 0.3 for a multiple), and a ratio phrase the ledger does not record fails the check. The ledger claim and the storyboard row for a slide must use the same ratio phrases.
 - A figure that is a choice and not a measurement (a proposed trial length printed as digits) still gets an entry. Its source says "proposal parameter from the brief".
-- A claim demoted to uncertainty stays `open` with a note until a later round resolves it.
+- A row a critique round left open stays `open` with the note "unconfirmed" until a later round resolves it.
 - A slide whose claim fails its check becomes `rejected` with a note, and the slide gets fixed or cut. A rejected row is removed or reopened before the deck is done.
 - Quotes may carry an optional `quote` field with the exact text. An engine's scan can compare it byte for byte.
 
@@ -40,11 +40,11 @@ The ledger holds one entry per slide. It is how the deck proves that every numbe
 {
   "id": "s04",
   "kind": "claim",
-  "claim": "Members who miss two weeks in a row cancel within 60 days at three times the base rate.",
+  "claim": "Members who miss two weeks in a row cancel within 60 days at three times the rate of other members.",
   "source": "visits.csv, cancellations.csv",
   "window": "12 months ending 2026-06-30",
   "numbers": [
-    { "value": "3x", "source": "cancel rate 31.2% vs base 10.4%, computed in retention.py", "reconciled": true }
+    { "value": "3x", "source": "cancel rate 31.2% vs 10.4% for other members, computed in retention.py", "reconciled": true }
   ],
   "status": "checked",
   "check": "recomputed both rates from the two files, ratio 3.0",

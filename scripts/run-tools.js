@@ -22,6 +22,8 @@ const crypto = require('crypto');
 const cp = require('child_process');
 
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+// The config is text, hashed with LF line endings the way check-process hashes it, so a CRLF checkout agrees.
+const textSha256 = (text) => sha256(String(text).replace(/\r\n/g, '\n'));
 
 function statusFor(exit) {
   if (exit === 0) return 'PASS';
@@ -88,7 +90,7 @@ function main(argv) {
   let tools = {};
   if (fs.existsSync(configFile)) {
     const raw = fs.readFileSync(configFile, 'utf8');
-    results.configSha256 = sha256(raw);
+    results.configSha256 = textSha256(raw);
     let obj;
     try { obj = JSON.parse(raw); } catch (e) { console.error(`run-tools: carousel.config.json is not valid JSON (${e.message})`); return 2; }
     const e = obj && obj.engine;

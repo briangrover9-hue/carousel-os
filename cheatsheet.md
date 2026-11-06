@@ -7,7 +7,7 @@ Type each command yourself. The last line a stage prints is the one to look for,
 | `carousel-start` | `Start report: plan <path> created; ...` | `plans/<slug>.md` |
 | `carousel-brief` | `Brief report: <N> questions asked, ...` | Brief |
 | `carousel-storyboard` | `Storyboard report: <N> slides, headlines-only read holds, ...` | Storyboard, `plans/<slug>.ledger.json` |
-| `carousel-challenge-plan` | `Challenge round <R> of <T>: angle <name> (new). ...` | Challenge log, plan edits |
+| `carousel-critique` | `Critique round <R> of <T>: angle <name> (new). ...` | Critique log, plan edits |
 | `carousel-build` | `Build report: <N> slides built, ...` | the deck, ledger statuses, Build |
 | `carousel-check` | `Check report: path <engine or rubric>; plan <result>; ...` and four hash lines | Check |
 | `carousel-review` | `Review verdict: PASS, REJECT or UNVERIFIABLE; ...` | Review |
@@ -16,7 +16,7 @@ Type each command yourself. The last line a stage prints is the one to look for,
 
 ## Paths
 
-Full: three challenge rounds, the last on Parked claims. Short run (`Path: light`): one round, same stages otherwise. Set it at start.
+Full: three critique rounds, the last on Open rows. Short run (`Path: short`): one round, same stages otherwise. Set it at start.
 
 Engine: optional. Register your own in `carousel.config.json` (sample: `carousel.config.example.json`). Without one, `carousel-check` takes the rubric path.
 
@@ -27,7 +27,7 @@ Engine: optional. Register your own in `carousel.config.json` (sample: `carousel
 - Review says REJECT: build, check, review again. A second REJECT stops at review (a `Stopped at review` line) and goes to wrap.
 - Review says UNVERIFIABLE: supply what it names. It is never a pass.
 - Ending early: tell `carousel-wrap` the session ends now. It writes a `Stopped at` line.
-- A marker reads `NEEDS HUMAN: <question>`: answer it, then change the line to `RESOLVED: <question> -> <answer>`.
+- A marker reads `ASK: <question>`: answer it, then change the line to `RESOLVED: <question> -> <answer>`.
 - A lesson reads `POSSIBLE REPEAT` or `PROMOTE DUE`: only you decide. Run `node scripts/lessons.js repeat <id> --human-confirmed "<your words>"` or `promote <id> --human-confirmed "<your words>"`. Your words go in `memory/wiki/lessons.history`.
 
 ## Scripts
@@ -44,4 +44,4 @@ Each script prints usage with `--help`.
 
 ## Files
 
-`plans/<slug>.md` holds the state. `plans/<slug>.ledger.json` holds the claims. `memory/LOG.md` is what happened. `memory/wiki/` is what we know. `memory/handoff.md` is where the next session starts.
+`plans/<slug>.md` holds the state. `plans/<slug>.ledger.json` holds the claims. `memory/LOG.md` records each session by date. `memory/wiki/` holds facts that stay true across decks. `memory/handoff.md` is where the next session starts.

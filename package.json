@@ -1,6 +1,6 @@
 {
   "name": "carousel-os",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A deck process for agents, with a ledger for every number.",
   "license": "MIT",
   "author": {
@@ -60,6 +60,7 @@
     "tests/helpers/",
     "tests/scripts/",
     "!**/.DS_Store",
+    "!**/*.carousel-backup*",
     "!**/*.png",
     "!docs/gallery/**",
     "!docs/publish-checklist.md"

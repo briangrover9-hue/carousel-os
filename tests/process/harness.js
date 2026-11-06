@@ -9,7 +9,13 @@ const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SCRIPTS = path.join(ROOT, 'scripts');
-const SKIP = new Set(['.git', 'node_modules', 'engine', '.github', 'decks']);
+// The install manifest stays behind: it marks files as the user's own, and a test copy must start from the
+// process alone, whatever the project around it has made its own.
+const SKIP = new Set(['.git', 'node_modules', 'engine', '.github', 'decks', '.carousel-install.json']);
+// The tests are hermetic: a project's own carousel.config.json and its own plans never reach a test copy. A test that
+// needs a config or a plan writes its own. Only the plan templates and plans/example/ are part of the process.
+const USER_ROOT_FILES = new Set(['carousel.config.json']);
+const processPlan = (name, isDir) => (isDir ? name === 'example' : /^[^/]+\.template\.[^/]+$/.test(name));
 
 let passed = 0;
 let failed = 0;
@@ -21,14 +27,43 @@ function tmpDir(prefix) {
   return d;
 }
 
+// A .claude/ copy of a stage or agent is made from its source, so a copy of your own (or one you edited) in the
+// project around the tests never reaches the test copy. Returns the source path relative to src's folder, or null.
+function processCopy(r) {
+  const m = /^\.claude\/skills\/([^/]+)\/SKILL\.md$/.exec(r) || /^\.claude\/agents\/([^/]+\.md)$/.exec(r);
+  if (!m) return null;
+  const from = r.startsWith('.claude/skills/') ? path.join(ROOT, '.agents/skills', m[1], 'SKILL.md') : path.join(ROOT, 'agents', m[1]);
+  return fs.existsSync(from) ? path.relative(path.dirname(path.join(ROOT, r)), from) : null;
+}
+
 function copyDir(src, dst, rel) {
   fs.mkdirSync(dst, { recursive: true });
   fs.readdirSync(src, { withFileTypes: true }).forEach((d) => {
     const r = rel ? rel + '/' + d.name : d.name;
-    if (SKIP.has(d.name)) return;
+    if (SKIP.has(d.name) || d.name.includes('.carousel-backup')) return;   // a backup the tools saved is yours, not the process
     if (rel === 'tests' && d.name !== 'process') return;
+    if (rel === '' && USER_ROOT_FILES.has(d.name)) return;
+    if (rel === 'plans' && !processPlan(d.name, d.isDirectory())) return;
+    // A carousel-* skill or agent of the user's own in .claude/ is not part of the process: leave it behind too.
+    if (rel === '.claude/skills' && !fs.existsSync(path.join(ROOT, '.agents/skills', d.name, 'SKILL.md'))) return;
+    if (rel === '.claude/agents' && !fs.existsSync(path.join(ROOT, 'agents', d.name))) return;
     if (d.isDirectory()) copyDir(path.join(src, d.name), path.join(dst, d.name), r);
-    else fs.copyFileSync(path.join(src, d.name), path.join(dst, d.name));
+    else fs.copyFileSync(path.join(src, processCopy(r) || d.name), path.join(dst, d.name));
+  });
+  // A folder that held only backups (a retired stage's, say) is left behind with them.
+  if (rel && !fs.readdirSync(dst).length && fs.readdirSync(src).length) fs.rmdirSync(dst);
+}
+
+// Every .claude/ copy the process makes, written from its source when the project has none (an install with
+// --no-agents, or a copy you deleted), so the tests see the same process whatever the project chose to install.
+function addClaudeCopies(dir) {
+  const list = JSON.parse(fs.readFileSync(path.join(dir, 'scripts', 'stages.json'), 'utf8'));
+  const pairs = (list.stages || []).map((n) => [`.agents/skills/${n}/SKILL.md`, `.claude/skills/${n}/SKILL.md`])
+    .concat((list.agents || []).map((f) => [`agents/${f}`, `.claude/agents/${f}`]));
+  pairs.forEach(([from, to]) => {
+    if (!fs.existsSync(path.join(dir, from)) || fs.existsSync(path.join(dir, to))) return;
+    fs.mkdirSync(path.dirname(path.join(dir, to)), { recursive: true });
+    fs.copyFileSync(path.join(dir, from), path.join(dir, to));
   });
 }
 
@@ -36,6 +71,7 @@ function copyDir(src, dst, rel) {
 function copyRepo() {
   const dir = tmpDir();
   copyDir(ROOT, dir, '');
+  addClaudeCopies(dir);
   // The installer belongs to another part of the repo. Tests must not depend on whether it exists yet.
   const installer = path.join(dir, 'scripts', 'install.js');
   if (!fs.existsSync(installer)) fs.writeFileSync(installer, '// stand-in for the installer in test copies\n');

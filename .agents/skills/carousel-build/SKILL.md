@@ -1,25 +1,25 @@
 ---
 name: carousel-build
-description: "Build the deck from the challenged plan, one slide at a time, checking each ledger row as its slide is finished."
+description: "Build the deck from the critiqued plan, one slide at a time, checking each ledger row as its slide is finished."
 disable-model-invocation: true
 ---
 
 # carousel-build
 
-Job: build the deck from the challenged plan, one slide at a time, checking each ledger row as its slide is finished.
+Job: build the deck from the critiqued plan, one slide at a time, checking each ledger row as its slide is finished.
 Reads: the plan, the ledger, `bookshelf/design.md`, `bookshelf/writing.md`, `bookshelf/claim-ledger.md`.
-Writes: the deck file, Build in the plan (deck path and slide text), ledger statuses, new `D<n>:` lines under Deviations, `Status: built`, a line in Reports.
+Writes: the deck file, Build in the plan (deck path and slide text), ledger statuses, new `D<n>:` lines under Calls made, `Status: built`, a line in Reports.
 Exit check: every ledger row is `checked` or `rejected` with a note, Build names the deck and holds the slide text table, and Reports holds the `Build report:` line.
 
 ## Guards
 
 Decline, name the cause, and stop when:
-1. Reports holds fewer `Challenge round` lines than the Rounds line, or Challenge log does not end with `Parked claims: none open`. Say to run `carousel-challenge-plan`.
+1. Reports holds fewer `Critique round` lines than the Rounds line, or the last round's `Open rows:` line is not `Open rows: none open`. Say to run `carousel-critique`.
 2. The ledger file is missing. Say to run `carousel-storyboard`.
-3. Brief's `Literal ask:`, `Reader and venue:` or `Evidence:` holds a `NEEDS HUMAN:` marker.
+3. Brief's `Literal ask:`, `Reader and venue:` or `Evidence:` holds an `ASK:` marker.
 4. Reports' latest line is a `Stopped at` line. Say the plan stopped at that stage, and that only `carousel-wrap` runs next.
 
-A `NEEDS HUMAN:` marker on one slide does not stop the build. Build that slide conservatively and log it.
+An `ASK:` marker on one slide does not stop the build. Build that slide conservatively and log it.
 
 ## Steps
 
@@ -32,22 +32,22 @@ A `NEEDS HUMAN:` marker on one slide does not stop the build. Build that slide c
    2. Check it. For each number, open its source and recompute it. Write in the row's `check` field one sentence that names the action, the source and the value found. Why: a row that says "verified" cannot be audited.
    3. Every number matches its printed value: set `reconciled: true` on it, then set the row `checked` with today's date in `checked_on` (the date must fall after the window ends). Never set `checked` before its recompute is done. Any mismatch: set the row `rejected` with a note, then fix or cut the slide.
    4. A figure in words ("six in ten", "three times") goes in the row too, as `words` on the number it describes. The words must agree with the number.
-   5. The slide has a `NEEDS HUMAN:` marker: drop the claim or the number, keep the framing, and log a `D<n>:` line.
-4. For every other open decision, take the conservative option (the smaller claim, fewer slides, the default theme) and log `D<n>: build, <choice>, <reason>` under Deviations.
+   5. The slide has an `ASK:` marker: drop the claim or the number, keep the framing, and log a `D<n>:` line.
+4. For every other open decision, choose the smaller claim, fewer slides and the default theme, and log `D<n>: build, <choice>, <reason>` under Calls made.
 5. Fill Build. Line one is `Deck: <path to a .pptx file>`. Why: `carousel-check` reads the slide text out of that file. For a Google Slides deck, export a .pptx and record that path, and put the link in a Notes line. Then add the table `| Slide | Text on the slide |` with one row per slide holding every printed word and number. Why: the check and the review compare it with the ledger. Last, save the deck, run `node scripts/check-process.js --hashes plans/<slug>.md`, and write its deck line into Build as `Deck sha256 at build: <hex>`. A deck that changes after this line needs a new Build.
 6. Add speaker notes when Brief says the deck is presented.
-7. Set `Status: built`. Append the report line to Reports. M equals the number of `checked` rows in the ledger. K equals the number of `D<n>:` lines in Deviations.
+7. Set `Status: built`. Append the report line to Reports. M equals the number of `checked` rows in the ledger. K equals the number of `D<n>:` lines in Calls made.
 
 ## Report line
 
 End with exactly this line, then add the same line to Reports:
 
-`Build report: <N> slides built, <M> ledger rows checked, <K> deviations logged.`
+`Build report: <N> slides built, <M> ledger rows checked, <K> calls logged.`
 
 ## Real-change check
 
-A fake build marks rows checked from memory of the number, or because the slide looks right. It leaves `check` empty or writes "verified". It reports `deviations logged 0` while markers exist. It adds slides the storyboard did not list. It edits a scan input or threshold so a check passes.
+A fake build marks rows checked from memory of the number, or because the slide looks right. It leaves `check` empty or writes "verified". It reports `calls logged 0` while markers exist. It adds slides the storyboard did not list. It edits a scan input or threshold so a check passes.
 
-## Rationale
+## Why it works this way
 
-Checking each row right after its slide keeps the source in view, so an error costs one slide instead of a review round. Conservative choices keep the build moving without the human, and the Deviations list gives the human a short list to overturn.
+Checking each row right after its slide keeps the source in view, so an error costs one slide instead of a review round. Conservative choices keep the build moving without the human, and the Calls made list gives the human a short list to overturn.

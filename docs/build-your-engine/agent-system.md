@@ -72,7 +72,7 @@ A rough ask ("can you pull together something on churn for Thursday") is a poor 
 - [ ] Format, delivery mode (presented or read), deadline.
 - [ ] Standing preferences pulled from memory.
 - [ ] Each field tagged with where it came from (stated, found, assumed).
-- [ ] A predicted first correction: what the human is most likely to push back on.
+- [ ] A predicted first correction: the first thing you expect the human to change.
 
 Why: you end up telling it the same thing three times because the first brief left it out, and each correction costs a round.
 
@@ -102,9 +102,20 @@ Why: the real ask often lives in a thread nobody pasted into the brief, and read
 
 The system runs long stretches on its own, and the human decides at the points that matter: the gate, checkpoints, and send. Show a labeled, unreviewed version 1 early. Print a one-line status at each phase change, since a silent twenty-minute fan-out reads as a hang.
 
+## Turning a role into an agent file
+
+The two reviewers in `agents/` are working examples. Copy the shape of `agents/carousel-reviewer.md` for any row in the table above:
+
+- **Front matter.** A `name`, a one-line `description` that states the job, and `tools` limited to what the role needs. Reviewers get read-only tools.
+- **Inputs as paths.** The agent receives file paths, never the builder's summary of what the files say.
+- **One output format.** A fixed shape the next stage can parse, such as a verdict with pasted evidence.
+- **Refusals as rules.** Turn the role's Refuses column into plain rules the agent must follow.
+
+Claude Code reads agent files from `.claude/agents/`. Any other tool can take the body as instructions.
+
 ## Minimum version
 
-- [ ] One builder and one merged reviewer with fresh context, who receives only file paths.
+- [ ] One builder and one merged reviewer with fresh context, who receives only file paths, written as agent files in the shape of `agents/carousel-reviewer.md`.
 - [ ] A one-page approach gate before building.
 - [ ] A brief template with quoted asks and a fixed measurement basis.
 - [ ] Cheaper models for extraction, the strongest for judgment.

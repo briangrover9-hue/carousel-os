@@ -94,20 +94,39 @@ test('CLI: --ledger-md prints a pipe table with a Slide column and a VERIFIED st
 });
 
 test('reportRegex turns placeholders into patterns', () => {
-  const re = cp.reportRegex('Build report: <N> slides built, <M> ledger rows checked, <K> deviations logged.');
-  assert.ok(re.test('Build report: 6 slides built, 6 ledger rows checked, 2 deviations logged.'));
-  assert.ok(!re.test('Build report: six slides built, 6 ledger rows checked, 2 deviations logged.'));
+  const re = cp.reportRegex('Build report: <N> slides built, <M> ledger rows checked, <K> calls logged.');
+  assert.ok(re.test('Build report: 6 slides built, 6 ledger rows checked, 2 calls logged.'));
+  assert.ok(!re.test('Build report: six slides built, 6 ledger rows checked, 2 calls logged.'));
 });
 
 test('handoff validator: empty sentence, full form and failures', () => {
-  assert.deepStrictEqual(cp.validateHandoff('# Handoff\n\nNothing to hand off this time.\n'), []);
+  assert.deepStrictEqual(cp.validateHandoff('# Handoff\n\nNo open items. The next session starts clean.\n'), []);
   const full = fs.readFileSync(path.join(h.ROOT, 'memory/handoff.template.md'), 'utf8').replace(/\r\n/g, '\n');
   assert.deepStrictEqual(cp.validateHandoff(full), []);
   assert.ok(cp.validateHandoff(full.replace('- <Second bullet, if needed.>', '- b\n- c\n- d\n- e\n- f')).some((e) => e.includes('limit is 5')));
-  assert.ok(cp.validateHandoff(full.replace('Start with carousel-start.\n', '')).length > 0);
-  assert.ok(cp.validateHandoff(full.replace('Out of scope:\n- <What the next session should leave alone.>', '')).length > 0);
-  assert.ok(cp.validateHandoff(full.replace('Recommended focus: <exactly one line>', 'Recommended focus:')).length > 0);
-  assert.ok(cp.validateHandoff('# Handoff\n\nNothing to hand off this time. Maybe.\n').length > 0);
+  const err = (t) => cp.validateHandoff(t).join('\n');
+  // The Next session block comes first: the note for the human above it fails.
+  const human = '<One plain paragraph: where the deck stands and what changed this session.>\n\n- <Decision to make or thing to know. At most five bullets.>\n- <Second bullet, if needed.>';
+  assert.ok(full.includes(human));
+  assert.ok(err(full.replace('\n' + human, '').replace('# Handoff\n', '# Handoff\n\n' + human + '\n')).includes('"## Next session" section right under the title'));
+  assert.ok(err(full.replace(human, '')).includes('needs one plain paragraph below'));
+  assert.ok(err(full.replace(/Open ledger rows:\n- .*\n/, '')).includes('"Open ledger rows:" in order'));
+  assert.ok(err(full.replace('Open ASK markers:', 'Questions:')).includes('"Open ASK markers:" in order'));
+  // The Deck state line: present, after Next focus, with numbers, a known verdict and no more rows checked than exist.
+  const DS = 'Deck state: <slides built>; ledger rows checked <N> of <T>; last verdict <PASS|REJECT|UNVERIFIABLE|none>';
+  assert.ok(full.includes(DS));
+  const state = (line) => err(full.replace(DS, line));
+  assert.ok(state('').includes('needs "Deck state:'));
+  assert.strictEqual(state('Deck state: 6 slides built; ledger rows checked 6 of 6; last verdict PASS'), '');
+  assert.strictEqual(state('Deck state: 0 slides built; ledger rows checked 0 of 6; last verdict none'), '');
+  assert.ok(state('Deck state: six slides; ledger rows checked 6 of 6; last verdict PASS').includes('must read "<N> slides built"'));
+  assert.ok(state('Deck state: 6 slides built; ledger rows checked 7 of 6; last verdict PASS').includes('checks 7 ledger rows of 6'));
+  assert.ok(state('Deck state: 6 slides built; ledger rows checked 6 of 6; last verdict FINE').includes('must be PASS, REJECT, UNVERIFIABLE or none'));
+  // "- none" stands alone under its label.
+  assert.ok(err(full.replace(/Open ledger rows:\n- .*\n/, 'Open ledger rows:\n- none\n- s03: open\n')).includes('lists "- none" beside other bullets'));
+  assert.ok(err(full.replace('## Next session', '## Later')).includes('"## Next session"'));
+  assert.ok(cp.validateHandoff(full.replace('Next focus: <exactly one line>', 'Next focus:')).length > 0);
+  assert.ok(cp.validateHandoff('# Handoff\n\nNo open items. The next session starts clean. Maybe.\n').length > 0);
 });
 
 test('checked_on may not be later than today or earlier than the window end', () => {

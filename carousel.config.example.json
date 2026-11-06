@@ -1,9 +1,6 @@
 {
   "engine": {
-    "scan": "python3 tools/scan.py {deck} {out}",
-    "render": "python3 tools/render.py {deck} {out}",
-    "tools": {
-      "budget": "python3 tools/budget.py {deck} {out}"
-    }
+    "scan": "node docs/build-your-engine/example/scan.js {deck} {out}",
+    "render": "node docs/build-your-engine/example/render.js {deck} {out}"
   }
 }

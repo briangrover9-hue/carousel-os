@@ -1,6 +1,6 @@
 # Review angles
 
-The master list for `carousel-challenge-plan` and `carousel-review`. A critique round declares one angle from this list, by name, and uses a different one each round. The last round of a plan with two or more rounds takes angle 16. Names here are the names to write in the round header.
+The master list for `carousel-critique` and `carousel-review`. A critique round declares one angle from this list, by name, and uses a different one each round. The last round of a plan with two or more rounds takes angle 16. Names here are the names to write in the round header.
 
 ### 1. Literal ask
 
@@ -20,15 +20,15 @@ Does the order run from the widest scope to the narrowest, or as the brief says?
 
 ### 5. Recurrence
 
-Take the last flaw found. Search every other slide for the same flaw before fixing any.
+When you find a flaw, check the slides built from the same template or source for it.
 
 ### 6. Ledger integrity
 
 Did a fix change a number, a source or a window and leave its ledger row stale? Re-read every row against the current slide text.
 
-### 7. Conventions on every slide
+### 7. Slide-to-slide consistency
 
-Does each convention reach every slide: scope tag, source line, a base beside each percentage, notes, one spelling for each name?
+Pick each convention (scope tag, source line, base, spelling) and find the first slide that drops it.
 
 ### 8. Reader and venue
 
@@ -62,9 +62,9 @@ Is the deck within the budget? If you had to cut two slides, which, and what doe
 
 Does each percentage show its base? Does any chart compare things measured on different bases?
 
-### 16. Parked claims
+### 16. Open rows
 
-Last round of a plan with two or more rounds. Review every claim that earlier rounds parked as uncertain. Resolve each to checked evidence, reword it to "worth testing", or cut it.
+Last round of a plan with two or more rounds. Review every row on an earlier `Open rows:` line. Resolve each to checked evidence, reword it to "worth testing", or cut it.
 
 ## Choosing an angle
 

@@ -155,7 +155,7 @@ test('leak-scan allows the author address only in README.md and package.json, an
 
 test('leak-scan keeps findings on stderr and the summary on stdout, and finds a listed name without printing it', () => {
   const t = tmp();
-  write(t, 'a.md', 'Sales at Zorblax grew.\n');
+  write(t, 'a.md', 'Signups at Zorblax grew.\n');
   const tokens = write(tmp(), 'names.txt', '# invented\nZorblax\n');
   const r = leak(t, ['--tokens', tokens]);
   eq(r.code, 1);
@@ -207,7 +207,7 @@ test('leak-scan fails a deck whose app.xml names a company or manager', () => {
 
 test('leak-scan finds a listed name inside slide text, notes and document properties, and an address in a slide', () => {
   const tokens = write(tmp(), 'names.txt', 'Zorblax\n');
-  [['ppt/slides/slide1.xml', SLIDE('Sales at Zorblax grew')], ['ppt/notesSlides/notesSlide1.xml', SLIDE('Ask Zorblax')],
+  [['ppt/slides/slide1.xml', SLIDE('Signups at Zorblax grew')], ['ppt/notesSlides/notesSlide1.xml', SLIDE('Ask Zorblax')],
     ['docProps/core.xml', CORE('Carousel OS example', 'Carousel OS example').replace('<dc:title>T', '<dc:title>Zorblax plan')]].forEach(([name, xml]) => {
     const r = leak(deckDir({ [name]: xml }), ['--tokens', tokens]);
     eq(r.code, 1, name + ': ' + r.out + r.err);
@@ -230,6 +230,21 @@ test('the .pptx files shipped in this repository carry the neutral metadata and 
   const r = node(path.join(ROOT, 'scripts', 'leak-scan.js'), ['--root', path.join(ROOT, 'plans')]);
   eq(r.code, 0, r.out + r.err);
   yes(/leak-scan: [1-9]\d* files/.test(lastLine(r.out)), lastLine(r.out));
+});
+
+test('RULES.md puts the newest session with the log, and the reviewer note matches rule 2', () => {
+  const rules = fs.readFileSync(path.join(ROOT, 'RULES.md'), 'utf8');
+  const memory = /^10\. \*\*Memory\.\*\* (.*)$/m.exec(rules)[1];
+  const logSentence = memory.split('. ').find((x) => x.includes('memory/LOG.md'));
+  yes(/newest session/.test(logSentence), 'the newest-session clause is not in the LOG.md sentence: ' + memory);
+  yes(!/memory\/wiki\/[^.]*newest session/.test(memory), 'a wiki sentence carries the newest-session clause: ' + memory);
+  yes(/^2\. \*\*Questions\.\*\*.*smaller claim/m.test(rules), 'rule 2 no longer names the smaller claim');
+  yes(/^- Rule 2: whether the smaller claim was really chosen\./m.test(rules) && !/conservative/.test(rules), 'the reviewer note does not match rule 2');
+});
+
+test('the worked example says the s02 cancellations and the s05 members are the same people', () => {
+  const plan = fs.readFileSync(path.join(ROOT, 'plans', 'example', 'wrenmoor-skip-cancel.md'), 'utf8');
+  yes(/each member cancels at most once in the window/.test(plan), 'no counting rule in the plan');
 });
 
 fs.rmSync(RUN_DIR, { recursive: true, force: true });

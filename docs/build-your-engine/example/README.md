@@ -42,14 +42,14 @@ node docs/build-your-engine/example/render.js plans/example/wrenmoor-skip-cancel
 The real output:
 
 ```
-CANDIDATE slide 3 headline length: 71 characters, within 10 percent of the 72 limit
+FAIL slide 3 headline length: 83 characters, limit 72: "Members who miss two weeks in a row cancel at three times the rate of other members"
 FAIL slide 4 headline length: 86 characters, limit 72: "About one in five of the members who answered the exit survey gave price as the reason"
 FAIL slide 5 headline length: 75 characters, limit 72: "A one-month freeze is worth testing for members who miss two weeks in a row"
-FAIL slide 3 percentage base: 31.2%, 10.4% with no base (a count of what it is a percent of) on the slide
-scan: 3 FAIL, 1 CANDIDATE
+scan: 3 FAIL, 0 CANDIDATE
+render stub: wrote 6 slide outlines to outline.txt (text only, no pixels)
 ```
 
-The exit code is 1. The deck is a plain text deck, so it has no colors and one type size (28 points, on the scale), and its six text runs are NOT SCANNED for contrast. The failures are real findings about the text: two headlines run past the limit, and slide 3 gives two percentages with no count beside them. Carousel OS does not ask you to fix the example, because its plan is finished and hashed.
+The scan exits 1 and the render stub exits 0. The deck is a plain text deck, so it has no colors and one type size (28 points, on the scale), and its six text runs are NOT SCANNED for contrast. The failures are real findings about the text: three headlines run past the limit. Every percentage passes the base check, because each slide that prints one also prints the count it is a percent of. Carousel OS does not ask you to fix the example, because its plan is finished and hashed.
 
 ## What it deliberately does not do
 

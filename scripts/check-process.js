@@ -9,7 +9,7 @@
 //   node scripts/check-process.js --ledger-md FILE        (prints the ledger as a pipe table)
 //   node scripts/check-process.js --help
 //
-// Checks: budget, deadrefs, wiki, contract, prose, state, handoff. Exit 1 when any fails.
+// Checks: budget, deadrefs, wiki, contract, skills, prose, state, handoff. Exit 1 when any fails.
 // It works with or without an engine/ folder. It skips dot folders, folders the project's
 // .gitignore names, and generated folders (out, build, decks, node_modules).
 
@@ -29,45 +29,45 @@ const STAGE_INDEX = `${STAGE_DIR}/README.md`;
 
 // ---------------------------------------------------------------- contract
 
-const CHECK_TEMPLATE = 'Check report: path <engine|rubric>; plan <PASS|FAIL>; ledger <PASS|FAIL>; tools <none or list>; checklist <N of M or n/a>; Deferred: <none or list>.';
-const STOP_TEMPLATE = 'Stopped at <start|brief|storyboard|challenge-plan|build|check|review>: <reason>.';
+const CHECK_TEMPLATE = 'Check report: path <engine|rubric>; plan <PASS|FAIL>; ledger <PASS|FAIL>; tools <none or list>; checklist <N of M or n/a>; Waiting on you: <none or list>.';
+const STOP_TEMPLATE = 'Stopped at <start|brief|storyboard|critique|build|check|review>: <reason>.';
 
 // Each stage: its exact report line, the previous stage's line its Guards must name (guard), and
 // strings that must stay in a named section (must). The strings pin the guards and prohibitions
 // that make a stage refuse to run, so an edit cannot quietly drop one.
 const STAGES = [
   {
-    name: 'carousel-start', id: 'start', report: 'Start report: plan <path> created; path <full|light>; handoff <read|none>; lessons loaded <N>.', guard: [],
+    name: 'carousel-start', id: 'start', report: 'Start report: plan <path> created; path <full|short>; handoff <read|none>; lessons loaded <N>.', guard: [],
     must: { Guards: ['node scripts/install.js', 'Start never resumes a plan'], Steps: ['node scripts/check-process.js'] },
   },
   {
-    name: 'carousel-brief', id: 'brief', report: 'Brief report: <N> questions asked, <M> answers recorded, <K> NEEDS HUMAN markers open.', guard: ['Start report:'],
-    extra: ['NEEDS HUMAN:'], must: { Guards: ['NEEDS HUMAN:'], Steps: ['at most three'] },
+    name: 'carousel-brief', id: 'brief', report: 'Brief report: <N> questions asked, <M> answers recorded, <K> ASK markers open.', guard: ['Start report:'],
+    extra: ['ASK:'], must: { Guards: ['ASK:'], Steps: ['at most three'] },
   },
   {
     name: 'carousel-storyboard', id: 'storyboard', report: 'Storyboard report: <N> slides, headlines-only read <holds|does not hold>, ledger rows <N>.', guard: ['Brief report:'],
-    must: { Guards: ['NEEDS HUMAN:'], Steps: ['Headlines only:', 'ledger'] },
+    must: { Guards: ['ASK:'], Steps: ['Headlines only:', 'ledger'] },
   },
   {
-    name: 'carousel-challenge-plan', id: 'round',
-    report: 'Challenge round <R> of <T>: angle <name> (new). Re-verified <N> claims, demoted <M> to uncertainty.',
+    name: 'carousel-critique', id: 'round',
+    report: 'Critique round <R> of <T>: angle <name> (new). Fixed <F>; waiting <W>; verified <V>; ledger rows open <O>.',
     guard: ['Storyboard report:'],
-    extra: ['Addressed:', 'Deferred:', 'Kept as is:', 'Angle: <name> (new)', 'Parked claims'],
-    must: { Guards: ['Rounds line'], Steps: ['Parked claims: none open', 'Never delete a parked entry'] },
+    extra: ['Fixed:', 'Waiting on you:', 'Verified unchanged:', 'Angle: <name> (new)', 'Open rows:'],
+    must: { Guards: ['Rounds line'], Steps: ['Open rows: none open', 'Never drop an open row', '"unconfirmed"'] },
   },
   {
-    name: 'carousel-build', id: 'build', report: 'Build report: <N> slides built, <M> ledger rows checked, <K> deviations logged.', guard: ['Challenge round'],
-    extra: ['Deviations'], must: { Guards: ['Parked claims: none open', 'Stopped at', 'holds a `NEEDS HUMAN:` marker'], Steps: ['open its source and recompute it', 'Never set', 'Deck sha256 at build:'] },
+    name: 'carousel-build', id: 'build', report: 'Build report: <N> slides built, <M> ledger rows checked, <K> calls logged.', guard: ['Critique round'],
+    extra: ['Calls made'], must: { Guards: ['Open rows: none open', 'Stopped at', 'holds an `ASK:` marker'], Steps: ['open its source and recompute it', 'Never set', 'Deck sha256 at build:'] },
   },
   {
     name: 'carousel-check', id: 'check', report: CHECK_TEMPLATE, guard: ['Build report:'],
-    extra: ['Deck sha256: <hex>', 'Ledger sha256: <hex>', 'Build sha256: <hex>', 'carousel.config.json', 'Deferred:', 'Tool <name>: <PASS|FAIL|MISSING>: <exact result line>', 'Deck sha256 before tools: <hex>', 'tools.json'],
+    extra: ['Deck sha256: <hex>', 'Ledger sha256: <hex>', 'Build sha256: <hex>', 'carousel.config.json', 'Waiting on you:', 'Tool <name>: <PASS|FAIL|MISSING>: <exact result line>', 'Deck sha256 before tools: <hex>', 'tools.json'],
     must: { Guards: ['latest `Build report:` line', 'needs a new `carousel-build`'], Steps: ['sha256', '--plan', 'scripts/run-tools.js', 'Never loosen', 'Never record exit 2 as PASS', 'No tool may edit the deck', 'differs from the line before the tools'] },
   },
   {
     name: 'carousel-review', id: 'review', report: 'Review verdict: <PASS|REJECT|UNVERIFIABLE>; unreconciled numbers <N>; findings <N>.',
     guard: ['Check report:'], extra: ['UNVERIFIABLE is never rounded up to PASS.', 'fresh context'],
-    must: { Guards: ['sha256', 'latest `Check report:` line', 'two `Review verdict: REJECT`', 'a FAIL, a MISSING tool or a checklist short of its total'], Steps: ['recompute', '--plan', 'second REJECT', 'never rounded up', 'Withhold the Challenge log'] },
+    must: { Guards: ['sha256', 'latest `Check report:` line', 'two `Review verdict: REJECT`', 'a FAIL, a MISSING tool or a checklist short of its total'], Steps: ['recompute', '--plan', 'second REJECT', 'never rounded up', 'Withhold the Critique log'] },
   },
   {
     name: 'carousel-wrap', id: 'wrap',
@@ -77,18 +77,20 @@ const STAGES = [
   },
   {
     name: 'carousel-handoff', id: 'handoff', report: 'Handoff report: memory/handoff.md written; <N> bullets; focus <one line or none>.',
-    guard: ['Wrap report:'], extra: ['Nothing to hand off this time.', '## Agent half', 'Start with carousel-start.'],
+    guard: ['Wrap report:'], extra: ['No open items. The next session starts clean.', '## Next session', 'Deck state:', 'Open ASK markers:', 'Open ledger rows:'],
     must: { Guards: ['latest `Wrap report:` line'], Steps: ['Never append'] },
   },
 ];
 const STOP = { id: 'stopped', report: STOP_TEMPLATE };
 
-const ANATOMY = ['## Guards', '## Steps', '## Report line', '## Real-change check', '## Rationale'];
-const PLAN_SECTIONS = ['Direction', 'Brief', 'Storyboard', 'Challenge log', 'Deviations', 'Build', 'Check', 'Review', 'Reports'];
-const EMPTY_HANDOFF = 'Nothing to hand off this time.';
+const ANATOMY = ['## Guards', '## Steps', '## Report line', '## Real-change check', '## Why it works this way'];
+// A critique round's count line: its change list entries by kind, and the ledger rows it leaves open.
+const ROUND_COUNTS = 'Fixed (\\d+); waiting (\\d+); verified (\\d+); ledger rows open (\\d+)\\.';
+const PLAN_SECTIONS = ['Request', 'Brief', 'Storyboard', 'Critique log', 'Calls made', 'Build', 'Check', 'Review', 'Reports'];
+const EMPTY_HANDOFF = 'No open items. The next session starts clean.';
 const SKIP_DIRS = new Set(['node_modules', 'engine', 'tests', 'decks', 'out', 'build', 'dist', '__pycache__']);
 const CHECKLIST_ITEMS = [10, 9];
-const STOP_STAGE = { start: 'start', brief: 'brief', storyboard: 'storyboard', round: 'challenge-plan', build: 'build', check: 'check', review: 'review' };
+const STOP_STAGE = { start: 'start', brief: 'brief', storyboard: 'storyboard', round: 'critique', build: 'build', check: 'check', review: 'review' };
 const MAX_REJECTS = 2;
 // Sentences in RULES.md that an edit must not drop.
 const RULES_PINS = ['Never commit, push, send or publish a deck.', 'A tool that exits 2 is MISSING, never PASS.', 'self-attested', 'Only `carousel-brief` asks the human anything.'];
@@ -184,6 +186,9 @@ function sectionText(text, heading) {
 }
 
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+// Text (a ledger, a plan section, the config) is hashed with LF line endings, so a CRLF checkout (git on Windows with
+// core.autocrlf=true) records and recomputes the same hash. A deck is binary and is always hashed as its bytes.
+const textSha256 = (text) => sha256(String(text).replace(/\r\n/g, '\n'));
 
 function realDate(s) {
   if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
@@ -568,42 +573,84 @@ function planDeckProblems(ctx, rel, text, ledger) {
 
 // ---------------------------------------------------------------- handoff
 
+const NEXT_SESSION = '## Next session';
+const HANDOFF_LABELS = ['Open ASK markers:', 'Open ledger rows:'];
+// The layout in one line, for messages that tell a person how to fix a handoff by hand.
+const HANDOFF_LAYOUT = `"# Handoff"; "${NEXT_SESSION}"; "Next focus: <one line>"; "Deck state: <N> slides built; ledger rows checked <C> of <T>; last verdict <PASS|REJECT|UNVERIFIABLE|none>"; ` +
+  HANDOFF_LABELS.map((l) => `"${l}" with at least one bullet (or "- none")`).join('; ') +
+  `; then one plain paragraph for the human and at most five bullets. A handoff with nothing open is "# Handoff" and the one sentence "${EMPTY_HANDOFF}"`;
+// The deck's state as the handoff records it. A value in angle brackets is a template placeholder.
+const DECK_STATE = /^Deck state: (.+?); ledger rows checked (\S+) of (\S+); last verdict (\S+)$/;
+
+// Split a handoff body (after "# Handoff") into the Next session block, which comes first, and the note for the
+// human below it. The block ends after the bullets under its last label.
+function splitHandoff(body) {
+  if (!body.startsWith(NEXT_SESSION)) return null;
+  const lines = body.slice(NEXT_SESSION.length).split('\n');
+  let i = 0;
+  const skip = () => { while (i < lines.length && lines[i].trim() === '') i++; };
+  const block = [];
+  skip();
+  if (/^Next focus: /.test(lines[i] || '')) block.push(lines[i++].trim());
+  skip();
+  if (/^Deck state: /.test(lines[i] || '')) block.push(lines[i++].trim());
+  HANDOFF_LABELS.forEach((label) => {
+    skip();
+    if ((lines[i] || '').trim() !== label) return;
+    block.push(lines[i++].trim());
+    for (;;) {
+      skip();
+      if (i < lines.length && lines[i].trim().startsWith('- ')) block.push(lines[i++].trim());
+      else break;
+    }
+  });
+  return { block, human: lines.slice(i).join('\n').trim() };
+}
+
 function validateHandoff(text) {
   const errors = [];
   const t = text.replace(/\r\n/g, '\n').trim();
   if (!t.startsWith('# Handoff')) return ['must start with "# Handoff"'];
   const body = t.slice('# Handoff'.length).trim();
   if (body === EMPTY_HANDOFF) return [];
-  const idx = body.indexOf('\n## Agent half');
-  if (idx < 0) return [`needs a "## Agent half" section, or the exact sentence "${EMPTY_HANDOFF}"`];
-  const human = body.slice(0, idx).trim();
-  const agent = body.slice(idx + '\n## Agent half'.length).trim();
-  if (/^#{1,6} /m.test(human)) errors.push('the human half holds a heading');
-  const blocks = human.split(/\n\s*\n/).filter((b) => b.trim() !== '');
-  if (blocks.length === 0) errors.push('the human half needs one plain paragraph');
-  else {
-    if (blocks[0].split('\n').some((l) => l.startsWith('- '))) errors.push('the human half must start with a plain paragraph, not bullets');
-    if (blocks.length > 2) errors.push('the human half is a paragraph and at most one bullet list');
-    if (blocks[1]) {
-      const bl = blocks[1].split('\n');
-      if (!bl.every((l) => l.startsWith('- '))) errors.push('the human half bullets must all start with "- "');
-      if (bl.length > 5) errors.push(`the human half has ${bl.length} bullets, the limit is 5`);
-    }
-  }
-  const lines = agent.split('\n').map((l) => l.trim()).filter(Boolean);
+  const parts = splitHandoff(body);
+  if (!parts) return [`needs a "${NEXT_SESSION}" section right under the title, or the exact sentence "${EMPTY_HANDOFF}"`];
+  const lines = parts.block;
   let i = 0;
-  if (lines[i] !== 'Start with carousel-start.') errors.push('the agent half must open with "Start with carousel-start."');
+  if (!/^Next focus: (.+)$/.exec(lines[i] || '')) errors.push('the Next session section needs one "Next focus: <line>" first');
   else i++;
-  if (!/^Recommended focus: (.+)$/.exec(lines[i] || '')) errors.push('the agent half needs one "Recommended focus: <line>"');
-  else i++;
-  ['Agent-doable:', 'Needs the human:', 'Out of scope:'].forEach((label) => {
-    if (lines[i] !== label) { errors.push(`the agent half needs "${label}" in order`); return; }
+  const ds = DECK_STATE.exec(lines[i] || '');
+  if (!ds) errors.push('the Next session section needs "Deck state: <N> slides built; ledger rows checked <C> of <T>; last verdict <PASS|REJECT|UNVERIFIABLE|none>" after Next focus');
+  else {
+    i++;
+    const ph = (v) => /^<.*>$/.test(v);
+    if (!ph(ds[1]) && !/^\d+ slides? built$/.test(ds[1])) errors.push(`Deck state "${ds[1]}" must read "<N> slides built"`);
+    if (!ph(ds[2]) && !/^\d+$/.test(ds[2])) errors.push(`Deck state ledger rows checked "${ds[2]}" is not a number`);
+    if (!ph(ds[3]) && !/^\d+$/.test(ds[3])) errors.push(`Deck state ledger rows total "${ds[3]}" is not a number`);
+    if (/^\d+$/.test(ds[2]) && /^\d+$/.test(ds[3]) && +ds[2] > +ds[3]) errors.push(`Deck state checks ${ds[2]} ledger rows of ${ds[3]}`);
+    if (!ph(ds[4]) && !/^(PASS|REJECT|UNVERIFIABLE|none)$/.test(ds[4])) errors.push(`Deck state last verdict "${ds[4]}" must be PASS, REJECT, UNVERIFIABLE or none`);
+  }
+  HANDOFF_LABELS.forEach((label) => {
+    if (lines[i] !== label) { errors.push(`the Next session section needs "${label}" in order`); return; }
     i++;
     let bullets = 0;
     while (i < lines.length && lines[i].startsWith('- ')) { bullets++; i++; }
-    if (bullets === 0) errors.push(`"${label}" needs at least one bullet`);
+    if (bullets === 0) errors.push(`"${label}" needs at least one bullet, or "- none"`);
+    else if (bullets > 1 && lines.slice(i - bullets, i).some((l) => /^- none$/i.test(l))) errors.push(`"${label}" lists "- none" beside other bullets`);
   });
-  if (i < lines.length) errors.push(`unexpected line in the agent half: "${lines[i]}"`);
+  const human = parts.human;
+  if (/^#{1,6} /m.test(human)) errors.push('the note for the human holds a heading');
+  const blocks = human.split(/\n\s*\n/).filter((b) => b.trim() !== '');
+  if (blocks.length === 0) errors.push('the note for the human needs one plain paragraph below the Next session section');
+  else {
+    if (blocks[0].split('\n').some((l) => l.startsWith('- '))) errors.push('the note for the human must start with a plain paragraph, not bullets');
+    if (blocks.length > 2) errors.push('the note for the human is a paragraph and at most one bullet list');
+    if (blocks[1]) {
+      const bl = blocks[1].split('\n');
+      if (!bl.every((l) => l.startsWith('- '))) errors.push('the note for the human bullets must all start with "- "');
+      if (bl.length > 5) errors.push(`the note for the human has ${bl.length} bullets, the limit is 5`);
+    }
+  }
   return errors;
 }
 
@@ -670,17 +717,17 @@ function parseReports(text) {
     if (!f) { errors.push(`Reports line ${i + 1} matches no report format: "${line}"`); return; }
     const e = { id: f.id, line, n: i + 1 };
     let m;
-    if (f.id === 'round' && (m = /^Challenge round (\d+) of (\d+): angle (.+?) \(new\)\. Re-verified (\d+) claims, demoted (\d+) to uncertainty\.$/.exec(line))) {
-      Object.assign(e, { r: +m[1], t: +m[2], angle: m[3], verified: +m[4], demoted: +m[5] });
-    } else if (f.id === 'check' && (m = /^Check report: path (engine|rubric); plan (PASS|FAIL); ledger (PASS|FAIL); tools (.+?); checklist (.+?); Deferred: (.+)\.$/.exec(line))) {
-      Object.assign(e, { path: m[1], plan: m[2], ledger: m[3], tools: m[4], checklist: m[5], deferred: m[6] });
-    } else if (f.id === 'build' && (m = /^Build report: (\d+) slides built, (\d+) ledger rows checked, (\d+) deviations logged\.$/.exec(line))) {
-      Object.assign(e, { slides: +m[1], checked: +m[2], deviations: +m[3] });
+    if (f.id === 'round' && (m = new RegExp(`^Critique round (\\d+) of (\\d+): angle (.+?) \\(new\\)\\. ${ROUND_COUNTS}$`).exec(line))) {
+      Object.assign(e, { r: +m[1], t: +m[2], angle: m[3], fixed: +m[4], waiting: +m[5], verified: +m[6], open: +m[7] });
+    } else if (f.id === 'check' && (m = /^Check report: path (engine|rubric); plan (PASS|FAIL); ledger (PASS|FAIL); tools (.+?); checklist (.+?); Waiting on you: (.+)\.$/.exec(line))) {
+      Object.assign(e, { path: m[1], plan: m[2], ledger: m[3], tools: m[4], checklist: m[5], waiting: m[6] });
+    } else if (f.id === 'build' && (m = /^Build report: (\d+) slides built, (\d+) ledger rows checked, (\d+) calls logged\.$/.exec(line))) {
+      Object.assign(e, { slides: +m[1], checked: +m[2], calls: +m[3] });
     } else if (f.id === 'storyboard' && (m = /^Storyboard report: (\d+) slides, headlines-only read (holds|does not hold), ledger rows (\d+)\.$/.exec(line))) {
       Object.assign(e, { slides: +m[1], holds: m[2] === 'holds', rows: +m[3] });
     } else if (f.id === 'review' && (m = /^Review verdict: (PASS|REJECT|UNVERIFIABLE); unreconciled numbers (\d+); findings (\d+)\.$/.exec(line))) {
       Object.assign(e, { verdict: m[1], unreconciled: +m[2], findings: +m[3] });
-    } else if (f.id === 'brief' && (m = /^Brief report: (\d+) questions asked, (\d+) answers recorded, (\d+) NEEDS HUMAN markers open\.$/.exec(line))) {
+    } else if (f.id === 'brief' && (m = /^Brief report: (\d+) questions asked, (\d+) answers recorded, (\d+) ASK markers open\.$/.exec(line))) {
       Object.assign(e, { open: +m[3] });
     } else if (f.id === 'handoff' && (m = /^Handoff report: memory\/handoff\.md written; (\d+) bullets; focus (.+)\.$/.exec(line))) {
       Object.assign(e, { bullets: +m[1], focus: m[2] });
@@ -716,10 +763,10 @@ function judgeCheck(e) {
       if (!CHECKLIST_ITEMS.includes(m)) problems.push(`the checklist has 10 items, or 9 when item 9 (the render) cannot run; got ${m}`);
       if (n > m) problems.push('checklist passes exceed its items');
       if (n < m) clean = false;
-      if (m === 9 && /^none$/i.test(e.deferred)) problems.push('a 9 item checklist must list item 9 under Deferred');
+      if (m === 9 && /^none$/i.test(e.waiting)) problems.push('a 9 item checklist must list item 9 under Waiting on you');
     }
   }
-  tools.filter((t) => t.res === 'MISSING').forEach((t) => { if (/^none$/i.test(e.deferred)) problems.push(`tool ${t.name} is MISSING, so Deferred cannot be none`); });
+  tools.filter((t) => t.res === 'MISSING').forEach((t) => { if (/^none$/i.test(e.waiting)) problems.push(`tool ${t.name} is MISSING, so Waiting on you cannot be none`); });
   return { clean: clean && problems.length === 0, problems, toolList: tools };
 }
 
@@ -751,11 +798,14 @@ function handoffFacts(text) {
   const t = text.replace(/\r\n/g, '\n').trim();
   const body = t.replace(/^# Handoff/, '').trim();
   if (body === EMPTY_HANDOFF) return { bullets: 0, focus: 'none' };
-  const idx = body.indexOf('\n## Agent half');
-  const human = idx >= 0 ? body.slice(0, idx) : body;
+  const parts = splitHandoff(body);
+  const human = parts ? parts.human : body;
   const bullets = (human.match(/^- /gm) || []).length;
-  const f = /^Recommended focus: (.+)$/m.exec(body);
-  return { bullets, focus: f ? f[1].trim().replace(/\.$/, '') : 'none' };
+  const f = /^Next focus: (.+)$/m.exec(body);
+  const ds = /^Deck state: .*$/m.exec(body);
+  const d = ds ? DECK_STATE.exec(ds[0].trim()) : null;
+  const state = d ? { slides: parseInt(d[1], 10), checked: +d[2], total: +d[3], verdict: d[4] } : null;
+  return { bullets, focus: f ? f[1].trim().replace(/\.$/, '') : 'none', state };
 }
 
 // The three hashes carousel-check records. Build is hashed as the trimmed text of its section.
@@ -766,8 +816,8 @@ function planHashes(ctx, rel, text) {
   const ledgerRaw = readIf(path.join(ctx.root, rel.replace(/\.md$/, '.ledger.json')));
   return {
     deck: deckPath && fs.existsSync(deckPath) ? sha256(fs.readFileSync(deckPath)) : null,
-    ledger: ledgerRaw === null ? null : sha256(ledgerRaw),
-    build: sha256(build),
+    ledger: ledgerRaw === null ? null : textSha256(ledgerRaw),
+    build: textSha256(build),
   };
 }
 
@@ -811,8 +861,8 @@ function analyzePlan(ctx, rel, text, example) {
     }
     if (e.id === 'round') {
       const expect = prev && prev.id === 'round' ? prev.r + 1 : 1;
-      if (e.r !== expect) { err(`challenge rounds must be numbered in order: expected ${expect}, got ${e.r}`); orderOk = false; break; }
-      if (prev && prev.id === 'round' && prev.t !== e.t) { err('challenge round lines disagree about the total'); orderOk = false; break; }
+      if (e.r !== expect) { err(`critique rounds must be numbered in order: expected ${expect}, got ${e.r}`); orderOk = false; break; }
+      if (prev && prev.id === 'round' && prev.t !== e.t) { err('critique round lines disagree about the total'); orderOk = false; break; }
     }
     if (e.id === 'review' && e.verdict === 'REJECT') rejects++;
     if (e.id === 'stopped') {
@@ -829,64 +879,75 @@ function analyzePlan(ctx, rel, text, example) {
   else {
     let expected = 'started';
     if (lastReal) {
-      expected = lastReal.id === 'round' ? (lastReal.r === lastReal.t ? 'challenged' : 'storyboarded')
+      expected = lastReal.id === 'round' ? (lastReal.r === lastReal.t ? 'critiqued' : 'storyboarded')
         : lastReal.id === 'check' ? (lastReal.clean ? 'checked' : 'built') : STATUS_AFTER[lastReal.id];
     }
     if (orderOk && status !== expected) err(`Status is "${status}" but the last report line is ${lastReal ? lastReal.id : 'absent'}, which means "${expected}"`);
   }
 
   // path and rounds
-  const pathM = /^Path: (full|light)\s*$/m.exec(text);
+  const pathM = /^Path: (full|short)\s*$/m.exec(text);
   const roundsM = /^Rounds: (\d+)\s*$/m.exec(text);
-  if (!pathM) err('Path line must be "Path: full" or "Path: light"');
+  if (!pathM) err('Path line must be "Path: full" or "Path: short"');
   if (!roundsM) err('Rounds line must be a number');
   const rounds = roundsM ? +roundsM[1] : null;
   const roundEvents = events.filter((e) => e.id === 'round');
   if (pathM && rounds !== null) {
     const base = pathM[1] === 'full' ? 3 : 1;
-    if (rounds < base) err(`the ${pathM[1]} path runs at least ${base} challenge round${base > 1 ? 's' : ''}`);
-    if (rounds > base && !/Finding ledger/i.test(sec('Challenge log'))) err(`${rounds} rounds need a "Finding ledger" in Challenge log`);
+    if (rounds < base) err(`the ${pathM[1]} path runs at least ${base} critique round${base > 1 ? 's' : ''}`);
+    if (rounds > base && !/Finding ledger/i.test(sec('Critique log'))) err(`${rounds} rounds need a "Finding ledger" in Critique log`);
   }
+  const openIds = {};
   if (roundEvents.length) {
     const T = roundEvents[0].t;
     if (rounds !== null && T !== rounds) err(`round lines say ${T} rounds but the Rounds line says ${rounds}`);
     const names = roundEvents.map((e) => e.angle.toLowerCase());
-    if (new Set(names).size !== names.length) err('a challenge angle repeats across rounds');
+    if (new Set(names).size !== names.length) err('a critique angle repeats across rounds');
     const angleDoc = readIf(path.join(ctx.root, 'bookshelf/review-angles.md'));
     const known = angleDoc ? scanLines(angleDoc).map((l) => /^### \d+\. (.+)$/.exec(l.line)).filter(Boolean).map((m) => m[1].trim().toLowerCase()) : [];
     roundEvents.forEach((e) => {
       if (known.length && !known.includes(e.angle.toLowerCase())) err(`round ${e.r} angle "${e.angle}" is not in bookshelf/review-angles.md`);
-      if (e.verified < 1) err(`round ${e.r} re-verified no claims`);
-      if (e.demoted > e.verified) err(`round ${e.r} demoted more claims than it re-verified`);
-      const parked = e.angle.toLowerCase() === 'parked claims';
-      if (T >= 2 && e.r === T && !parked) err(`the last of ${T} rounds must take the angle Parked claims`);
-      if (parked && !(T >= 2 && e.r === T)) err('the angle Parked claims belongs to the last round of a plan with two or more rounds');
+      const openAngle = e.angle.toLowerCase() === 'open rows';
+      if (T >= 2 && e.r === T && !openAngle) err(`the last of ${T} rounds must take the angle Open rows`);
+      if (openAngle && !(T >= 2 && e.r === T)) err('the angle Open rows belongs to the last round of a plan with two or more rounds');
     });
-    const log = sec('Challenge log');
+    const log = sec('Critique log');
     const parts = log.split(/^### Round (\d+)\s*$/m);
     const bodies = {};
     for (let i = 1; i < parts.length; i += 2) bodies[+parts[i]] = parts[i + 1];
+    // The slide ids each round leaves open, from its "Open rows:" line. A round with no such line leaves none.
     roundEvents.forEach((e) => {
       const b = bodies[e.r];
-      if (b === undefined) { err(`Challenge log has no "### Round ${e.r}" section`); return; }
+      if (b === undefined) { err(`Critique log has no "### Round ${e.r}" section`); return; }
       const am = /^Angle: (.+?) \(new\)\s*$/m.exec(b);
-      if (!am || am[1].toLowerCase() !== e.angle.toLowerCase()) err(`Round ${e.r} in Challenge log must say "Angle: ${e.angle} (new)"`);
-      const cm = /Re-verified (\d+) claims, demoted (\d+) to uncertainty\./.exec(b);
-      if (!cm || +cm[1] !== e.verified || +cm[2] !== e.demoted) err(`Round ${e.r} count line in Challenge log does not match its report line`);
-      const addressed = /^Addressed:/m.test(b);
-      const deferred = /^Deferred:/m.test(b);
-      const kept = b.split('\n').filter((l) => /^Kept as is:/.test(l));
-      if (!addressed && !deferred && !kept.length) err(`Round ${e.r} has no diff summary (Addressed, Deferred or Kept as is)`);
-      if (!addressed && !deferred && !kept.every((l) => EVIDENCE_WORD.test(l))) err(`Round ${e.r} changed nothing, so every Kept as is line must say what was checked`);
+      if (!am || am[1].toLowerCase() !== e.angle.toLowerCase()) err(`Round ${e.r} in Critique log must say "Angle: ${e.angle} (new)"`);
+      const cm = new RegExp(`^${ROUND_COUNTS}\\s*$`, 'm').exec(b);
+      if (!cm || +cm[1] !== e.fixed || +cm[2] !== e.waiting || +cm[3] !== e.verified || +cm[4] !== e.open) err(`Round ${e.r} count line in Critique log does not match its report line`);
+      const lines = b.split('\n');
+      const nFixed = lines.filter((l) => /^Fixed:/.test(l)).length;
+      const nWaiting = lines.filter((l) => /^Waiting on you:/.test(l)).length;
+      const leftAlone = lines.filter((l) => /^Verified unchanged:/.test(l));
+      if (nFixed !== e.fixed) err(`Round ${e.r} counts ${e.fixed} Fixed but its change list has ${nFixed} "Fixed:" lines`);
+      if (nWaiting !== e.waiting) err(`Round ${e.r} counts ${e.waiting} waiting but its change list has ${nWaiting} "Waiting on you:" lines`);
+      if (leftAlone.length !== e.verified) err(`Round ${e.r} counts ${e.verified} verified but its change list has ${leftAlone.length} "Verified unchanged:" lines`);
+      if (!nFixed && !nWaiting && !leftAlone.length) err(`Round ${e.r} has no change list (Fixed, Waiting on you or Verified unchanged)`);
+      else if (!nFixed && !leftAlone.length) err(`Round ${e.r} fixed nothing and verified nothing, so it touched no source`);
+      if (!nFixed && !nWaiting && !leftAlone.every((l) => EVIDENCE_WORD.test(l))) err(`Round ${e.r} changed nothing, so every "Verified unchanged" line must say what was checked`);
+      const ol = lines.filter((l) => /^Open rows:/.test(l));
+      if (ol.length > 1) err(`Round ${e.r} has ${ol.length} "Open rows:" lines; write one`);
+      const ids = new Set();
+      if (ol.length && !/^Open rows:\s*none open\b/i.test(ol[0])) (ol[0].match(/\bs\d+\b/gi) || []).forEach((x) => ids.add(x.toLowerCase()));
+      if (ol.length && !ids.size && !/^Open rows:\s*none open\b/i.test(ol[0])) err(`Round ${e.r} "Open rows:" line names no slide id; write "Open rows: none open" when none are open`);
+      openIds[e.r] = ids;
+      if (ids.size !== e.open) err(`Round ${e.r} counts ${e.open} ledger rows open but its "Open rows:" line names ${ids.size}`);
     });
     if (roundEvents.length === T) {
-      const pk = [...log.matchAll(/^Parked claims:\s*(.*)$/gm)];
-      if (!pk.length || !/^none open\b/i.test(pk[pk.length - 1][1])) err('after the last round, Challenge log must end with "Parked claims: none open"');
-      const parkedIds = new Set();
-      pk.forEach((m) => { if (!/^none open\b/i.test(m[1])) (m[1].match(/\bs\d+\b/gi) || []).forEach((x) => parkedIds.add(x.toLowerCase())); });
       const lastBody = bodies[T] || '';
-      const resolved = lastBody.split('\n').filter((l) => /^(Addressed|Kept as is):/.test(l)).join('\n').toLowerCase();
-      parkedIds.forEach((id) => { if (!new RegExp(`\\b${id}\\b`).test(resolved)) err(`parked claim ${id} is not resolved in the last round's Addressed or Kept as is lines`); });
+      if (!/^Open rows:\s*none open\b/im.test(lastBody)) err('the last round must end with "Open rows: none open"');
+      const earlier = new Set();
+      Object.keys(openIds).filter((r) => +r < T).forEach((r) => openIds[r].forEach((id) => earlier.add(id)));
+      const resolved = lastBody.split('\n').filter((l) => /^(Fixed|Verified unchanged):/.test(l)).join('\n').toLowerCase();
+      earlier.forEach((id) => { if (!new RegExp(`\\b${id}\\b`).test(resolved)) err(`open row ${id} is not resolved in the last round's Fixed or "Verified unchanged" lines`); });
     }
   }
 
@@ -899,6 +960,17 @@ function analyzePlan(ctx, rel, text, example) {
     else { try { ledger = JSON.parse(ledgerRaw); } catch (e) { err(`${ledgerRel} is not valid JSON`); } }
   }
   const sb = events.find((e) => e.id === 'storyboard');
+  // The rows a critique round leaves open live in the ledger too: each is a ledger row, and while the plan sits
+  // between critique rounds, the ledger's open rows marked "unconfirmed" are exactly the latest round's.
+  if (ledger && Array.isArray(ledger.slides) && roundEvents.length) {
+    const rowIds = new Set(ledger.slides.map((x) => String(x.id).toLowerCase()));
+    Object.keys(openIds).forEach((r) => openIds[r].forEach((id) => { if (!rowIds.has(id)) err(`Round ${r} leaves ${id} open, but the ledger has no row ${id}`); }));
+    if (lastReal && lastReal.id === 'round' && openIds[lastReal.r]) {
+      const want = [...openIds[lastReal.r]].sort().join(', ') || 'none';
+      const have = ledger.slides.filter((x) => x.status === 'open' && /\bunconfirmed\b/i.test(String(x.note || ''))).map((x) => String(x.id).toLowerCase()).sort().join(', ') || 'none';
+      if (want !== have) err(`Round ${lastReal.r} leaves open ${want}, but the ledger's open rows marked "unconfirmed" are ${have}`);
+    }
+  }
   if (sb && ledger && Array.isArray(ledger.slides)) {
     const tableIds = [...sec('Storyboard').matchAll(/^\|\s*(s\d+)\s*\|/gim)].map((m) => m[1].toLowerCase());
     const ledgerIds = ledger.slides.map((s) => String(s.id).toLowerCase());
@@ -914,12 +986,12 @@ function analyzePlan(ctx, rel, text, example) {
     ['Literal ask', 'Reader and venue', 'Evidence'].forEach((f) => {
       const m = new RegExp(`^${f}:[ \\t]*(.*)$`, 'm').exec(brief);
       if (!m || !m[1].trim()) err(`Brief field "${f}" is empty`);
-      else if (/NEEDS HUMAN:/.test(m[1])) err(`Brief field "${f}" is still a NEEDS HUMAN marker`);
+      else if (/\bASK:/.test(m[1])) err(`Brief field "${f}" is still an ASK marker`);
     });
   }
   const br = events.find((e) => e.id === 'brief');
   if (br && lastReal && lastReal.id === 'brief') {
-    const open = (sec('Brief').match(/NEEDS HUMAN:/g) || []).length;
+    const open = (sec('Brief').match(/\bASK:/g) || []).length;
     if (open !== br.open) err(`Brief report says ${br.open} open markers but Brief holds ${open}`);
   }
 
@@ -934,8 +1006,8 @@ function analyzePlan(ctx, rel, text, example) {
       const checkedNow = ledger.slides.filter((s) => s.status === 'checked').length;
       if (settled && lastBuild.checked !== checkedNow) err(`Build report says ${lastBuild.checked} ledger rows checked but the ledger has ${checkedNow}`);
     }
-    const d = (sec('Deviations').match(/^\s*(?:- )?D\d+:/gm) || []).length;
-    if (lastBuild.deviations !== d) err(`Build report says ${lastBuild.deviations} deviations but Deviations lists ${d}`);
+    const d = (sec('Calls made').match(/^\s*(?:- )?D\d+:/gm) || []).length;
+    if (lastBuild.calls !== d) err(`Build report says ${lastBuild.calls} calls but Calls made lists ${d}`);
   }
 
   // check: tool results, hashes, and the deck itself
@@ -994,7 +1066,7 @@ function analyzePlan(ctx, rel, text, example) {
         if (rj && Array.isArray(rj.tools)) {
           const byName = {};
           rj.tools.forEach((t) => { byName[t.name] = t; });
-          if (cfg.raw !== null && rj.configSha256 !== sha256(cfg.raw)) err(`${resultsRel} was written for a different carousel.config.json`);
+          if (cfg.raw !== null && rj.configSha256 !== textSha256(cfg.raw)) err(`${resultsRel} was written for a different carousel.config.json`);
           if (bm && rj.deckBefore !== bm[1]) err(`${resultsRel}: the deck hash before the tools differs from "Deck sha256 before tools" in Check`);
           if (dm && rj.deckAfter !== dm[1]) err(`${resultsRel}: the deck hash after the tools differs from "Deck sha256" in Check`);
           registered.forEach((n) => { if (!byName[n]) err(`${resultsRel} holds no result for registered tool ${n}`); });
@@ -1048,6 +1120,20 @@ function analyzePlan(ctx, rel, text, example) {
       const f = handoffFacts(hf);
       if (f.bullets !== hand.bullets) err(`Handoff report says ${hand.bullets} bullets but the handoff file has ${f.bullets}`);
       if (f.focus !== hand.focus) err(`Handoff report says focus "${hand.focus}" but the handoff file says "${f.focus}"`);
+      // The Deck state line reads off the plan and the ledger, so it must agree with both.
+      if (f.state) {
+        const builds = events.filter((x) => x.id === 'build');
+        const reviews = events.filter((x) => x.id === 'review');
+        const want = {
+          slides: builds.length ? builds[builds.length - 1].slides : 0,
+          verdict: reviews.length ? reviews[reviews.length - 1].verdict : 'none',
+          checked: ledger && Array.isArray(ledger.slides) ? ledger.slides.filter((x) => x.status === 'checked').length : 0,
+          total: ledger && Array.isArray(ledger.slides) ? ledger.slides.length : 0,
+        };
+        if (f.state.slides !== want.slides) err(`example handoff says ${f.state.slides} slides built but the latest Build report says ${want.slides}`);
+        if (f.state.checked !== want.checked || f.state.total !== want.total) err(`example handoff says ledger rows checked ${f.state.checked} of ${f.state.total} but the ledger has ${want.checked} of ${want.total}`);
+        if (f.state.verdict !== want.verdict) err(`example handoff says last verdict ${f.state.verdict} but the latest review verdict is ${want.verdict}`);
+      }
     }
   }
   return out;
@@ -1178,8 +1264,8 @@ function contract(ctx) {
   RULES_PINS.forEach((p) => { if (!rules.includes(p)) out.push(`RULES.md must keep: ${p}`); });
   STAGES.filter((x) => x.guard.length).forEach((x) => {
     const row = rules.split('\n').find((l) => l.startsWith(`| \`${x.name}\` |`));
-    if (!row) out.push(`RULES.md chain table has no row for ${x.name}`);
-    else if (!row.includes(x.guard[0])) out.push(`RULES.md chain table row for ${x.name} must key on: ${x.guard[0]}`);
+    if (!row) out.push(`RULES.md stage order table has no row for ${x.name}`);
+    else if (!row.includes(x.guard[0])) out.push(`RULES.md stage order table row for ${x.name} must key on: ${x.guard[0]}`);
   });
   STAGES.forEach((st) => {
     const file = stageFile(st.name);
@@ -1217,8 +1303,8 @@ function contract(ctx) {
     });
     const nrs = sectionText(text, '## Real-change check');
     if (nrs !== null && (nrs.length < 200 || !/fake/i.test(nrs))) out.push(`${file}: the Real-change check must name what a fake pass looks like (200+ characters, uses "fake")`);
-    const why = sectionText(text, '## Rationale');
-    if (why !== null && why.length < 100) out.push(`${file}: Rationale is too short`);
+    const why = sectionText(text, '## Why it works this way');
+    if (why !== null && why.length < 100) out.push(`${file}: "Why it works this way" is too short`);
     if (!rules.includes(st.name)) out.push(`RULES.md does not name ${st.name}`);
     if (!readme.includes(`(${st.name}/SKILL.md)`)) out.push(`${STAGE_INDEX} does not link ${st.name}`);
   });
@@ -1448,7 +1534,7 @@ function handoffCheck(ctx) {
   planFiles(ctx).filter((rel) => !rel.startsWith('plans/example/')).forEach((rel) => {
     const text = readIf(path.join(ctx.root, rel));
     const stripped = text.split('\n').filter((l) => !/RESOLVED:/.test(l)).join('\n');
-    if (/NEEDS HUMAN:/.test(stripped)) out.push(`${rel} holds an open NEEDS HUMAN marker, so memory/handoff.md cannot say there is nothing to hand off`);
+    if (/\bASK:/.test(stripped)) out.push(`${rel} holds an open ASK marker, so memory/handoff.md cannot say there is nothing to hand off`);
     const v = parseReports(text).events.filter((e) => e.id === 'review');
     if (v.length && v[v.length - 1].verdict !== 'PASS') out.push(`${rel} last review verdict is ${v[v.length - 1].verdict}, so memory/handoff.md cannot say there is nothing to hand off`);
   });
@@ -1458,8 +1544,8 @@ function handoffCheck(ctx) {
 // ---------------------------------------------------------------- run
 
 const DEFAULTS = {
-  // Byte budgets. RULES.md is loaded in every session, through AGENTS.md or CLAUDE.md. Codex reads only the first
-  // 32 KiB of AGENTS.md by default, so a team that inlines these rules there, beside its own instructions, must still
+  // Byte budgets. RULES.md is loaded in every session, through AGENTS.md or CLAUDE.md. Codex stops reading AGENTS.md
+  // after 32 KiB unless configured otherwise, so a team that inlines these rules there, beside its own instructions, must still
   // fit. 9000 bytes keeps the rules under a third of that, with about 1,400 bytes of headroom over today's 7,600.
   // A stage file (.agents/skills/<name>/SKILL.md, or a reviewer in agents/) loads only while its stage runs. 8000
   // bytes keeps one procedure short enough to follow in one read, about 1,700 bytes over today's largest.
@@ -1474,11 +1560,89 @@ function loadConfig(file) {
   return Object.assign({}, DEFAULTS, JSON.parse(t));
 }
 
-const CHECK_NAMES = ['budget', 'deadrefs', 'wiki', 'contract', 'prose', 'state', 'handoff'];
+const CHECK_NAMES = ['budget', 'deadrefs', 'wiki', 'contract', 'skills', 'prose', 'state', 'handoff'];
+
+// A path as one shell word: bare when it holds only safe characters, else quoted, so a printed command works when
+// pasted into a shell from any folder.
+function shq(p) {
+  const s = String(p);
+  if (/^[A-Za-z0-9_\/.,:@%+=-]+$/.test(s)) return s;
+  if (process.platform === 'win32') return '"' + s.replace(/"/g, '""') + '"';
+  if (!/[$`"\\!]/.test(s)) return '"' + s + '"';
+  return "'" + s.replace(/'/g, "'\\''") + "'";
+}
+
+// Whether the project's scripts/generate-skills.js is this version's, the one this script ships with. Run from a
+// clone (or the package) against a project, the two texts are compared, line endings aside. Run inside the project,
+// there is nothing to compare with, so the manifest decides: it must record both this check-process.js and that
+// generate-skills.js as written by the installer, which proves one install put them there together. The repository
+// itself (no manifest, and scripts/check.js beside the others) is its own source.
+const TOOL_HOME = path.resolve(__dirname, '..');
+const GENERATOR = 'scripts/generate-skills.js';
+function realish(p) { try { return fs.realpathSync(p); } catch (e) { return path.resolve(p); } }
+function lfTextOf(f) { try { return fs.readFileSync(f, 'utf8').replace(/\r\n/g, '\n'); } catch (e) { return null; } }
+function generatorState(root) {
+  const file = path.join(root, GENERATOR);
+  const text = lfTextOf(file);
+  const self = realish(TOOL_HOME) === realish(root);
+  const clone = !self && !fs.existsSync(path.join(TOOL_HOME, '.carousel-install.json')) ? TOOL_HOME : null;
+  let current = false;
+  if (text !== null && !self) current = text === lfTextOf(path.join(TOOL_HOME, GENERATOR));
+  else if (text !== null) {
+    let m = null;
+    try { m = JSON.parse(fs.readFileSync(path.join(root, '.carousel-install.json'), 'utf8')); } catch (e) { m = null; }
+    if (!fs.existsSync(path.join(root, '.carousel-install.json'))) current = fs.existsSync(path.join(root, 'scripts', 'check.js'));
+    else if (m && m.format === 2) {
+      const recorded = (rel, abs) => {
+        let raw = null;
+        try { raw = fs.readFileSync(abs); } catch (e) { return false; }
+        const hashes = [sha256(raw), sha256(Buffer.from(raw.toString('utf8').replace(/\r\n/g, '\n')))];
+        return [m.files, m.generated].some((x) => x && typeof x === 'object' && hashes.includes(x[rel]));
+      };
+      current = recorded(GENERATOR, file) && recorded('scripts/check-process.js', __filename);
+    }
+  }
+  // A generator older than this layout has no regenCommand: its drift report reads folders this version never checks.
+  const api = text !== null && /\bregenCommand\b/.test(text) && /\bdrift\b/.test(text);
+  return { current, api, missing: text === null, clone };
+}
+
+// The one piece of advice for rebuilding the .claude/ copies, which check-process, doctor and update all print. It
+// names the project's own generator only when that is this version's (an older or edited copy may make no backups);
+// otherwise it names the generator of a clone or the package, or update --overwrite, which saves a backup first.
+function regenAdvice(root) {
+  const at = path.resolve(root);
+  const s = generatorState(at);
+  if (s.current) {
+    const cmd = 'node ' + shq(path.join(at, GENERATOR)) + ' --root ' + shq(at);
+    return { current: true, api: true, missing: false, cmd, text: 'run ' + cmd };
+  }
+  const cmd = (s.clone ? 'node ' + shq(path.join(s.clone, GENERATOR)) : 'node <clone>/scripts/generate-skills.js') + ' --root ' + shq(at);
+  const update = s.clone ? ' (node ' + shq(path.join(s.clone, 'scripts', 'install.js')) + ' update ' + shq(at) + ' --overwrite, which backs up)' : ' (which backs up)';
+  const what = s.missing ? 'the project has no scripts/generate-skills.js' : 'the project\'s scripts/generate-skills.js is from another version and was left alone';
+  return { current: false, api: s.api, missing: s.missing, cmd,
+    text: `${what}; run the generator from your Carousel OS clone or the package (${cmd}) or update first with --overwrite${update}` };
+}
+
+// The derived skill files (front matter, Codex files, .claude/ copies) match their sources: the same drift
+// generate-skills.js --confirm reports, so check-process, --confirm and doctor agree on one project.
+function skillCopies(ctx) {
+  const adv = regenAdvice(ctx.root);
+  // A generator from before this layout cannot judge the copies (it reads folders this version never checks), so
+  // its report is never shown; one line says which generator to run instead. doctor reads the project's file the same way.
+  if (!adv.current && !adv.missing && !adv.api) {
+    return fs.existsSync(path.join(ctx.root, STAGE_DIR)) ? [`the skill copies were not checked: ${adv.text}`] : [];
+  }
+  if (typeof skills.drift !== 'function' || !skills.stageNames(ctx.root).length) return [];
+  const d = skills.drift(ctx.root);
+  if (!d.length) return [];
+  return d.map((x) => `${x} (${adv.text}; it saves a copy you edited as a .carousel-backup file first)`);
+}
 
 function runChecks(ctx) {
-  const checks = [['budget', budget], ['deadrefs', deadrefs], ['wiki', wiki], ['contract', contract], ['prose', prose], ['state', state], ['handoff', handoffCheck]];
+  const checks = [['budget', budget], ['deadrefs', deadrefs], ['wiki', wiki], ['contract', contract], ['skills', skillCopies], ['prose', prose], ['state', state], ['handoff', handoffCheck]];
   const lines = [];
+  const byCheck = {};
   let failed = 0;
   checks.forEach(([name, fn]) => {
     if (ctx.only && ctx.only !== name) return;
@@ -1488,13 +1652,14 @@ function runChecks(ctx) {
     const problems = all.filter((p) => !p.startsWith('WARN '));
     if (problems.length) {
       failed++;
+      byCheck[name] = problems;
       lines.push(`FAIL ${name} (${problems.length})`);
       problems.forEach((p) => lines.push(`  ${p}`));
     } else lines.push(`PASS ${name}`);
     warns.forEach((w) => lines.push(`  ${w}`));
   });
   lines.push(`check-process: ${ctx.only ? 1 : checks.length - ctx.skip.length} checks, ${failed} failed`);
-  return { lines, failed };
+  return { lines, failed, problems: byCheck };
 }
 
 const HELP = [
@@ -1584,19 +1749,73 @@ function main(argv) {
     console.log(problems.length ? `FAIL plan (${problems.length})` : 'PASS plan');
     return problems.length ? 1 : 0;
   }
-  const configFile = opts.config || path.join(opts.root, 'scripts/check-process.config.json');
-  let config;
-  try { config = loadConfig(configFile); } catch (e) { console.error(`check-process: bad config ${configFile}: ${e.message}`); return 2; }
   if (opts.skip.some((n) => n !== 'handoff')) { console.error('check-process: only the handoff check may be skipped'); return 2; }
   if (opts.only && !CHECK_NAMES.includes(opts.only)) { console.error(`check-process: --only wants one of ${CHECK_NAMES.join(', ')}`); return 2; }
-  const skip = new Set([...SKIP_DIRS, ...ignoredNames(opts.root)]);
-  // walkMd skips dot folders, so the stage sources are added by name. The .claude/ copies are generated and skipped.
-  const proseFiles = walkMd(opts.root, skip).concat(walkAny(opts.root, STAGE_DIR, '.md')).filter((p) => !config.unchecked.includes(p)).sort();
-  const result = runChecks({ root: opts.root, config, today: todayStr, prose: proseFiles, skip: opts.skip, only: opts.only });
+  let result;
+  try { result = checkProject(opts.root, { config: opts.config, today: todayStr, skip: opts.skip, only: opts.only }); } catch (e) {
+    if (!(e instanceof ConfigError)) throw e;
+    console.error(e.message); return 2;
+  }
   console.log(result.lines.join('\n'));
   return result.failed ? 1 : 0;
 }
 
-module.exports = { LIMITS, DeckError, pptxCoreProperties, STAGES, reportRegex, validateLedger, validateHandoff, validateEngineConfig, readPptxSlides, ledgerMd, checkTextProblem, spellingProblems, ratioPhrases, main };
+class ConfigError extends Error {}
+
+// Plans written under an earlier template (before the critique stage was renamed) use headings, values and report
+// lines this version no longer reads. Each pattern finds one of them; the hint lists every rename once. Nothing edits
+// a plan of yours: the hint says what to change by hand.
+const OLD_LAYOUT = [
+  [/^## Direction\s*$/m, '"## Direction" is now "## Request"'],
+  [/^## Challenge log\s*$/m, '"## Challenge log" is now "## Critique log"'],
+  [/^## Deviations\s*$/m, '"## Deviations" is now "## Calls made"'],
+  [/^Path: light\s*$|; path light;/m, '"Path: light" is now "Path: short" (and "Rounds: 1 for short"), and the Start report line says "path short"'],
+  [/^Challenge round \d+ of \d+:|Re-verified \d+ claims, demoted \d+ to uncertainty\./m,
+    'each "Challenge round R of T: angle <name> (new). Re-verified N claims, demoted M to uncertainty." report line is now "Critique round R of T: angle <name> (new). Fixed F; waiting W; verified V; ledger rows open O.", and each round lists "Fixed:", "Waiting on you:" and "Verified unchanged:" lines, then "Open rows: none open" in the last round'],
+  [/NEEDS HUMAN/, '"NEEDS HUMAN: <question>" markers are now "ASK: <question>", and the Brief report line says "<K> ASK markers open"'],
+  [/deviations logged\.|^Parked claims|^(Addressed|Deferred|Kept as is):/m, 'the Build report line says "<K> calls logged", the Check report line ends "Waiting on you: <none or list>.", and "Parked claims", "Addressed:", "Deferred:" and "Kept as is:" became "Open rows", "Fixed:", "Waiting on you:" and "Verified unchanged:"'],
+];
+
+// The plan files that still use the earlier layout, each with the renames it needs.
+function oldLayoutPlans(root) {
+  return walkAny(root, 'plans', '.md').map((rel) => {
+    const text = (readIf(path.join(root, rel)) || '').replace(/\r\n/g, '\n');
+    return { rel, renames: OLD_LAYOUT.filter(([re]) => re.test(text)).map(([, say]) => say) };
+  }).filter((p) => p.renames.length);
+}
+
+// One plain hint for every plan in the earlier layout, or no lines when there is none.
+function migrationHint(root) {
+  const old = oldLayoutPlans(root);
+  if (!old.length) return [];
+  const renames = [];
+  old.forEach((p) => p.renames.forEach((r) => { if (!renames.includes(r)) renames.push(r); }));
+  return [`HINT ${old.map((p) => p.rel).join(', ')} ${old.length === 1 ? 'uses' : 'use'} the plan layout of an earlier version. Nothing was changed; edit by hand, then run node ${shq(path.join(path.resolve(root), 'scripts', 'check-process.js'))} --root ${shq(path.resolve(root))} again. Renames:`]
+    .concat(renames.map((r) => `  - ${r}`));
+}
+
+// Every check on a project folder, the same run the command line makes. doctor in install.js calls it too, so the two
+// never disagree. Returns { lines, failed, problems }, where problems maps a check name to its problem lines.
+function checkProject(root, o) {
+  const opt = o || {};
+  const configFile = opt.config || path.join(root, 'scripts/check-process.config.json');
+  let config;
+  try { config = loadConfig(configFile); } catch (e) { throw new ConfigError(`check-process: bad config ${configFile}: ${e.message}`); }
+  let today = opt.today;
+  if (!today) {
+    const n = new Date();
+    const p = (x) => String(x).padStart(2, '0');
+    today = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`;
+  }
+  const skip = new Set([...SKIP_DIRS, ...ignoredNames(root)]);
+  // walkMd skips dot folders, so the stage sources are added by name. The .claude/ copies are generated and skipped.
+  const proseFiles = walkMd(root, skip).concat(walkAny(root, STAGE_DIR, '.md')).filter((p) => !config.unchecked.includes(p)).sort();
+  const result = runChecks({ root, config, today, prose: proseFiles, skip: opt.skip || [], only: opt.only || null });
+  result.migration = result.failed ? migrationHint(root) : [];
+  if (result.migration.length) result.lines.splice(result.lines.length - 1, 0, ...result.migration);
+  return result;
+}
+
+module.exports = { regenAdvice, shq, migrationHint, LIMITS, DeckError, pptxCoreProperties, STAGES, reportRegex, validateLedger, validateHandoff, HANDOFF_LAYOUT, checkProject, validateEngineConfig, readPptxSlides, ledgerMd, checkTextProblem, spellingProblems, ratioPhrases, main };
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));

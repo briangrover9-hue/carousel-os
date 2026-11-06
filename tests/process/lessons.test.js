@@ -95,7 +95,7 @@ test('repeat and promote refuse without --human-confirmed, and exit 3', () => {
   const before = text(f);
   let r = run(f, ['repeat', id, '--date', '2026-11-06']);
   assert.strictEqual(r.code, 3, r.out);
-  assert.ok(r.out.includes('NEEDS HUMAN'));
+  assert.ok(r.out.includes('ASK:'));
   assert.strictEqual(text(f), before);
   run(f, ['repeat', id, ...H, '--date', '2026-11-06']);
   assert.ok(text(f).includes('n=2'));

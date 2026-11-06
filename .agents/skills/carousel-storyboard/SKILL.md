@@ -15,7 +15,7 @@ Exit check: the storyboard table ids equal the ledger ids, a `Headlines only:` b
 
 Decline, name the cause, and stop when:
 1. Reports has no `Brief report:` line. Say to run `carousel-brief`.
-2. Brief's `Literal ask:`, `Reader and venue:` or `Evidence:` is empty or holds a `NEEDS HUMAN:` marker. Name the field.
+2. Brief's `Literal ask:`, `Reader and venue:` or `Evidence:` is empty or holds an `ASK:` marker. Name the field.
 
 ## Steps
 
@@ -30,7 +30,7 @@ Decline, name the cause, and stop when:
    - Beginning, turn and answer are all there: report `holds`.
    - Any is missing: rewrite once. If it still fails, report `does not hold` and name the weak slide.
 7. Create the ledger with one row per slide, every number planned for the slide listed with its source, every status `open`.
-8. Compare the slide count with the budget. Over: merge slides, or move them to an appendix and log the appendix under Deviations.
+8. Compare the slide count with the budget. Over: merge slides, or move them to an appendix and log the appendix under Calls made.
 9. Set `Status: storyboarded`. Append the report line to Reports.
 
 ## Report line
@@ -43,6 +43,6 @@ End with exactly this line, then add the same line to Reports:
 
 A fake storyboard has topic labels for headlines. Its ledger rows carry "internal data" or "see appendix" as the source, or leave the window blank on a slide with numbers. It says the read holds with no `Headlines only:` block. It copies one placeholder number into every row so the counts match.
 
-## Rationale
+## Why it works this way
 
 Story order is settled before layout exists, because a rearranged argument costs far more once slides are drawn. The ledger opens here so the build cannot add a number that has no source.

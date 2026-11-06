@@ -2,12 +2,12 @@
 
 Status: started
 Slug: <slug>
-Path: <full or light>
-Rounds: <3 for full, 1 for light>
+Path: <full or short>
+Rounds: <3 for full, 1 for short>
 
 A section is empty while it holds only lines in angle brackets. Each stage fills its own section and appends its report line to Reports. `node scripts/check-process.js` reads this file as a state machine: the Status line, the Reports lines and the sections must agree.
 
-## Direction
+## Request
 
 <The deck request in the human's words. The reader and where it is read, if stated. The path and why. Files the human named as starting material.>
 
@@ -19,11 +19,11 @@ A section is empty while it holds only lines in angle brackets. Each stage fills
 
 <Written by carousel-storyboard. A table with ids s01, s02 and so on, then a Headlines only block of numbered lines.>
 
-## Challenge log
+## Critique log
 
-<Written by carousel-challenge-plan. One "### Round R" section per round, each with Angle, Addressed, Deferred, Kept as is and a count line. A Parked claims list that ends with "Parked claims: none open". A Finding ledger when Rounds is above the default.>
+<Written by carousel-critique. One "### Round R" section per round, each with Angle, Fixed, Waiting on you, "Verified unchanged", an Open rows line and a count line. The last round's line reads "Open rows: none open". A Finding ledger when Rounds is above the default.>
 
-## Deviations
+## Calls made
 
 <One line per conservative choice a later stage made, as D1: stage, choice, reason.>
 
@@ -33,7 +33,7 @@ A section is empty while it holds only lines in angle brackets. Each stage fills
 
 ## Check
 
-<Written by carousel-check. The path, the pasted plan and ledger gate output, one Tool line per registered tool, the Deferred field, and four hashes (deck before the tools, deck, ledger, Build).>
+<Written by carousel-check. The path, the pasted plan and ledger gate output, one Tool line per registered tool, the Waiting on you field, and four hashes (deck before the tools, deck, ledger, Build).>
 
 ## Review
 

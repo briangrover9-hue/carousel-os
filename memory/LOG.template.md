@@ -1,3 +1,3 @@
 # Log
 
-What happened, newest first. One plain paragraph per session under a heading `## YYYY-MM-DD <slug>`, and an optional `Friction:` line when something slowed the work. Facts that stay true go in `wiki/`. Entries older than the current ISO week move to `history/` when `node scripts/rotate-log.js` runs.
+Each session adds a dated paragraph at the top (`## YYYY-MM-DD <slug>`). Add `Blocked by:` only if something held the work up. Facts that stay true go in `wiki/`. When a new ISO week starts, the previous weeks' entries move to `memory/history/`, one file per week.

@@ -1,3 +1,3 @@
 # Handoff
 
-Nothing to hand off this time.
+No open items. The next session starts clean.

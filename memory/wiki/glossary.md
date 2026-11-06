@@ -5,6 +5,6 @@
 - **Window**: the span of time the numbers cover. One per deck, labeled on every slide that has numbers, for example "12 months ending 2026-06-30".
 - **Ledger**: the file with one row per slide that traces every number to a source. See `../../bookshelf/claim-ledger.md`.
 - **Angle**: one way of attacking a plan in a critique round. See `../../bookshelf/review-angles.md`.
-- **Parked claim**: a claim a critique round could not re-verify and demoted to uncertain. The last round has to resolve it.
-- **Deviation**: a conservative choice a later stage made without asking, logged in the plan.
-- **Marker**: the text `NEEDS HUMAN:` followed by a question. It stays open until the human answers and the line becomes `RESOLVED:`.
+- **Open row**: a ledger row a critique round left open with the note "unconfirmed", because its source did not confirm the claim. The last round has to resolve it.
+- **Call made**: a choice a later stage made without asking, logged under `## Calls made` in the plan.
+- **Marker**: the text `ASK:` followed by a question. It stays open until the human answers and the line becomes `RESOLVED:`.

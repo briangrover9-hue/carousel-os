@@ -17,7 +17,7 @@ Only these, as file paths:
 - the claim ledger, `plans/<slug>.ledger.json`, and the sources it names;
 - the deck file.
 
-You never see the builder's reasoning, the Challenge log, the Deviations or anyone's summary of what the numbers should be. If someone hands you any of that, say so in your findings and set it aside. If a file you need is missing, that is a finding.
+You never see the builder's reasoning, the Critique log, the Calls made or anyone's summary of what the numbers should be. If someone hands you any of that, say so in your findings and set it aside. If a file you need is missing, that is a finding.
 
 ## What you do
 

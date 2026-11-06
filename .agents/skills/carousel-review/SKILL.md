@@ -21,7 +21,7 @@ Decline, name the cause, and stop when:
 ## Steps
 
 1. Run `node scripts/check-process.js --hashes plans/<slug>.md` and compare its three lines with Check.
-2. Start the reviewers as separate agents with none of this conversation (fresh context): `carousel-reviewer` (`agents/carousel-reviewer.md`) and `carousel-fidelity` (`agents/carousel-fidelity.md`). Claude Code finds both in `.claude/agents/`. In another tool, paste the file's body as the agent's instructions. If you can start only one, give it both files. Give each only the bar (`RULES.md, "The bar"` and `bookshelf/rubric.md`) and the file list: the deck, the ledger, the sources the ledger names, and the Brief section copied to a scratch file. Withhold the Challenge log, Deviations and your reasoning. Why: a reviewer with nothing to anchor on reads the deck as it stands.
+2. Start the reviewers as separate agents with none of this conversation (fresh context): `carousel-reviewer` (`agents/carousel-reviewer.md`) and `carousel-fidelity` (`agents/carousel-fidelity.md`). Claude Code finds both in `.claude/agents/`. In another tool, paste the file's body as the agent's instructions. If you can start only one, give it both files. Give each only the bar (`RULES.md, "The bar"` and `bookshelf/rubric.md`) and the file list: the deck, the ledger, the sources the ledger names, and the Brief section copied to a scratch file. Withhold the Critique log, Calls made and your reasoning. Why: a reviewer with nothing to anchor on reads the deck as it stands.
 3. Tell them to try to disprove the deck. Between them they must at least:
    - recompute every ledger number from its source;
    - run `node scripts/check-process.js --plan plans/<slug>.md`, which reads the slide text out of the deck file;
@@ -51,6 +51,6 @@ End with exactly this line, then add the same line to Reports:
 
 A fake review gives the reviewer the builder's reasoning, or runs in the builder's own context. It returns PASS with "looks good" and no pasted evidence. It re-runs scripts and never recomputes a number from its source. It treats UNVERIFIABLE as PASS because the gap was small. It edits the reviewer's words before recording them.
 
-## Rationale
+## Why it works this way
 
 A builder grading their own deck finds what they already believe. A reviewer holding only the bar and the files, told to disprove, reads for failure. UNVERIFIABLE stays a separate verdict because "could not tell" and "all clear" lead to different next steps.

@@ -1,0 +1,64 @@
+{
+  "stages": [
+    "carousel-start",
+    "carousel-brief",
+    "carousel-storyboard",
+    "carousel-critique",
+    "carousel-build",
+    "carousel-check",
+    "carousel-review",
+    "carousel-wrap",
+    "carousel-handoff"
+  ],
+  "agents": [
+    "carousel-reviewer.md",
+    "carousel-fidelity.md"
+  ],
+  "retiredStages": [
+    "carousel-challenge-plan"
+  ],
+  "retiredAgents": [],
+  "renamed": {
+    "carousel-challenge-plan": "carousel-critique"
+  },
+  "retiredFiles": [
+    ".agents/skills/carousel-challenge-plan/SKILL.md",
+    ".agents/skills/carousel-challenge-plan/agents/openai.yaml",
+    ".claude/commands/carousel-brief.md",
+    ".claude/commands/carousel-build.md",
+    ".claude/commands/carousel-challenge-plan.md",
+    ".claude/commands/carousel-check.md",
+    ".claude/commands/carousel-handoff.md",
+    ".claude/commands/carousel-review.md",
+    ".claude/commands/carousel-start.md",
+    ".claude/commands/carousel-storyboard.md",
+    ".claude/commands/carousel-wrap.md",
+    ".claude/skills/carousel-challenge-plan/SKILL.md",
+    "commands/README.md",
+    "commands/carousel-brief.md",
+    "commands/carousel-build.md",
+    "commands/carousel-challenge-plan.md",
+    "commands/carousel-check.md",
+    "commands/carousel-handoff.md",
+    "commands/carousel-review.md",
+    "commands/carousel-start.md",
+    "commands/carousel-storyboard.md",
+    "commands/carousel-wrap.md",
+    "docs/gallery/01-stat-cards.png",
+    "docs/gallery/02-ranked-bar-table.png",
+    "docs/gallery/03-heatmap.png",
+    "docs/gallery/04-trend-line.png",
+    "docs/gallery/05-stacked-share-bar.png",
+    "docs/gallery/06-quote-slide.png",
+    "docs/gallery/07-comparison-table.png",
+    "docs/gallery/08-template-layout.png",
+    "docs/gallery/README.md",
+    "docs/light-path.md",
+    "plans/example/fernway-skip-cancel.handoff.md",
+    "plans/example/fernway-skip-cancel.ledger.json",
+    "plans/example/fernway-skip-cancel.md",
+    "plans/example/fernway-skip-cancel.pptx",
+    "tests/process/fixtures/rubber-stamp/plan.ledger.json",
+    "tests/process/fixtures/rubber-stamp/plan.md"
+  ]
+}
