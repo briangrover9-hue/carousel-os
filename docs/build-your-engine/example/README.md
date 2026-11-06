@@ -49,7 +49,7 @@ scan: 3 FAIL, 0 CANDIDATE
 render stub: wrote 6 slide outlines to outline.txt (text only, no pixels)
 ```
 
-The scan exits 1 and the render stub exits 0. The deck is a plain text deck, so it has no colors and one type size (28 points, on the scale), and its six text runs are NOT SCANNED for contrast. The failures are real findings about the text: three headlines run past the limit. Every percentage passes the base check, because each slide that prints one also prints the count it is a percent of. Carousel OS does not ask you to fix the example, because its plan is finished and hashed.
+The scan exits 1 and the render stub exits 0. The deck is a plain text deck, so it has no colors and one type size (28 points, on the scale), and its six text runs are NOT SCANNED for contrast. The failures are real findings about the text: three headlines run past the limit. They were never held to it, because the example took the rubric path with no engine registered. The 72-character limit lives only in this scanner's `tokens.json`, and the rubric and preflight set no character cap on a headline, so nothing measured them before the plan passed. Every percentage passes the base check, because each slide that prints one also prints the count it is a percent of. Carousel OS does not ask you to fix the example, because its plan is finished and hashed.
 
 ## What it deliberately does not do
 

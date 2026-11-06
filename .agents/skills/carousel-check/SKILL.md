@@ -31,7 +31,7 @@ Decline, name the cause, and stop when:
 4. Rubric path: no mechanical scan exists, and Check says so. Read `bookshelf/rubric.md` and `bookshelf/preflight.md`, and answer only the preflight items tagged (read) or (render). Then answer the ten checklist items, each PASS or FAIL with a slide number and what you looked at.
    - The items: (1) literal ask on slide 1 or 2; (2) headlines-only read; (3) one window on every numbered slide; (4) a base beside every percentage; (5) a source line on every data slide; (6) quotes match the source byte for byte; (7) names spelled the same everywhere; (8) one type scale and one palette; (9) no clipped or overlapping text in a render; (10) slide count within budget.
    - You can export the deck to images or a PDF and look: answer item 9 from the render. The checklist has 10 items.
-   - You cannot: drop item 9, write `checklist <N> of 9`, and list "item 9: no render" under Waiting on you.
+   - You cannot export a render: drop item 9, write `checklist <N> of 9`, and list "item 9: no render" under Waiting on you. The report line then reads `checklist 9 of 9; Waiting on you: item 9, no render available.` when the other nine pass.
 5. Both paths, after the tools: run `node scripts/check-process.js --hashes plans/<slug>.md` again and record `Deck sha256:`, `Ledger sha256:` and `Build sha256:`.
    - `Deck sha256:` differs from the line before the tools: a tool edited the deck. Report `plan FAIL`, write the finding, and stop.
 6. Both paths: run `node scripts/check-process.js --plan plans/<slug>.md`. It reads the slide text, and the values inside native charts, out of the deck file itself and compares every number with the ledger and the Build table. Paste its output, including `PASS plan` or `FAIL plan`.

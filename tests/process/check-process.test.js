@@ -351,7 +351,7 @@ function enginePlan(d, opts) {
   const clean = toolLines.every((l) => /: PASS:/.test(l));
   const report = `Check report: path engine; plan PASS; ledger PASS; tools ${statuses}; checklist n/a; Waiting on you: ${clean ? 'none' : 'a tool did not pass'}.`;
   edit(d, 'plans/real.md', (t) => t.split(CHECK_LINE).join(report)
-    .replace('Checklist, 9 of 9 items pass. Item 9 is deferred and the checklist has 9 items.', toolLines.join('\n')));
+    .replace('Checklist, 9 of 9 items pass. The checklist has 10 items, and item 9 (the render) is deferred, so the count is out of the 9 that could run.', toolLines.join('\n')));
   return { out: r.out, toolLines };
 }
 

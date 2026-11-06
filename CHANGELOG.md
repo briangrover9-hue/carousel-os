@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **The worked example's exports ship.** `plans/example/exports/` holds the three invented files the example cites (`visits.csv`, `cancellations.csv`, `exit-survey.csv`), written from a fixed seed by `make-exports.js` beside them, so anyone can recount every number in the plan and ledger. The plan's opening paragraph says where they are. A new test, `tests/process/example-exports.test.js`, recomputes every ledger number from the files and fails on any mismatch, and checks that the generator still writes the same bytes.
+- The README says the check compares every number on the slides with a ledger that records its source, which is what `carousel-check` does. Recomputing from the source happens at build and in the fidelity reviewer.
+- `carousel-check` says plainly that `checklist 9 of 9` with item 9 under Waiting on you is the form to use when no render can be exported. The worked example's Check section no longer says the checklist has 9 items: it has 10, and the count leaves out the deferred render item.
+- `docs/build-your-engine/rigor.md` records this repository's own mutation round before 1.0.0.
+- `docs/build-your-engine/example/README.md` says why the sample scanner fails three headlines in the worked example: the example took the rubric path, so no headline was ever held to the scanner's limit.
+
 ## 1.0.1
 
 - The installer's usage text names `npx carousel-os` when it runs from the npm package, and the script path when it runs from a clone.

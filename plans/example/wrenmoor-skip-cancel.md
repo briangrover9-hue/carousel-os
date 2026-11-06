@@ -5,7 +5,7 @@ Slug: wrenmoor-skip-cancel
 Path: full
 Rounds: 3
 
-Wrenmoor Gyms is an invented gym chain, and every figure here is made up. A missed week is a calendar week with no visit to any club. This example was built without an engine. Its deck is a plain text deck, one text box per slide, made with a short script, so there is no design to judge and no tool results below. It took the rubric path, and its hashes are real. The handoff it wrote sits beside this file in `wrenmoor-skip-cancel.handoff.md`.
+Wrenmoor Gyms is an invented gym chain, and every figure here is made up. A missed week is a calendar week with no visit to any club. This example was built without an engine. Its deck is a plain text deck, one text box per slide, made with a short script, so there is no design to judge and no tool results below. It took the rubric path, and its hashes are real. The handoff it wrote sits beside this file in `wrenmoor-skip-cancel.handoff.md`. The three exports it cites are invented too, and they sit in `plans/example/exports/`, so each path below that starts with exports/ is read from this folder. `plans/example/exports/make-exports.js` writes them from a fixed seed, and anyone can recount every number from them.
 
 ## Request
 
@@ -95,7 +95,7 @@ Fix pass after the first REJECT: s03 printed 31% and now prints 31.2%, the ledge
 ## Check
 
 Path: rubric. carousel.config.json registers no engine, so no tool ran and the tools field says none.
-Checklist, 9 of 9 items pass. Item 9 is deferred and the checklist has 9 items.
+Checklist, 9 of 9 items pass. The checklist has 10 items, and item 9 (the render) is deferred, so the count is out of the 9 that could run.
 1 PASS: slide 2 answers "nobody can say why" with the missed-weeks share.
 2 PASS: the six headlines read as a beginning (s01, s02), a turn (s03, s04) and an answer (s05, s06).
 3 PASS: every numbered slide carries "12 months ending 2026-06-30".

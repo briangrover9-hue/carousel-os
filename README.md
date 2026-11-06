@@ -5,7 +5,7 @@
 ![A slide carousel tray of example slides about an invented city bike share, projecting one slide onto a screen beside the Carousel OS wordmark](https://raw.githubusercontent.com/briangrover9-hue/carousel-os/main/docs/hero.png)
 *Example slides from the author's own engine, built with this process. The blueprint for building yours is included.*
 
-An operating system for building presentations with an AI agent. It interviews you for the brief, plans the story slide by slide, critiques that plan before anything is drawn, builds the deck, checks every number against its source, has two reviewers who didn't build it try to break it, and remembers your corrections for the next deck. Works in Claude Code, Cursor and Codex.
+An operating system for building presentations with an AI agent. It interviews you for the brief, plans the story slide by slide, critiques that plan before anything is drawn, builds the deck, checks every number on the slides against a ledger that records its source, has two reviewers who didn't build it try to break it, and remembers your corrections for the next deck. Works in Claude Code, Cursor and Codex.
 
 ## Install
 
