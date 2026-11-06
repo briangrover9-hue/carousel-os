@@ -22,6 +22,8 @@ const steps = [
   ['process checks', ['scripts/check-process.js']],
   ['process tests', ['tests/process/run.js']],
   ['installer tests', ['tests/installer/run.js']],
+  ['script tests', ['tests/scripts/scripts.test.js']],
+  ['example scanner tests', ['tests/example/scan.test.js']],
   ['link check', ['scripts/check-links.js']],
   ['leak scan', ['scripts/leak-scan.js'].concat(...tokens.map((t) => ['--tokens', t]))],
 ];
@@ -30,7 +32,7 @@ let failed = 0;
 steps.forEach(([name, args]) => {
   console.log(`\n== ${name}`);
   const r = cp.spawnSync(process.execPath, args.map((a, i) => (i === 0 ? path.join(ROOT, a) : a)), { cwd: ROOT, stdio: 'inherit' });
-  if (r.status !== 0) { failed++; console.log(`!! ${name} failed`); }
+  if (r.status !== 0) { failed++; console.error(`!! ${name} failed`); }
 });
 console.log(`\ncheck: ${steps.length - failed} of ${steps.length} steps passed`);
 process.exit(failed ? 1 : 0);

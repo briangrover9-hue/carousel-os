@@ -52,6 +52,19 @@ test('init installs the process, with no engine and no Python files', () => {
   yes(!walk(t, '', []).some((f) => f.endsWith('.py')), 'a Python file was installed');
 });
 
+test('every script the process scripts require ships, and the repository-only ones stay home', () => {
+  const t = tmp();
+  run(['init', t]);
+  const have = fs.readdirSync(path.join(t, 'scripts'));
+  ['check-process.js', 'lessons.js', 'rotate-log.js', 'install.js', 'check-process.config.json'].forEach((f) => yes(have.includes(f), f + ' was not installed'));
+  ['check.js', 'check-links.js', 'leak-scan.js'].forEach((f) => yes(!have.includes(f), f + ' was installed'));
+  fs.readdirSync(path.join(ROOT, 'scripts')).filter((f) => f.endsWith('.js')).forEach((f) => {
+    const text = fs.readFileSync(path.join(ROOT, 'scripts', f), 'utf8');
+    if (!have.includes(f)) return;
+    (text.match(/require\('\.\/[^']+'\)/g) || []).forEach((m) => yes(have.includes(m.slice(11, -2)), f + ' requires ' + m + ', which was not installed'));
+  });
+});
+
 test('the bare form works for a folder that exists', () => {
   const t = tmp();
   eq(run([t]).code, 0);
@@ -459,6 +472,31 @@ test('package.json lists only files that exist, names no engine, and carries the
   eq(pkg.name, 'carousel-os');
 });
 
+test('a mistyped command before a folder says the first word is not a command and names the folder', () => {
+  const r = run(['frob', '.']);
+  eq(r.code, 2, r.out);
+  yes(/"frob" is not a command, and "\." is a folder/.test(r.out) && /init \./.test(r.out), r.out);
+});
+
+test('leak-scan errors carry the leak-scan: prefix', () => {
+  [['--bogus'], ['--tokens'], ['--root'], ['--tokens', path.join(RUN_DIR, 'no-such-file')]].forEach((a) => {
+    const r = node(path.join(ROOT, 'scripts', 'leak-scan.js'), a);
+    eq(r.code, 2, a.join(' ') + ': ' + r.out);
+    yes(/^leak-scan: /.test(r.out), a.join(' ') + ' error has no prefix: ' + r.out);
+  });
+});
+
+test('package.json asks for Node 20, keeps the publish checklist out of the package, and CI and the checklist carry no "not run" note', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  eq(pkg.engines.node, '>=20');
+  yes(pkg.files.includes('!docs/publish-checklist.md'), 'the publish checklist is not excluded from the package');
+  yes(fs.existsSync(path.join(ROOT, 'docs', 'publish-checklist.md')), 'the checklist must stay in the repository');
+  yes(!/has not run/i.test(fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'check.yml'), 'utf8')), 'CI file still says it has not run');
+  yes(!/has not run/i.test(fs.readFileSync(path.join(ROOT, 'docs', 'publish-checklist.md'), 'utf8')), 'the checklist still says CI has not run');
+  const ci = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'check.yml'), 'utf8');
+  yes(/node: \[20, 22\]/.test(ci) && /ubuntu-latest, macos-latest, windows-latest/.test(ci), 'the CI matrix is not 3 systems by Node 20 and 22');
+});
+
 test('the skill wrapper obeys the upload rules: name, no angle brackets, 1024 characters or fewer', () => {
   const text = fs.readFileSync(path.join(ROOT, 'skills', 'carousel-os', 'SKILL.md'), 'utf8');
   const fm = (/^---\n([\s\S]*?)\n---/.exec(text) || [])[1] || '';
@@ -467,6 +505,138 @@ test('the skill wrapper obeys the upload rules: name, no angle brackets, 1024 ch
   yes(d, 'no quoted description');
   yes(!/[<>]/.test(d[1]), 'the description has an angle bracket');
   yes(d[1].length <= 1024 && d[1].length >= 40, 'the description is ' + d[1].length + ' characters');
+});
+
+// ------------------------------------------------------------------ safety round: manifest, backups, partial installs
+function runSplit(args) {
+  const r = cp.spawnSync(process.execPath, [INSTALL].concat(args), { encoding: 'utf8', cwd: ROOT });
+  return { code: r.status, out: r.stdout || '', err: r.stderr || '' };
+}
+// A copy of this repository to act as the install source, so a test can change the source without touching the real one.
+function sourceCopy(mutate) {
+  const dest = tmp();
+  const skip = new Set(['.git', 'node_modules', 'out', 'build']);
+  (function copyDir(from, to) {
+    fs.readdirSync(from, { withFileTypes: true }).forEach((d) => {
+      if (skip.has(d.name)) return;
+      const f = path.join(from, d.name);
+      const t = path.join(to, d.name);
+      if (d.isDirectory()) { fs.mkdirSync(t, { recursive: true }); copyDir(f, t); } else fs.copyFileSync(f, t);
+    });
+  })(ROOT, dest);
+  if (mutate) mutate(dest);
+  return dest;
+}
+
+test('a manifest key that resolves outside the project is refused, and nothing is deleted or written', () => {
+  const outside = tmp();
+  const victim = path.join(outside, 'victim.txt');
+  fs.writeFileSync(victim, 'keep me\n');
+  ['../victim.txt', '../../etc/passwd', '/etc/hosts', 'a/../../victim.txt', 'C:\\Windows\\win.ini'].forEach((key) => {
+    const t = tmp();
+    run(['init', t]);
+    const m = manifestOf(t);
+    m.files[key] = sha('keep me\n');
+    writeManifest(t, m);
+    const r = runSplit(['update', t]);
+    eq(r.code, 1, key + ': ' + r.out + r.err);
+    yes(/names a path outside the project/.test(r.err), key + ': ' + r.err);
+    eq(fs.readFileSync(victim, 'utf8'), 'keep me\n', key + ' touched a file outside the project');
+  });
+  const t2 = tmp();
+  run(['init', t2]);
+  const m2 = manifestOf(t2);
+  m2.deleted = ['../victim.txt'];
+  writeManifest(t2, m2);
+  eq(runSplit(['update', t2]).code, 1, 'a deleted entry outside the project was accepted');
+  eq(runSplit(['doctor', t2]).code, 1, 'doctor accepted a manifest outside the project');
+});
+
+test('the EISDIR message names the real path of the folder that is in the way', () => {
+  const t = tmp();
+  fs.mkdirSync(path.join(t, 'RULES.md'));
+  const r = runSplit(['init', t]);
+  eq(r.code, 1, r.err);
+  yes(r.err.includes(path.join(t, 'RULES.md')) && /a folder is where a file should be/.test(r.err), r.err);
+  const t2 = tmp();
+  fs.writeFileSync(path.join(t2, 'commands'), 'a file');
+  const r2 = runSplit(['init', t2]);
+  eq(r2.code, 1, r2.err);
+  yes(r2.err.includes(path.join(t2, 'commands')) && /a file is where a folder should be/.test(r2.err), r2.err);
+});
+
+test('--overwrite saves your copy as .carousel-backup before replacing a file the tool never installed', () => {
+  const t = tmp();
+  fs.mkdirSync(path.join(t, 'bookshelf'));
+  fs.writeFileSync(path.join(t, 'bookshelf', 'rubric.md'), 'my own rubric\n');
+  let r = run(['init', t, '--overwrite']);
+  eq(r.code, 0, r.out);
+  yes(/backup\s+bookshelf\/rubric\.md \(your copy is saved as rubric\.md\.carousel-backup\)/.test(r.out), r.out);
+  eq(fs.readFileSync(path.join(t, 'bookshelf', 'rubric.md.carousel-backup'), 'utf8'), 'my own rubric\n', 'the backup holds the wrong text');
+  yes(fs.readFileSync(path.join(t, 'bookshelf', 'rubric.md'), 'utf8') !== 'my own rubric\n', 'the file was not replaced');
+  // an edit to a file the tool did install is backed up too, and a second backup does not overwrite the first
+  fs.writeFileSync(path.join(t, 'bookshelf', 'rubric.md'), 'edited again\n');
+  r = run(['init', t, '--overwrite']);
+  yes(/backup\s+bookshelf\/rubric\.md \(your copy is saved as rubric\.md\.carousel-backup2\)/.test(r.out), r.out);
+  eq(fs.readFileSync(path.join(t, 'bookshelf', 'rubric.md.carousel-backup'), 'utf8'), 'my own rubric\n', 'the first backup was overwritten');
+  eq(fs.readFileSync(path.join(t, 'bookshelf', 'rubric.md.carousel-backup2'), 'utf8'), 'edited again\n');
+});
+
+test('a file the tool installed and you never touched is replaced without a backup', () => {
+  const src = sourceCopy();
+  const t = tmp();
+  const SRC_INSTALL = path.join(src, 'scripts', 'install.js');
+  cp.spawnSync(process.execPath, [SRC_INSTALL, 'init', t], { encoding: 'utf8' });
+  fs.appendFileSync(path.join(src, 'bookshelf', 'rubric.md'), '\nA newer line.\n');
+  const r = cp.spawnSync(process.execPath, [SRC_INSTALL, 'update', t, '--overwrite'], { encoding: 'utf8' });
+  eq(r.status, 0, r.stdout + r.stderr);
+  yes(/update\s+bookshelf\/rubric\.md/.test(r.stdout) && !/backup/.test(r.stdout), r.stdout);
+  yes(!fs.existsSync(path.join(t, 'bookshelf', 'rubric.md.carousel-backup')), 'a backup was made for an untouched file');
+});
+
+test('a partial install records what it wrote, and a rerun after the fix recognizes its own files', () => {
+  const t = tmp();
+  fs.mkdirSync(path.join(t, 'commands'));
+  fs.mkdirSync(path.join(t, 'commands', 'carousel-build.md'));          // stops the install partway through commands/
+  let r = runSplit(['init', t]);
+  eq(r.code, 1, r.err);
+  const m = manifestOf(t);
+  yes(m.files['RULES.md'] && m.files['cheatsheet.md'], 'the manifest does not hold the files written before the failure');
+  yes(!m.files['commands/carousel-build.md'], 'the manifest holds the file that failed');
+  fs.rmSync(path.join(t, 'commands', 'carousel-build.md'), { recursive: true });
+  r = runSplit(['init', t]);
+  eq(r.code, 0, r.err);
+  yes(!/not installed by this tool/.test(r.out + r.err), 'the rerun did not recognize its own files:\n' + r.out);
+  yes(/0 kept \(edited\), 0 left alone/.test(r.out), r.out);
+  yes(fs.existsSync(path.join(t, 'commands', 'carousel-build.md')), 'the rerun did not finish the install');
+});
+
+test('new projects get a header-only lessons.history and an empty log even when the source holds entries', () => {
+  const src = sourceCopy((d) => {
+    fs.appendFileSync(path.join(d, 'memory', 'wiki', 'lessons.history'), '2026-01-02 | confirm | L-abcdef | "yes" | an entry that must not ship\n');
+    fs.appendFileSync(path.join(d, 'memory', 'LOG.md'), '\n## 2026-01-02 secret\n\nAn entry that must not ship.\n');
+  });
+  const t = tmp();
+  const r = cp.spawnSync(process.execPath, [path.join(src, 'scripts', 'install.js'), 'init', t], { encoding: 'utf8' });
+  eq(r.status, 0, r.stdout + r.stderr);
+  const hist = fs.readFileSync(path.join(t, 'memory', 'wiki', 'lessons.history'), 'utf8');
+  yes(!/must not ship/.test(hist) && hist.split('\n').every((l) => !l.trim() || l.startsWith('#')), 'lessons.history carried an entry:\n' + hist);
+  yes(!/must not ship/.test(fs.readFileSync(path.join(t, 'memory', 'LOG.md'), 'utf8')), 'LOG.md carried an entry');
+});
+
+test('errors go to stderr and the summary line stays on stdout', () => {
+  const t = tmp();
+  let r = runSplit(['init', t]);
+  eq(r.code, 0);
+  yes(/^done: /.test(r.out.trim().split('\n').pop()) && r.err === '', 'the summary is not the last stdout line: ' + r.out.slice(-200) + r.err);
+  [['init', t, '--bogus'], ['update', tmp()], ['frob', '.'], ['doctor', path.join(RUN_DIR, 'nothing-here')]].forEach((a) => {
+    r = runSplit(a);
+    yes(r.code !== 0 && r.err.length > 0, a.join(' ') + ': nothing on stderr');
+    yes(!/does not exist|unknown option|Run init first|is not a command/.test(r.out), a.join(' ') + ': an error went to stdout: ' + r.out);
+  });
+  fs.unlinkSync(path.join(t, 'RULES.md'));
+  r = runSplit(['doctor', t]);
+  yes(/MISSING\s+RULES\.md/.test(r.err) && /^doctor: 1 problem/.test(r.out.trim().split('\n').pop()), 'doctor: ' + r.out + r.err);
 });
 
 // ------------------------------------------------------------------ line endings
@@ -489,6 +659,7 @@ function copyTree(files, dest, convert) {
 test('.gitattributes keeps text as LF and leaves binary and hashed files alone', () => {
   const ga = fs.readFileSync(path.join(ROOT, '.gitattributes'), 'utf8');
   yes(/^\* text=auto eol=lf$/m.test(ga), 'no "* text=auto eol=lf" line');
+  ['memory/wiki/lessons.md', 'memory/wiki/lessons.history'].forEach((p) => yes(ga.includes(p + ' -text'), 'no "' + p + ' -text" line'));
   ['*.pptx', '*.png', '*.ttf', '*.json'].forEach((p) => yes(new RegExp('^' + p.replace(/[.*]/g, '\\$&') + ' -text$', 'm').test(ga), 'no "' + p + ' -text" line'));
 });
 
@@ -496,7 +667,8 @@ test('a CRLF checkout (text files converted, binary and hashed files byte-stable
   const files = trackedFiles();
   if (!files) { console.log('note  skipped: git is not available'); return; }
   const t = tmp();
-  copyTree(files, t, (f) => TEXT_EXT.test(path.basename(f)) || TEXT_EXT.test(f));
+  const HASHED = new Set(['memory/wiki/lessons.md', 'memory/wiki/lessons.history']);    // -text in .gitattributes: ids are hashes of their text
+  copyTree(files, t, (f) => !HASHED.has(f) && (TEXT_EXT.test(path.basename(f)) || TEXT_EXT.test(f)));
   yes(fs.readFileSync(path.join(t, 'RULES.md'), 'utf8').includes('\r\n'), 'the copy was not converted to CRLF');
   // hashed files must be byte-identical to the source, as .gitattributes guarantees on a Windows checkout
   walk(path.join(ROOT, 'plans', 'example'), '', []).filter((f) => /\.(pptx|json)$/.test(f)).forEach((f) => {

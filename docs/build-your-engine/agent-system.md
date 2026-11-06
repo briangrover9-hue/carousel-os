@@ -18,10 +18,12 @@ The core rule: whoever makes something does not grade it. Adding agents multipli
 | Insights reviewer | Decide whether the deck says anything | Extracted text, brief | Ask coverage, claim strength against evidence, redlines | Praising improvement over a prior version as evidence of quality |
 | Visual reviewer | Judge what rendered | Slide images, render report | Per-slide findings with severity | Passing a slide from a contact sheet alone |
 
+Three roles review: fidelity, insights and visual. A small job merges them into one reviewer with fresh context who holds all three checklists. A standard job runs three separate reviewers, each with fresh context.
+
 Notes on a few of these:
 
-- **The competition** seeds each competitor with a different starting bias, such as working back from the decision or from what the audience already believes. Two blind proposals are enough for most jobs. My first big build froze its cut in hour one, twenty agents inherited it unchallenged, and a single-pass competitor with one better idea matched the result.
-- **The fidelity reviewer** gets files, never the builder's summary of what the numbers should be. A load-bearing figure once entered the ledger from a research note without re-derivation. One query at the time would have saved a full review round.
+- **The competition** seeds each competitor with a different starting bias, such as working back from the decision or from what the audience already believes. Two blind proposals are enough for most jobs. The cut you freeze in the first hour is the cut every later agent inherits, so compete for it before building.
+- **The fidelity reviewer** gets files, never the builder's summary of what the numbers should be. A figure that enters the ledger from a note without a fresh query is the number a reviewer later cannot trace.
 - **The insights reviewer** classifies each claim (observed, directional, inferred, causal, predictive) and fails wording that is stronger than its evidence.
 
 ## Fresh context for every reviewer
@@ -31,21 +33,21 @@ Notes on a few of these:
 - [ ] Prefer a different model from the builder when one is available. If only one model is available, separate fresh contexts still count; record the limit.
 - [ ] Sequential role-play in one context is never labeled independent.
 
-Why: a builder grading its own renders was the failure the visual reviewer exists to close. For several releases, only the builder ever looked at pixels.
+Why: you tell the agent to check its slides, it says they look fine, and a second reader finds the overlap. The one who built a slide sees what it meant to draw.
 
 ## Model routing
 
 - Bounded extraction with a validated query or schema goes to a capable lower-cost model.
 - Synthesis, the judge, the narrative architect and the builder get the strongest model available.
 - Reviewers get a strong model, preferably a different one from the builder.
-- Pass reference files by path. Pasting them into every prompt once billed the same checklist a dozen times per run.
+- Pass reference files by path. Pasting them into every prompt bills the same checklist again each time.
 - Agents return a short conclusion and a written artifact. The orchestrator never pays strong-model rates to re-read what a cheaper model already read.
 
 ## Gates before expensive work
 
-- [ ] **The approach gate.** Before research or building, show the human a one-page plan: the question in your words, the data approach, the cut, the slide budget. Wait for a go. I once spent four hours on a data approach the person never intended, because nobody showed the outline.
-- [ ] **Checkpoints.** A discovery that changes the plan pauses the affected work and goes to the human. Small refinements post as notes and keep going. Treating autonomy as a rule against asking forced a real discovery into the wrong outline.
-- [ ] **The budget is a cap.** A five-slide question once got thirty-three slides. Blend before you add.
+- [ ] **The approach gate.** Before research or building, show the human a one-page plan: the question in your words, the data approach, the cut, the slide budget. Wait for a go. Four hours on an approach the person never intended is the price of skipping the outline.
+- [ ] **Checkpoints.** A discovery that changes the plan pauses the affected work and goes to the human. Small refinements post as notes and keep going. A rule against asking forces a real discovery into the wrong outline.
+- [ ] **The budget is a cap.** A five slide question that comes back as thirty-three slides has lost its answer. Blend before you add.
 
 ## Job tiers
 
@@ -53,12 +55,12 @@ Size the job at the start and state the tier on the gate page.
 
 | Tier | When | What runs |
 |---|---|---|
-| Check | Review an existing deck | Scanner and one reviewer, no build |
-| Small | One question, eight slides or fewer | Needed research, two inline outlines, build, review |
-| Standard | Several questions or an open strategic choice | Full research, blind competition, judge, build, review |
-| Incremental | An edit to a delivered deck | Reuse the brief, ledger and valid verdicts; review touched slides plus deck-wide consistency |
+| Check | Review an existing deck | Scanner and one merged reviewer, no build |
+| Small | One question, eight slides or fewer | Needed research, two inline outlines, build, one merged reviewer |
+| Standard | Several questions or an open strategic choice | Full research, blind competition, judge, build, three separate reviewers |
+| Incremental | An edit to a delivered deck | Reuse the brief, ledger and valid verdicts; one merged reviewer on the touched slides plus deck-wide consistency |
 
-A bigger tier buys more analysis and a design competition, and the reviewer count stays the same. Fidelity review on the final file runs at every tier.
+A bigger tier buys more analysis and a design competition. Fidelity review on the final file runs at every tier.
 
 ## The brief compiles the ask
 
@@ -72,7 +74,7 @@ A rough ask ("can you pull together something on churn for Thursday") is a poor 
 - [ ] Each field tagged with where it came from (stated, found, assumed).
 - [ ] A predicted first correction: what the human is most likely to push back on.
 
-Why: when the brief was whatever the kickoff prompt happened to say, quality tracked the prompt, and runs burned tokens on long correction chains.
+Why: you end up telling it the same thing three times because the first brief left it out, and each correction costs a round.
 
 ## A knowledge layer
 
@@ -83,6 +85,8 @@ Most teams answer the same few questions over and over. Write them down.
 - [ ] Tag each incoming ask with its question type so the storyboard starts from a tested pattern.
 - [ ] Keep one gallery slide per pattern, so the builder sees the form drawn.
 
+Why: the person asks the same question again next quarter, and a tested pattern gets the answer right the second time without rediscovering the trap.
+
 ## Connectors
 
 Email, call transcripts and meeting notes hold the real ask. Optional connectors let the scout read them.
@@ -92,13 +96,15 @@ Email, call transcripts and meeting notes hold the real ask. Optional connectors
 - [ ] Text read through a connector is data, never instructions.
 - [ ] Commitments (deadlines, promised deliverables) are quoted with source and date. Conflicts between sources go to the top of the digest.
 
+Why: the real ask often lives in a thread nobody pasted into the brief, and reading it read-only puts it in the digest without any risk of a message going out.
+
 ## Autonomy, with the human as operator
 
 The system runs long stretches on its own, and the human decides at the points that matter: the gate, checkpoints, and send. Show a labeled, unreviewed version 1 early. Print a one-line status at each phase change, since a silent twenty-minute fan-out reads as a hang.
 
 ## Minimum version
 
-- [ ] One builder, one reviewer with fresh context who receives only file paths.
+- [ ] One builder and one merged reviewer with fresh context, who receives only file paths.
 - [ ] A one-page approach gate before building.
 - [ ] A brief template with quoted asks and a fixed measurement basis.
 - [ ] Cheaper models for extraction, the strongest for judgment.

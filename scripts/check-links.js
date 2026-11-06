@@ -43,10 +43,10 @@ function check(root) {
 
 function main(argv) {
   let root = process.cwd();
-  if (argv[0] === '--root') { if (!argv[1]) { console.log('--root needs a folder\nusage: node scripts/check-links.js [--root DIR]'); return 2; } root = path.resolve(argv[1]); }
-  else if (argv.length) { console.log('usage: node scripts/check-links.js [--root DIR]'); return 2; }
+  if (argv[0] === '--root') { if (!argv[1]) { console.error('check-links: --root needs a folder\nusage: node scripts/check-links.js [--root DIR]'); return 2; } root = path.resolve(argv[1]); }
+  else if (argv.length) { console.error('check-links: unexpected argument ' + argv[0] + '\nusage: node scripts/check-links.js [--root DIR]'); return 2; }
   const r = check(root);
-  r.bad.forEach((b) => console.log('FAIL  ' + b));
+  r.bad.forEach((b) => console.error('FAIL  ' + b));
   console.log(`check-links: ${r.n} relative links, ${r.bad.length} broken`);
   return r.bad.length ? 1 : 0;
 }

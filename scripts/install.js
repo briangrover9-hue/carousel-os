@@ -44,7 +44,7 @@ const PROCESS = [
   { dir: 'docs/build-your-engine' },
   { dir: 'docs/gallery' },
   { dir: 'tests/process' },
-  { dir: 'scripts', only: ['check-process.js', 'check-process.config.json', 'rotate-log.js', 'lessons.js', 'install.js'] },
+  { dir: 'scripts', exclude: ['check.js', 'check-links.js', 'leak-scan.js'] },   // repository-only scripts stay home; every other script a process script needs ships
   { dir: 'memory', skeleton: true },
 ];
 const SKIP_NAMES = new Set(['__pycache__', '.DS_Store', '.git', 'node_modules']);
@@ -59,6 +59,7 @@ const EMPTY_LOG = [
 
 function sha(buf) { return crypto.createHash('sha256').update(buf).digest('hex'); }
 function say(msg) { process.stdout.write(msg + '\n'); }
+function warn(msg) { process.stderr.write(msg + '\n'); }       // errors go to stderr; summary lines stay on stdout
 
 // Refuse to write through a symlink: the target folder itself, or any folder or file under it on the way to a path.
 function assertNoSymlink(target, rel) {
@@ -106,6 +107,7 @@ function listSource() {
     if (!fs.existsSync(path.join(SOURCE, s.dir))) return;
     let files = walk(SOURCE, s.dir, []);
     if (s.only) files = files.filter((f) => s.only.includes(f.slice(s.dir.length + 1)));
+    else if (s.exclude) files = files.filter((f) => !s.exclude.includes(f.slice(s.dir.length + 1)));
     else if (s.dir === 'docs') files = [];
     files.forEach((f) => {
       if (out.some((o) => o.rel === f)) return;                                    // a nested dir listed on its own
@@ -126,8 +128,19 @@ function agentFiles() {
     .map((f) => ({ rel: AGENT_DIR + '/' + f, from: 'commands/' + f, userOwned: true }));
 }
 
+// A manifest path must stay inside the project: no absolute path, no "..", nothing that resolves outside the target.
+function safeRel(target, rel) {
+  if (typeof rel !== 'string' || !rel || path.isAbsolute(rel) || /^[A-Za-z]:/.test(rel) || rel.split(/[\\/]/).includes('..')) return false;
+  return path.resolve(target, rel).startsWith(path.resolve(target) + path.sep);
+}
+
 function readManifest(target) {
-  try { return JSON.parse(fs.readFileSync(path.join(target, MANIFEST), 'utf8')); } catch (e) { return null; }
+  let m = null;
+  try { m = JSON.parse(fs.readFileSync(path.join(target, MANIFEST), 'utf8')); } catch (e) { return null; }
+  const keys = Object.keys((m && m.files) || {}).concat(m && Array.isArray(m.deleted) ? m.deleted : []);
+  const bad = keys.find((k) => !safeRel(target, k));
+  if (bad !== undefined) throw new InstallError(`${MANIFEST} names a path outside the project: ${JSON.stringify(bad)}. Nothing was changed. Delete or repair ${MANIFEST}, then run again.`);
+  return m;
 }
 
 const USAGE = [
@@ -156,6 +169,9 @@ function parseArgs(argv) {
     o.cmd = first; rest.shift();
   } else if (fs.existsSync(first)) {
     o.cmd = 'init';
+  } else if (rest.length > 1 && fs.existsSync(rest[1]) && fs.statSync(rest[1]).isDirectory()) {
+    o.errors.push(`"${first}" is not a command, and "${rest[1]}" is a folder. Did you mean: node scripts/install.js init ${rest[1]}`);
+    return o;
   } else {
     o.errors.push(`unknown command "${first}". Use "init ${first}" to create a new folder, or pass a folder that exists.`);
     return o;
@@ -168,11 +184,11 @@ function parseArgs(argv) {
 // ------------------------------------------------------------------ install
 
 function install(o, updating) {
-  if (!o.target) { say(USAGE); return 2; }
-  if (fs.existsSync(o.target) && !fs.statSync(o.target).isDirectory()) { say('install: ' + o.target + ' is a file, not a folder. Pass the folder to install into.'); return 1; }
+  if (!o.target) { warn(USAGE); return 2; }
+  if (fs.existsSync(o.target) && !fs.statSync(o.target).isDirectory()) { warn('install: ' + o.target + ' is a file, not a folder. Pass the folder to install into.'); return 1; }
   assertNoSymlink(o.target, '');
   const manifest = readManifest(o.target);
-  if (updating && !manifest) { say('update: no ' + MANIFEST + ' in ' + o.target + '. Run init first.'); return 1; }
+  if (updating && !manifest) { warn('update: no ' + MANIFEST + ' in ' + o.target + '. Run init first.'); return 1; }
   const withAgents = o.agentsGiven ? o.agents : !(manifest && manifest.agents === false);
   const files = listSource().concat(withAgents ? agentFiles() : []);
   const recorded = (manifest && manifest.files) || {};
@@ -182,69 +198,88 @@ function install(o, updating) {
   const verb = o.dry ? 'would ' : '';
   const shipped = new Set(files.map((f) => f.rel));
 
-  files.forEach((f) => {
-    const dst = path.join(o.target, f.rel);
-    const buf = f.content || fs.readFileSync(path.join(SOURCE, f.from || f.rel));
-    const h = sha(buf);
-    const present = fs.existsSync(dst);
-    let action = null;
-    if (!present) {
-      if (recorded[f.rel] && !o.overwrite) {                  // we installed it and it is gone: the user deleted it
-        deleted.add(f.rel); delete next[f.rel];
-        counts.skippedDeleted++; say('skipped  ' + f.rel + ' (you deleted it; use --overwrite to bring it back)');
-        return;
-      }
-      if (deleted.has(f.rel) && !o.overwrite) { counts.skippedDeleted++; say('skipped  ' + f.rel + ' (you deleted it; use --overwrite to bring it back)'); return; }
-      action = 'add';
-    } else if (f.skeleton) { counts.same++; return; }           // memory is never touched again
-    else {
-      const cur = sha(fs.readFileSync(dst));
-      if (cur === h) { counts.same++; next[f.rel] = h; return; }
-      if (f.userOwned && !recorded[f.rel]) { counts.exists++; say('exists   ' + f.rel + ' (yours; never replaced)'); return; }
-      if (f.onlyIfAbsent && !recorded[f.rel]) { counts.exists++; say('exists   ' + f.rel + ' (yours; never replaced)'); return; }
-      if (f.onlyIfAbsent && !o.overwrite) { counts.exists++; say('exists   ' + f.rel); return; }
-      if (o.overwrite) action = 'update';
-      else if (recorded[f.rel] && recorded[f.rel] === cur) action = 'update';   // unedited since install
-      else if (recorded[f.rel]) { counts.kept++; say('kept     ' + f.rel + ' (you edited it; use --overwrite to replace)'); return; }
-      else { counts.exists++; say('exists   ' + f.rel + ' (not installed by this tool; use --overwrite to replace)'); return; }
-    }
-    say(verb + (action === 'add' ? 'add      ' : 'update   ') + f.rel);
-    counts[action === 'add' ? 'added' : 'updated']++;
-    if (!o.dry) {
-      assertNoSymlink(o.target, f.rel);
-      fs.mkdirSync(path.dirname(dst), { recursive: true });
-      fs.writeFileSync(dst, buf);
-      next[f.rel] = h;
-      deleted.delete(f.rel);
-    }
-  });
-
-  // Files a newer version no longer ships: removed only when you have not edited them.
-  Object.keys(recorded).filter((rel) => !shipped.has(rel)).forEach((rel) => {
-    const dst = path.join(o.target, rel);
-    if (rel.startsWith('engine/') || rel === 'scripts/engine.js' || rel.startsWith('.carousel-venv/')) {
-      say('left     ' + rel + ' (no longer shipped; this copy is yours to keep)');
-      return;
-    }
-    if (!fs.existsSync(dst)) { delete next[rel]; return; }
-    if (sha(fs.readFileSync(dst)) === recorded[rel]) {
-      say(verb + 'remove   ' + rel + ' (no longer shipped)');
-      counts.removed++;
-      if (!o.dry) { assertNoSymlink(o.target, rel); fs.rmSync(dst); delete next[rel]; }
-    } else {
-      counts.kept++; say('kept     ' + rel + ' (no longer shipped, but you edited it)');
-    }
-  });
-
-  say(`${verb}done: ${counts.added} added, ${counts.updated} updated, ${counts.same} unchanged, ${counts.kept} kept (edited), ${counts.exists} left alone, ${counts.skippedDeleted} skipped (deleted by you), ${counts.removed} removed.`);
-
-  if (!o.dry) {
+  const writeManifest = () => {
     fs.mkdirSync(o.target, { recursive: true });
     assertNoSymlink(o.target, MANIFEST);
     const out = { version: VERSION, agents: !!withAgents, files: next };
     if (deleted.size) out.deleted = Array.from(deleted).sort();
     fs.writeFileSync(path.join(o.target, MANIFEST), JSON.stringify(out, null, 2) + '\n');
+  };
+  // Keep a copy of the person's file before --overwrite replaces content the tool did not write itself.
+  const backup = (dst, rel) => {
+    let b = dst + '.carousel-backup';
+    for (let n = 2; fs.existsSync(b); n++) b = dst + '.carousel-backup' + n;
+    fs.copyFileSync(dst, b);
+    say('backup   ' + rel + ' (your copy is saved as ' + path.basename(b) + ')');
+  };
+
+  try {
+    files.forEach((f) => {
+      const dst = path.join(o.target, f.rel);
+      const buf = f.content || fs.readFileSync(path.join(SOURCE, f.from || f.rel));
+      const h = sha(buf);
+      const present = fs.existsSync(dst);
+      if (present && fs.statSync(dst).isDirectory()) throw new InstallError('a folder is where a file should be: ' + dst + '. Move or rename it, then run again.');
+      let action = null;
+      if (!present) {
+        if (recorded[f.rel] && !o.overwrite) {                  // we installed it and it is gone: the user deleted it
+          deleted.add(f.rel); delete next[f.rel];
+          counts.skippedDeleted++; say('skipped  ' + f.rel + ' (you deleted it; use --overwrite to bring it back)');
+          return;
+        }
+        if (deleted.has(f.rel) && !o.overwrite) { counts.skippedDeleted++; say('skipped  ' + f.rel + ' (you deleted it; use --overwrite to bring it back)'); return; }
+        action = 'add';
+      } else if (f.skeleton) { counts.same++; return; }           // memory is never touched again
+      else {
+        const cur = sha(fs.readFileSync(dst));
+        if (cur === h) { counts.same++; next[f.rel] = h; return; }
+        if (f.userOwned && !recorded[f.rel]) { counts.exists++; say('exists   ' + f.rel + ' (yours; never replaced)'); return; }
+        if (f.onlyIfAbsent && !recorded[f.rel]) { counts.exists++; say('exists   ' + f.rel + ' (yours; never replaced)'); return; }
+        if (f.onlyIfAbsent && !o.overwrite) { counts.exists++; say('exists   ' + f.rel); return; }
+        if (o.overwrite) action = 'update';
+        else if (recorded[f.rel] && recorded[f.rel] === cur) action = 'update';   // unedited since install
+        else if (recorded[f.rel]) { counts.kept++; say('kept     ' + f.rel + ' (you edited it; use --overwrite to replace)'); return; }
+        else { counts.exists++; say('exists   ' + f.rel + ' (not installed by this tool; use --overwrite to replace)'); return; }
+      }
+      say(verb + (action === 'add' ? 'add      ' : 'update   ') + f.rel);
+      counts[action === 'add' ? 'added' : 'updated']++;
+      if (!o.dry) {
+        assertNoSymlink(o.target, f.rel);
+        if (action === 'update' && sha(fs.readFileSync(dst)) !== recorded[f.rel]) backup(dst, f.rel);
+        try { fs.mkdirSync(path.dirname(dst), { recursive: true }); } catch (e) {
+          if (e.code === 'ENOTDIR' || e.code === 'EEXIST') throw new InstallError('a file is where a folder should be: ' + path.dirname(dst) + '. Move or rename it, then run again.');
+          throw e;
+        }
+        fs.writeFileSync(dst, buf);
+        next[f.rel] = h;
+        deleted.delete(f.rel);
+      }
+    });
+
+    // Files a newer version no longer ships: removed only when you have not edited them.
+    Object.keys(recorded).filter((rel) => !shipped.has(rel)).forEach((rel) => {
+      const dst = path.join(o.target, rel);
+      if (rel.startsWith('engine/') || rel === 'scripts/engine.js' || rel.startsWith('.carousel-venv/')) {
+        say('left     ' + rel + ' (no longer shipped; this copy is yours to keep)');
+        return;
+      }
+      if (!fs.existsSync(dst)) { delete next[rel]; return; }
+      if (sha(fs.readFileSync(dst)) === recorded[rel]) {
+        say(verb + 'remove   ' + rel + ' (no longer shipped)');
+        counts.removed++;
+        if (!o.dry) { assertNoSymlink(o.target, rel); fs.rmSync(dst); delete next[rel]; }
+      } else {
+        counts.kept++; say('kept     ' + rel + ' (no longer shipped, but you edited it)');
+      }
+    });
+  } catch (e) {
+    // A partial install records what it did write, so a rerun recognizes its own files.
+    if (!o.dry && Object.keys(next).length) { try { writeManifest(); } catch (e2) { /* the first error is the one to show */ } }
+    throw e;
   }
+
+  say(`${verb}done: ${counts.added} added, ${counts.updated} updated, ${counts.same} unchanged, ${counts.kept} kept (edited), ${counts.exists} left alone, ${counts.skippedDeleted} skipped (deleted by you), ${counts.removed} removed.`);
+  if (!o.dry) writeManifest();
   return 0;
 }
 
@@ -274,11 +309,11 @@ function filesCalledByCommands(target) {
 
 function doctor(o) {
   const target = o.target || process.cwd();
-  if (!fs.existsSync(target)) { say('doctor: ' + target + ' does not exist.'); return 1; }
-  if (!fs.statSync(target).isDirectory()) { say('doctor: ' + target + ' is a file, not a folder.'); return 1; }
+  if (!fs.existsSync(target)) { warn('doctor: ' + target + ' does not exist.'); return 1; }
+  if (!fs.statSync(target).isDirectory()) { warn('doctor: ' + target + ' is a file, not a folder.'); return 1; }
   const problems = [];
   const ok = (m) => say('ok       ' + m);
-  const bad = (m) => { problems.push(m); say('MISSING  ' + m); };
+  const bad = (m) => { problems.push(m); warn('MISSING  ' + m); };
 
   const major = Number(process.versions.node.split('.')[0]);
   if (major >= 18) ok('Node ' + process.versions.node); else bad('Node 18 or newer (found ' + process.versions.node + ')');
@@ -309,16 +344,16 @@ function doctor(o) {
 function main(argv) {
   const o = parseArgs(argv);
   if (o.help) { say(USAGE); return 0; }
-  if (o.errors.length) { o.errors.forEach((e) => say(e)); say(USAGE); return 2; }
+  if (o.errors.length) { o.errors.forEach((e) => warn(e)); warn(USAGE); return 2; }
   try {
     if (o.cmd === 'doctor') return doctor(o);
     if (o.cmd === 'update' && !o.target) o.target = process.cwd();
     return install(o, o.cmd === 'update');
   } catch (e) {
-    if (e instanceof InstallError) { say(e.message); return 1; }
-    if (e && (e.code === 'ENOTDIR' || e.code === 'EEXIST')) { say('install: a file is where a folder should be (' + (e.path || 'unknown path') + '). Move or rename it, then run again.'); return 1; }
-    if (e && e.code === 'EISDIR') { say('install: a folder is where a file should be (' + (e.path || 'unknown path') + '). Move or rename it, then run again.'); return 1; }
-    if (e && (e.code === 'EACCES' || e.code === 'EPERM')) { say('install: no permission to write ' + (e.path || 'there') + '.'); return 1; }
+    if (e instanceof InstallError) { warn(e.message); return 1; }
+    if (e && (e.code === 'ENOTDIR' || e.code === 'EEXIST')) { warn('install: a file is where a folder should be (' + (e.path || 'unknown path') + '). Move or rename it, then run again.'); return 1; }
+    if (e && e.code === 'EISDIR') { warn('install: a folder is where a file should be (' + (e.path || 'unknown path') + '). Move or rename it, then run again.'); return 1; }
+    if (e && (e.code === 'EACCES' || e.code === 'EPERM')) { warn('install: no permission to write ' + (e.path || 'there') + '.'); return 1; }
     throw e;
   }
 }

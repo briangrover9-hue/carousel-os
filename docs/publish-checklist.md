@@ -8,13 +8,13 @@ The repository ships the process and a blueprint for building your own engine. I
 
 ## Before the first push
 
-- Run `npm run check` on the full tree. It ends with "check: 5 of 5 steps passed".
+- Run `npm run check` on the full tree. It ends with "check: 6 of 6 steps passed".
 - Run the leak scan with your own token list: `node scripts/leak-scan.js --tokens path/to/names.txt`. Keep the list outside the repository.
 - Check `LICENSE`. It must hold one copyright line with the holder you intend.
 - Search the tree for personal paths, email addresses and employer or client names. The leak scan covers paths and addresses. Names need your list.
 - Read `git log` and `git config user.email` in the repository. The commits must carry the identity you want public.
 - Run `npm pack --dry-run` and read the file list. Nothing in it should surprise you.
-- The CI workflow in `.github/workflows/check.yml` has not run yet. Push to a private branch first and read the job on all three operating systems and both Node versions before you go public.
+- CI runs `npm run check` on ubuntu, macos and windows with Node 20 and 22. Read all six jobs before you tag a release.
 - Look at `docs/hero.png` and the eight images in `docs/gallery/`. Each must be under 300 KB and show only placeholder data.
 
 ## Repository settings

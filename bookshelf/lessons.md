@@ -18,7 +18,7 @@ Every `--human-confirmed` action appends a line to `memory/wiki/lessons.history`
 
 ## What counts as the same lesson
 
-The match ignores filler words, treats each, all and every as one word, and reads beside, next to and alongside as one word. It never matches a flip. Never against always, add against remove, show against hide: these are different lessons even when they share most words.
+The match ignores filler words, treats each, all and every as one word, and reads beside, next to and alongside as one word. It never matches a flip. Never against always, add against remove, show against hide: these are different lessons even when they share most words. It reads word order for before, after, above, below, left and right, so "answer before evidence" and "evidence before answer" stay two lessons.
 
 Same lesson:
 - "Put the base beside every percentage on the slide itself" and "Always show the base next to each percentage on the slide".

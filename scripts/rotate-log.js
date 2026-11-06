@@ -148,10 +148,12 @@ function main(argv) {
   const opts = { log: 'memory/LOG.md', history: 'memory/history', today: null, dryRun: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--log') opts.log = argv[++i];
-    else if (a === '--history') opts.history = argv[++i];
-    else if (a === '--today') opts.today = argv[++i];
-    else if (a === '--dry-run') opts.dryRun = true;
+    if (['--log', '--history', '--today'].includes(a)) {
+      const v = argv[i + 1];
+      if (v === undefined || v.startsWith('--')) { console.error(`rotate-log: ${a} needs a value. Run with --help for usage.`); return 2; }
+      opts[a.slice(2)] = v;
+      i++;
+    } else if (a === '--dry-run') opts.dryRun = true;
     else { console.error(`rotate-log: unknown argument ${a}`); return 2; }
   }
   let today = localToday();

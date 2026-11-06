@@ -33,7 +33,7 @@ A deck is done when all five hold.
 ## Standing rules
 
 1. **Predecessors.** If the previous stage's report line is missing, decline, name it, and stop. Why: a stage built on a missing artifact guesses.
-2. **Questions.** Only `carousel-brief` asks the human anything. Any later gap: take the conservative option (the smaller claim, fewer slides, the default theme) and log `D<n>: stage, choice, reason` under `## Deviations`.
+2. **Questions.** Only `carousel-brief` asks the human anything. Any later gap: take the conservative option (the smaller claim, fewer slides, a plain theme) and log `D<n>: stage, choice, reason` under `## Deviations`.
 3. **Report lines.** End every stage with its exact report line from its command file, and append it to `## Reports`. The format is fixed. Why: the human scans for it and a script parses it.
 4. **No-rubber-stamp.** Before you report a stage as passed, read its No-rubber-stamp guard and check yourself against it.
 5. **Ledger.** One row per slide (`bookshelf/claim-ledger.md`). Set `checked` only after the row's named check passes. Print no number, in digits or words, that is not in the ledger. `check-process --plan` reads the slide text out of the .pptx and compares it.
@@ -46,7 +46,7 @@ A deck is done when all five hold.
 12. **Writing.** Plain American English, active voice, short words. No em dashes, en dashes or spaced hyphens as punctuation. No negation-reframes, runs of short fragments, rule-of-three rhythm or closing pronouncements. The banned words are in `scripts/check-process.config.json`.
 13. **Context budget.** This file stays under 8000 bytes and each command under 7000. Load a command only when its stage runs, and a wiki page only through the index.
 14. **Hands off.** Never commit, push, send or publish a deck. The human does.
-15. **Engine.** Register your own in `carousel.config.json`: `engine.scan` and `engine.render` shell templates holding `{deck}` and `{out}`, plus optional `engine.tools`. `carousel-check` runs each one and records PASS (exit 0), FAIL (1) or MISSING (2) with its last output line. With no engine it takes the rubric path and says so. Both paths read the deck file.
+15. **Engine.** Register your own in `carousel.config.json`. `bookshelf/engine-contract.md` is the one authority for its keys and exit codes. `carousel-check` runs it through `node scripts/run-tools.js`. With no engine it takes the rubric path and says so. Both paths read the deck file.
 
 ## Where things live
 
@@ -62,18 +62,21 @@ scripts/    helper scripts, each with a usage comment and --help
 
 ## Enforcement
 
-`node scripts/check-process.js` is the mechanical check and `node tests/process/run.js` proves each part can fail. What the script covers:
-- Rules 1 and 3: report lines must match their formats, appear in stage order, and agree with the Status line. Rule 15: the Check section must match `carousel.config.json`.
-- Rule 5: ledger shape, check text, dates, and the numbers in the deck file against the ledger and the Build table. Rule 9: lesson format, expiry, review, cap, and a replay of `lessons.history` against the lessons file.
+`node scripts/check-process.js` is the mechanical check, and `node tests/process/run.js` proves each part can fail. The script covers:
+- Rules 1 and 3: report lines match their formats, appear in stage order, and agree with the Status line.
+- Rule 5: ledger shape, check text, dates, and the numbers and number words in the deck file, including native chart values, against the ledger, the storyboard and the Build table.
 - Rule 6: unique angles from the angle list, the last round on Parked claims, a count line per round, parked slides resolved.
-- Rule 8: the deck, ledger and Build hashes, pasted evidence in a PASS with the found value matching the ledger, the REJECT cap, and the ledger gate on every reviewed plan.
-- Rules 10, 12 and 13: log and handoff shape, the wiki index, the prose gate, the byte caps. Rule 4: that the guard text exists.
+- Rule 7: the Check section against `carousel.config.json` and the `tools.json` that `run-tools.js` wrote.
+- Rule 8: the deck, ledger and Build hashes, the deck unchanged from Build to Check, pasted evidence in a PASS, and the REJECT cap.
+- Rule 9: lesson format, expiry, review and cap, and a replay of `lessons.history` against the lessons file.
+- Rules 10, 12 and 13: log and handoff shape, the wiki index, the prose and spelling gates, the byte caps. Rule 4: that the guard text exists.
 
-The script cannot see these, so a person or the reviewer is the backstop:
+The script cannot see the following, so a person or the reviewer is the backstop:
 - Rule 2: whether a choice was truly conservative. The human reads Deviations.
-- Rule 7: whether a check was weakened. The reviewer recomputes from sources.
-- Rule 8: whether the reviewer really started fresh, and whether a human typed the words in `lessons.history`.
-- Rule 11 (causal wording), the quality of prose, whether an engine checks what matters, and rule 14.
+- Rule 7: whether a check was weakened, and whether an engine checks what matters. Tool exit codes are verified only through `run-tools.js` results, so an agent that writes `tools.json` and Check by hand can defeat it.
+- Rule 8: whether the reviewer really started fresh, and whether a human typed the words in `lessons.history`. Evidence lines are typed text.
+- Rule 5: text inside images, charts drawn as pictures, speaker notes, whether a named source holds the figure, and quantities written in words outside the phrases the check reads.
+- Rule 11 (causal wording), the quality of prose, and rule 14.
 
 ## If you edit anything
 

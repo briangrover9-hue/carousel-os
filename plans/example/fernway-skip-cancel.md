@@ -79,6 +79,7 @@ D2: build, a plain text deck with no theme and no logo, because the brief named 
 ## Build
 
 Deck: plans/example/fernway-skip-cancel.pptx
+Deck sha256 at build: 3a9b08b3104ab6ae1fdf1361a6daa1ed0a030a65509e28fd6865c5c6d33d6d0d
 Fix pass after the first REJECT: s03 printed 31% and now prints 31.2%, the ledger's value.
 
 | Slide | Text on the slide |
@@ -110,10 +111,10 @@ Ledger gate, node scripts/check-process.js --ledger plans/example/fernway-skip-c
 Ledger: 6 slides, 6 checked, 0 open, 0 rejected, 0 unreconciled numbers
 PASS ledger
 Deferred: item 9, no render available. It needs a PDF or image export of the deck.
-Deck sha256 before tools: 05374095dda1a02ae5c3b1502fea13a074efe163e74cd5e20c09812567d33c56
-Deck sha256: 05374095dda1a02ae5c3b1502fea13a074efe163e74cd5e20c09812567d33c56
+Deck sha256 before tools: 3a9b08b3104ab6ae1fdf1361a6daa1ed0a030a65509e28fd6865c5c6d33d6d0d
+Deck sha256: 3a9b08b3104ab6ae1fdf1361a6daa1ed0a030a65509e28fd6865c5c6d33d6d0d
 Ledger sha256: 29e337459e6753cf782fc8956b2713c7f33f756c165534dae8cdfbd50ef6f838
-Build sha256: 1e63fb5459c92849491de3bcb9ad8a0c1de586171672c93f9658b2a803ce32c5
+Build sha256: 410cefbfc17c4f79f4cd0ececb9ad3cf55f516ede2e9a893cd70146a9648e65c
 
 ## Review
 

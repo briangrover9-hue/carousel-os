@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const zlib = require('zlib');
 const rotate = require('./rotate-log.js');
 const lessons = require('./lessons.js');
+const runTools = require('./run-tools.js');
 
 // ---------------------------------------------------------------- contract
 
@@ -49,23 +50,23 @@ const STAGES = [
   },
   {
     name: 'carousel-build', id: 'build', report: 'Build report: <N> slides built, <M> ledger rows checked, <K> deviations logged.', guard: ['Challenge round'],
-    extra: ['Deviations'], must: { Guards: ['Parked claims: none open'], Steps: ['recompute', 'Never set'] },
+    extra: ['Deviations'], must: { Guards: ['Parked claims: none open', 'Stopped at', 'holds a `NEEDS HUMAN:` marker'], Steps: ['open its source and recompute it', 'Never set', 'Deck sha256 at build:'] },
   },
   {
     name: 'carousel-check', id: 'check', report: CHECK_TEMPLATE, guard: ['Build report:'],
-    extra: ['Deck sha256: <hex>', 'Ledger sha256: <hex>', 'Build sha256: <hex>', 'carousel.config.json', 'Deferred:', 'Tool <name>: <PASS|FAIL|MISSING>: <exact result line>', 'Deck sha256 before tools: <hex>'],
-    must: { Guards: ['latest `Build report:` line'], Steps: ['sha256', '--plan', 'Never loosen'] },
+    extra: ['Deck sha256: <hex>', 'Ledger sha256: <hex>', 'Build sha256: <hex>', 'carousel.config.json', 'Deferred:', 'Tool <name>: <PASS|FAIL|MISSING>: <exact result line>', 'Deck sha256 before tools: <hex>', 'tools.json'],
+    must: { Guards: ['latest `Build report:` line', 'needs a new `carousel-build`'], Steps: ['sha256', '--plan', 'scripts/run-tools.js', 'Never loosen', 'Never record exit 2 as PASS', 'No tool may edit the deck', 'differs from the line before the tools'] },
   },
   {
     name: 'carousel-review', id: 'review', report: 'Review verdict: <PASS|REJECT|UNVERIFIABLE>; unreconciled numbers <N>; findings <N>.',
     guard: ['Check report:'], extra: ['UNVERIFIABLE is never rounded up to PASS.', 'fresh context'],
-    must: { Guards: ['sha256', 'latest `Check report:` line', 'two `Review verdict: REJECT`'], Steps: ['recompute', '--plan', 'second REJECT', 'never rounded up'] },
+    must: { Guards: ['sha256', 'latest `Check report:` line', 'two `Review verdict: REJECT`', 'a FAIL, a MISSING tool or a checklist short of its total'], Steps: ['recompute', '--plan', 'second REJECT', 'never rounded up', 'Withhold the Challenge log'] },
   },
   {
     name: 'carousel-wrap', id: 'wrap',
     report: 'Wrap report: check <PASS|FAIL|n/a>; log entry written; lessons added <N>; wiki pages touched <N>; entries rotated <N>.',
     guard: ['Review verdict: PASS', 'Stopped at'], extra: [STOP_TEMPLATE],
-    must: { Guards: ['latest review line', 'Stopped at'], Steps: ['Never run `repeat`'] },
+    must: { Guards: ['latest review line is `Review verdict: PASS`', 'Stopped at'], Steps: ['Never run `repeat`'] },
   },
   {
     name: 'carousel-handoff', id: 'handoff', report: 'Handoff report: memory/handoff.md written; <N> bullets; focus <one line or none>.',
@@ -82,6 +83,8 @@ const SKIP_DIRS = new Set(['node_modules', 'engine', 'tests', 'decks', 'out', 'b
 const CHECKLIST_ITEMS = [10, 9];
 const STOP_STAGE = { start: 'start', brief: 'brief', storyboard: 'storyboard', round: 'challenge-plan', build: 'build', check: 'check', review: 'review' };
 const MAX_REJECTS = 2;
+// Sentences in RULES.md that an edit must not drop.
+const RULES_PINS = ['Never commit, push, send or publish a deck.', 'A tool that exits 2 is MISSING, never PASS.', 'self-attested', 'Only `carousel-brief` asks the human anything.'];
 
 function esc(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -194,22 +197,45 @@ function checkTextProblem(t) {
   return null;
 }
 
-// Number words: a ratio such as "six in ten" or "three times" is a figure, so it needs a ledger entry.
-const NUMW = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, twenty: 20 };
-const NW = Object.keys(NUMW).join('|');
-const PHRASE_RE = new RegExp(`\\b(?:(?:${NW}) (?:in|out of) (?:${NW})|(?:${NW}) times|half|twice)\\b`, 'gi');
+// Number words: a ratio, a percentage or a fraction written in words is a figure, so it needs a ledger entry.
+const ONES = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
+const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+const CARD = '(?:(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[- ](?:one|two|three|four|five|six|seven|eight|nine))?|' + Object.keys(ONES).join('|') + ')';
+const FRAC_N = '(?:a|one|two|three|four|five|six|seven|eight|nine)';
+const FRAC_D = '(?:half|halves|third|thirds|quarter|quarters|fifth|fifths|tenth|tenths)';
+const PHRASE_RE = new RegExp(
+  `\\b(?:${CARD} (?:in|out of) ${CARD}|${CARD} times|(?:${CARD}|(?:one|a) hundred) percent|${FRAC_N} ${FRAC_D}|half|twice|doubled|tripled)\\b`, 'gi');
+
+function cardinal(w) {
+  w = w.toLowerCase();
+  if (ONES[w]) return ONES[w];
+  if (TENS[w]) return TENS[w];
+  const m = /^(\w+)[- ](\w+)$/.exec(w);
+  if (m && TENS[m[1]] && ONES[m[2]] && ONES[m[2]] < 10) return TENS[m[1]] + ONES[m[2]];
+  return null;
+}
 
 function ratioPhrases(text) {
   return (String(text).match(PHRASE_RE) || []).map((x) => x.toLowerCase());
 }
 
+// What a number phrase claims: { kind: 'pct' | 'x', v, tol }.
 function phraseValue(p) {
-  let m = /^(\w+) (?:in|out of) (\w+)$/.exec(p);
-  if (m && NUMW[m[1]] && NUMW[m[2]]) return { kind: 'pct', v: (NUMW[m[1]] / NUMW[m[2]]) * 100 };
-  m = /^(\w+) times$/.exec(p);
-  if (m && NUMW[m[1]]) return { kind: 'x', v: NUMW[m[1]] };
-  if (p === 'half') return { kind: 'pct', v: 50 };
-  if (p === 'twice') return { kind: 'x', v: 2 };
+  let m = new RegExp(`^(${CARD}) (?:in|out of) (${CARD})$`).exec(p);
+  if (m && cardinal(m[1]) && cardinal(m[2])) return { kind: 'pct', v: (cardinal(m[1]) / cardinal(m[2])) * 100, tol: 5 };
+  m = new RegExp(`^(${CARD}) times$`).exec(p);
+  if (m && cardinal(m[1])) return { kind: 'x', v: cardinal(m[1]), tol: 0.3 };
+  m = new RegExp(`^(${CARD}|(?:one|a) hundred) percent$`).exec(p);
+  if (m) return { kind: 'pct', v: /hundred/.test(m[1]) ? 100 : cardinal(m[1]), tol: 1 };
+  m = new RegExp(`^(${FRAC_N}) (${FRAC_D})$`).exec(p);
+  if (m) {
+    const num = m[1] === 'a' ? 1 : ONES[m[1]];
+    const den = { half: 2, halves: 2, third: 3, thirds: 3, quarter: 4, quarters: 4, fifth: 5, fifths: 5, tenth: 10, tenths: 10 }[m[2]];
+    return { kind: 'pct', v: (num / den) * 100, tol: 5 };
+  }
+  if (p === 'half') return { kind: 'pct', v: 50, tol: 5 };
+  if (p === 'twice' || p === 'doubled') return { kind: 'x', v: 2, tol: 0.3 };
+  if (p === 'tripled') return { kind: 'x', v: 3, tol: 0.3 };
   return null;
 }
 
@@ -258,10 +284,9 @@ function validateLedger(obj, opts) {
           const num = isStr(n.value) ? numericOf(n.value) : null;
           n.words.forEach((w) => {
             const pv = phraseValue(String(w).toLowerCase());
-            if (!pv) { errors.push(`${at}: "${w}" is not a number phrase this check can read (six in ten, three times, half)`); return; }
+            if (!pv) { errors.push(`${at}: "${w}" is not a number phrase this check can read (six in ten, three times, sixty percent, a third, doubled)`); return; }
             if (!num || num.kind !== pv.kind) { errors.push(`${at}: "${w}" cannot describe ${n.value} (a percentage pairs with "six in ten", a multiple with "three times")`); return; }
-            const tol = pv.kind === 'pct' ? 5 : 0.3;
-            if (Math.abs(pv.v - num.v) > tol) errors.push(`${at}: "${w}" says ${pv.v}${pv.kind === 'pct' ? '%' : 'x'} but the ledger says ${n.value}`);
+            if (Math.abs(pv.v - num.v) > pv.tol) errors.push(`${at}: "${w}" says ${Math.round(pv.v * 10) / 10}${pv.kind === 'pct' ? '%' : 'x'} but the ledger says ${n.value}`);
           });
         }
       }
@@ -317,39 +342,76 @@ function ledgerMd(obj) {
 
 // ---------------------------------------------------------------- the deck itself: a .pptx is a zip of XML
 
+const LIMITS = { maxFileBytes: 50 * 1024 * 1024, maxPartBytes: 32 * 1024 * 1024, maxTotalBytes: 128 * 1024 * 1024, maxEntries: 5000 };
+
+class DeckError extends Error {}
+const bad = (why) => new DeckError(`broken or unsupported .pptx (${why})`);
+
+// Every read is bounds checked, so a corrupt file ends in one plain message and never a RangeError.
+const u16 = (buf, off) => { if (off < 0 || off + 2 > buf.length) throw bad('truncated'); return buf.readUInt16LE(off); };
+const u32 = (buf, off) => { if (off < 0 || off + 4 > buf.length) throw bad('truncated'); return buf.readUInt32LE(off); };
+
 function zipEntries(buf) {
   let eocd = -1;
   for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 65535); i--) {
     if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
   }
-  if (eocd < 0) throw new Error('not a zip file (no end-of-directory record)');
-  const total = buf.readUInt16LE(eocd + 10);
-  let off = buf.readUInt32LE(eocd + 16);
+  if (eocd < 0) throw bad('no zip end-of-directory record');
+  const total = u16(buf, eocd + 10);
+  const cdSize = u32(buf, eocd + 12);
+  let off = u32(buf, eocd + 16);
+  if (total === 0xffff || off === 0xffffffff || cdSize === 0xffffffff) throw bad('zip64 is not supported');
+  if (total > LIMITS.maxEntries) throw bad(`more than ${LIMITS.maxEntries} parts`);
+  if (off + cdSize > buf.length) throw bad('the directory runs past the end of the file');
   const out = new Map();
   for (let n = 0; n < total; n++) {
-    if (buf.readUInt32LE(off) !== 0x02014b50) throw new Error('broken zip directory');
-    const method = buf.readUInt16LE(off + 10);
-    const csize = buf.readUInt32LE(off + 20);
-    const nlen = buf.readUInt16LE(off + 28);
-    const elen = buf.readUInt16LE(off + 30);
-    const clen = buf.readUInt16LE(off + 32);
-    const lho = buf.readUInt32LE(off + 42);
-    if (csize === 0xffffffff || lho === 0xffffffff) throw new Error('zip64 decks are not supported');
+    if (u32(buf, off) !== 0x02014b50) throw bad('bad directory signature');
+    const method = u16(buf, off + 10);
+    const csize = u32(buf, off + 20);
+    const nlen = u16(buf, off + 28);
+    const elen = u16(buf, off + 30);
+    const clen = u16(buf, off + 32);
+    const lho = u32(buf, off + 42);
+    if (csize === 0xffffffff || lho === 0xffffffff) throw bad('zip64 is not supported');
+    if (off + 46 + nlen > buf.length) throw bad('truncated directory entry');
     out.set(buf.toString('utf8', off + 46, off + 46 + nlen), { method, csize, lho });
     off += 46 + nlen + elen + clen;
   }
   return out;
 }
 
-function zipRead(buf, e) {
-  if (buf.readUInt32LE(e.lho) !== 0x04034b50) throw new Error('broken zip entry');
-  const nlen = buf.readUInt16LE(e.lho + 26);
-  const elen = buf.readUInt16LE(e.lho + 28);
-  const start = e.lho + 30 + nlen + elen;
+function zipRead(buf, e, budget) {
+  if (u32(buf, e.lho) !== 0x04034b50) throw bad('bad part signature');
+  const start = e.lho + 30 + u16(buf, e.lho + 26) + u16(buf, e.lho + 28);
+  if (start + e.csize > buf.length) throw bad('a part runs past the end of the file');
   const data = buf.subarray(start, start + e.csize);
-  if (e.method === 0) return data;
-  if (e.method === 8) return zlib.inflateRawSync(data);
-  throw new Error(`unsupported zip compression ${e.method}`);
+  let out;
+  if (e.method === 0) out = data;
+  else if (e.method === 8) {
+    try { out = zlib.inflateRawSync(data, { maxOutputLength: LIMITS.maxPartBytes }); } catch (err) {
+      throw bad(err && err.code === 'ERR_BUFFER_TOO_LARGE' ? `a part inflates past ${Math.round(LIMITS.maxPartBytes / 1048576)} MB` : 'corrupt compressed data');
+    }
+  } else throw bad(`compression method ${e.method}`);
+  budget.used += out.length;
+  if (budget.used > LIMITS.maxTotalBytes) throw bad(`the parts inflate past ${Math.round(LIMITS.maxTotalBytes / 1048576)} MB in all`);
+  return out;
+}
+
+// The document properties of a .pptx, for the neutral-metadata check.
+function pptxCoreProperties(file) {
+  if (fs.statSync(file).size > LIMITS.maxFileBytes) throw bad(`larger than ${Math.round(LIMITS.maxFileBytes / 1048576)} MB`);
+  try {
+    const buf = fs.readFileSync(file);
+    const entries = zipEntries(buf);
+    const budget = { used: 0 };
+    const get = (n) => (entries.has(n) ? zipRead(buf, entries.get(n), budget).toString('utf8') : '');
+    const core = get('docProps/core.xml');
+    const tag = (name) => { const m = new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`).exec(core); return m ? xmlText(m[1]) : ''; };
+    return { creator: tag('dc:creator'), lastModifiedBy: tag('cp:lastModifiedBy'), text: core + get('docProps/app.xml'), thumbnail: entries.has('docProps/thumbnail.jpeg') || entries.has('docProps/thumbnail.jpg') };
+  } catch (e) {
+    if (e instanceof DeckError) throw e;
+    throw bad(e && e.code ? e.code : 'unreadable');
+  }
 }
 
 function xmlText(s) {
@@ -358,11 +420,38 @@ function xmlText(s) {
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
 }
 
-// The text of each slide, in slide order, whitespace collapsed. Notes pages are not read.
-function readPptxSlides(file) {
+function chartText(xml) {
+  const out = [];
+  (xml.match(/<a:t\b[^>]*>[\s\S]*?<\/a:t>/g) || []).forEach((t) => out.push(xmlText(t.replace(/<[^>]+>/g, ''))));
+  (xml.match(/<c:strCache>[\s\S]*?<\/c:strCache>/g) || []).forEach((c) => (c.match(/<c:v>([\s\S]*?)<\/c:v>/g) || []).forEach((v) => out.push(xmlText(v.replace(/<[^>]+>/g, '')))));
+  (xml.match(/<c:numCache>[\s\S]*?<\/c:numCache>/g) || []).forEach((c) => {
+    const fmt = (/<c:formatCode>([\s\S]*?)<\/c:formatCode>/.exec(c) || [])[1] || '';
+    (c.match(/<c:v>([\s\S]*?)<\/c:v>/g) || []).forEach((v) => {
+      let x = parseFloat(v.replace(/<[^>]+>/g, ''));
+      if (Number.isNaN(x)) return;
+      if (fmt.includes('%')) x *= 100;
+      out.push(String(Math.round(x * 1e6) / 1e6));
+    });
+  });
+  return out.join(' ');
+}
+
+// The text of each slide, in slide order, whitespace collapsed, native chart contents included. Notes pages are not read.
+function readPptxDeck(file) {
+  try {
+    return readPptxDeckUnsafe(file);
+  } catch (e) {
+    if (e instanceof DeckError) throw e;
+    throw bad(e && e.code ? e.code : 'unreadable');
+  }
+}
+
+function readPptxDeckUnsafe(file) {
+  if (fs.statSync(file).size > LIMITS.maxFileBytes) throw bad(`larger than ${Math.round(LIMITS.maxFileBytes / 1048576)} MB`);
   const buf = fs.readFileSync(file);
   const entries = zipEntries(buf);
-  const read = (name) => (entries.has(name) ? zipRead(buf, entries.get(name)).toString('utf8') : null);
+  const budget = { used: 0 };
+  const read = (name) => (entries.has(name) ? zipRead(buf, entries.get(name), budget).toString('utf8') : null);
   let names = [];
   const pres = read('ppt/presentation.xml');
   const rels = read('ppt/_rels/presentation.xml.rels');
@@ -379,19 +468,28 @@ function readPptxSlides(file) {
     names = [...entries.keys()].filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
       .sort((a, b) => Number(/(\d+)\.xml$/.exec(a)[1]) - Number(/(\d+)\.xml$/.exec(b)[1]));
   }
-  if (!names.length) throw new Error('the file holds no slides');
+  if (!names.length) throw bad('the file holds no slides');
   return names.map((n) => {
     const xml = read(n);
-    if (xml === null) throw new Error(`slide part ${n} is missing`);
+    if (xml === null) throw bad(`slide part ${n} is missing`);
     const paras = (xml.match(/<a:p\b[\s\S]*?<\/a:p>/g) || []).map((p) => xmlText(
-      p.replace(/<a:br\s*\/>/g, ' ').replace(/<a:t\b[^>]*>([\s\S]*?)<\/a:t>/g, '\u0001$1\u0002').replace(/<[^>]+>/g, '')
+      p.replace(/<a:br\s*\/>/g, '<a:t> </a:t>').replace(/<a:t\b[^>]*>([\s\S]*?)<\/a:t>/g, '\u0001$1\u0002').replace(/<[^>]+>/g, '')
         .replace(/\u0002[^\u0001]*\u0001/g, '').replace(/[\u0001\u0002]/g, '')));
-    return paras.join(' ').replace(/\s+/g, ' ').trim();
+    // native charts: titles, category labels and the cached values behind the bars and lines
+    const relsXml = read(n.replace(/slides\/(slide\d+\.xml)$/, 'slides/_rels/$1.rels'));
+    const charts = relsXml ? [...relsXml.matchAll(/Target="([^"]*charts\/chart\d+\.xml)"/g)].map((m) => 'ppt/' + m[1].replace(/^(\.\.\/|\/ppt\/)/, '')) : [];
+    const chart = charts.map((c) => { const cx = read(c); return cx ? chartText(cx) : ''; }).join(' ').replace(/\s+/g, ' ').trim();
+    return { text: paras.join(' ').replace(/\s+/g, ' ').trim(), chart };
   });
 }
 
+function readPptxSlides(file) {
+  return readPptxDeck(file).map((s) => (s.text + ' ' + s.chart).trim());
+}
+
 const NUM_TOKEN = /\d[\d,]*(?:\.\d+)?/g;
-const numTokens = (s) => (String(s).match(NUM_TOKEN) || []).map((t) => t.replace(/[,.]+$/, ''));
+// "2,562" and "2562" are the same figure, so commas are dropped before two figures are compared.
+const numTokens = (s) => (String(s).match(NUM_TOKEN) || []).map((t) => t.replace(/,/g, '').replace(/\.+$/, ''));
 
 function buildTableRows(buildSection) {
   const rows = {};
@@ -409,15 +507,19 @@ function planDeckProblems(ctx, rel, text, ledger) {
   const deckPath = path.join(ctx.root, deckRel);
   if (!fs.existsSync(deckPath)) return [`the deck file ${deckRel} does not exist`];
   if (!ledger || !Array.isArray(ledger.slides)) return ['the ledger is missing, so the deck cannot be compared with it'];
+  const atBuild = hexRe('Deck sha256 at build').exec(build);
+  if (!atBuild) out.push('Build needs a "Deck sha256 at build:" line followed by 64 hex digits (node scripts/check-process.js --hashes prints it)');
+  else if (sha256(fs.readFileSync(deckPath)) !== atBuild[1]) out.push('the deck changed after Build recorded its hash. A changed deck needs a new Build.');
   let slides;
-  try { slides = readPptxSlides(deckPath); } catch (e) { return [`the deck ${deckRel} cannot be read: ${e.message}`]; }
+  try { slides = readPptxDeck(deckPath); } catch (e) { return [`the deck ${deckRel} cannot be read: ${e.message}`]; }
   if (slides.length !== ledger.slides.length) out.push(`the deck has ${slides.length} slides and the ledger has ${ledger.slides.length}`);
   const table = buildTableRows(build);
   const boardRows = {};
   [...(sectionText(text, '## Storyboard') || '').matchAll(/^\|\s*(s\d+)\s*\|.*$/gim)].forEach((m) => { boardRows[m[1].toLowerCase()] = m[0]; });
   ledger.slides.forEach((s, i) => {
     const id = String(s.id);
-    const deckText = slides[i];
+    const deckText = slides[i] === undefined ? undefined : (slides[i].text + ' ' + slides[i].chart).trim();
+    const chartTok = new Set(slides[i] === undefined ? [] : numTokens(slides[i].chart));
     const tableText = table[id.toLowerCase()];
     if (deckText === undefined) return;
     const strip = (t) => (ledger.window ? t.split(ledger.window).join(' ') : t);
@@ -425,7 +527,8 @@ function planDeckProblems(ctx, rel, text, ledger) {
     const nums = s.numbers || [];
     const allowed = new Set();
     nums.forEach((n) => {
-      if (!deckText.includes(n.value)) out.push(`slide ${id}: ledger number "${n.value}" is not printed in the deck (slide ${i + 1})`);
+      const vt = numTokens(n.value);
+      if (!slides[i].text.includes(n.value) && !(vt.length && vt.every((t) => chartTok.has(t)))) out.push(`slide ${id}: ledger number "${n.value}" is not printed in the deck (slide ${i + 1})`);
       numTokens(n.value).forEach((x) => allowed.add(x));
       (n.words || []).forEach((w) => { if (!deckText.toLowerCase().includes(String(w).toLowerCase())) out.push(`slide ${id}: the ledger records "${w}" but the deck does not print it`); });
     });
@@ -439,6 +542,16 @@ function planDeckProblems(ctx, rel, text, ledger) {
     }
     const covered = new Set(nums.flatMap((n) => (n.words || []).map((w) => String(w).toLowerCase())));
     ratioPhrases(deckText).forEach((p) => { if (!covered.has(p)) out.push(`slide ${id}: the deck prints "${p}", which the ledger does not record as a figure (add it as words on the number it describes)`); });
+    if (boardRows[id.toLowerCase()]) {
+      const cells = boardRows[id.toLowerCase()].split('|').map((c) => c.trim());
+      numTokens(strip(`${cells[2] || ''} ${cells[3] || ''}`)).forEach((t) => { if (!allowed.has(t)) out.push(`slide ${id}: the storyboard prints ${t}, which is not in the ledger`); });
+    }
+    numTokens(s.claim).forEach((t) => { if (!allowed.has(t)) out.push(`slide ${id}: the ledger claim holds ${t}, which is not among the slide's ledger numbers`); });
+    if (boardRows[id.toLowerCase()] && s.kind !== 'framing') {
+      const src = (boardRows[id.toLowerCase()].split('|')[4] || '').trim().toLowerCase();
+      const ls = String(s.source || '').trim().toLowerCase();
+      if (src && ls && !src.includes(ls) && !ls.includes(src)) out.push(`slide ${id}: the storyboard names the source "${src}" but the ledger says "${ls}"`);
+    }
     const lp = [...new Set(ratioPhrases(s.claim))].sort();
     const bp = boardRows[id.toLowerCase()] ? [...new Set(ratioPhrases(boardRows[id.toLowerCase()]))].sort() : [];
     if (lp.length && bp.length && lp.join() !== bp.join()) out.push(`slide ${id}: the ledger claim says "${lp.join(', ')}" but the storyboard says "${bp.join(', ')}"`);
@@ -522,13 +635,18 @@ function validateEngineConfig(obj) {
   return { errors, tools };
 }
 
-function readEngineConfig(root) {
-  const t = readIf(path.join(root, 'carousel.config.json'));
-  if (t === null) return { present: false, errors: [], tools: {} };
+// A plan reads the config at the project root. The worked example reads its own folder, so a project's config never changes it.
+function configPathFor(root, rel, example) {
+  return path.join(root, example ? path.posix.dirname(rel) : '', 'carousel.config.json');
+}
+
+function readEngineConfig(root, file) {
+  const t = readIf(file || path.join(root, 'carousel.config.json'));
+  if (t === null) return { present: false, errors: [], tools: {}, raw: null };
   let obj;
-  try { obj = JSON.parse(t); } catch (e) { return { present: true, errors: [`carousel.config.json is not valid JSON (${e.message})`], tools: {} }; }
+  try { obj = JSON.parse(t); } catch (e) { return { present: true, errors: [`carousel.config.json is not valid JSON (${e.message})`], tools: {}, raw: t }; }
   const v = validateEngineConfig(obj);
-  return { present: true, errors: v.errors, tools: v.tools };
+  return { present: true, errors: v.errors, tools: v.tools, raw: t };
 }
 
 // ---------------------------------------------------------------- plan: the Reports state machine
@@ -644,6 +762,11 @@ function planHashes(ctx, rel, text) {
     ledger: ledgerRaw === null ? null : sha256(ledgerRaw),
     build: sha256(build),
   };
+}
+
+function deckRelOf(text) {
+  const m = /^Deck:\s*(.+?)\s*$/m.exec(sectionText(text, '## Build') || '');
+  return m ? m[1].replace(/`/g, '') : '';
 }
 
 function analyzePlan(ctx, rel, text, example) {
@@ -824,6 +947,8 @@ function analyzePlan(ctx, rel, text, example) {
     if (!lm) err('Check needs "Ledger sha256:" followed by 64 hex digits');
     if (!bsm) err('Check needs "Build sha256:" followed by 64 hex digits');
     if (dm && bm && dm[1] !== bm[1]) err('a tool edited the deck: Deck sha256 differs from Deck sha256 before tools');
+    const builtAs = hexRe('Deck sha256 at build').exec(sec('Build'));
+    if (builtAs && bm && builtAs[1] !== bm[1]) err('the deck changed between Build and Check without a new Build (Deck sha256 at build differs from Deck sha256 before tools)');
     const now = planHashes(ctx, rel, text);
     if (lm && now.ledger !== null && now.ledger !== lm[1]) err('the ledger changed after the check (Ledger sha256 differs)');
     if (bsm && now.build !== bsm[1]) err('the Build section changed after the check (Build sha256 differs)');
@@ -842,8 +967,9 @@ function analyzePlan(ctx, rel, text, example) {
       if (!lineTools[n]) err(`the Check report lists tool ${n} but Check holds no "Tool ${n}:" result line`);
       else if (lineTools[n].res !== reported[n]) err(`tool ${n} is ${reported[n]} in the report line but ${lineTools[n].res} in Check`);
     });
-    if (!example) {
-      const cfg = readEngineConfig(ctx.root);
+    {
+      const cfgFile = configPathFor(ctx.root, rel, example);
+      const cfg = readEngineConfig(ctx.root, cfgFile);
       cfg.errors.forEach((e) => err(`carousel.config.json: ${e}`));
       const registered = Object.keys(cfg.tools).sort();
       const recorded = Object.keys(lineTools).sort();
@@ -851,6 +977,32 @@ function analyzePlan(ctx, rel, text, example) {
       registered.filter((n) => !recorded.includes(n)).forEach((n) => err(`carousel.config.json registers tool ${n} but Check holds no result for it`));
       if (registered.length && c.path === 'rubric') err('carousel.config.json registers tools, so Check must take the engine path');
       if (!registered.length && c.path === 'engine') err('Check took the engine path but carousel.config.json registers no engine');
+      // run-tools.js writes the exit codes it saw. The Check section must say what that file says.
+      const resultsRel = `decks/${path.basename(rel, '.md')}.check/tools.json`;
+      const rf = readIf(path.join(ctx.root, resultsRel));
+      if (registered.length && rf === null) err(`${resultsRel} is missing: carousel-check runs node scripts/run-tools.js, which writes it`);
+      if (rf !== null) {
+        let rj = null;
+        try { rj = JSON.parse(rf); } catch (e) { err(`${resultsRel} is not valid JSON`); }
+        if (rj && Array.isArray(rj.tools)) {
+          const byName = {};
+          rj.tools.forEach((t) => { byName[t.name] = t; });
+          if (cfg.raw !== null && rj.configSha256 !== sha256(cfg.raw)) err(`${resultsRel} was written for a different carousel.config.json`);
+          if (bm && rj.deckBefore !== bm[1]) err(`${resultsRel}: the deck hash before the tools differs from "Deck sha256 before tools" in Check`);
+          if (dm && rj.deckAfter !== dm[1]) err(`${resultsRel}: the deck hash after the tools differs from "Deck sha256" in Check`);
+          registered.forEach((n) => { if (!byName[n]) err(`${resultsRel} holds no result for registered tool ${n}`); });
+          rj.tools.forEach((t) => {
+            if (runTools.statusFor(t.exit) !== t.status) err(`${resultsRel}: tool ${t.name} exited ${t.exit}, which is ${runTools.statusFor(t.exit)}, but the file says ${t.status}`);
+            if (cfg.tools[t.name] && t.command !== runTools.expandCommand(cfg.tools[t.name], deckRelOf(text), `decks/${path.basename(rel, '.md')}.check`)) err(`${resultsRel}: tool ${t.name} ran a command that differs from the one in carousel.config.json`);
+            const l = lineTools[t.name];
+            if (!l) err(`${resultsRel} holds a result for tool ${t.name} that Check does not record`);
+            else {
+              if (l.res !== t.status) err(`Check records tool ${t.name} as ${l.res} but run-tools.js recorded ${t.status}`);
+              if (l.line !== String(t.line).trim()) err(`Check records a result line for tool ${t.name} that differs from the one run-tools.js recorded`);
+            }
+          });
+        }
+      }
     }
   }
 
@@ -1017,6 +1169,12 @@ function contract(ctx) {
   const out = [];
   const rules = readIf(path.join(ctx.root, 'RULES.md')) || '';
   const readme = readIf(path.join(ctx.root, 'commands/README.md')) || '';
+  RULES_PINS.forEach((p) => { if (!rules.includes(p)) out.push(`RULES.md must keep: ${p}`); });
+  STAGES.filter((x) => x.guard.length).forEach((x) => {
+    const row = rules.split('\n').find((l) => l.startsWith(`| \`${x.name}\` |`));
+    if (!row) out.push(`RULES.md chain table has no row for ${x.name}`);
+    else if (!row.includes(x.guard[0])) out.push(`RULES.md chain table row for ${x.name} must key on: ${x.guard[0]}`);
+  });
   STAGES.forEach((st) => {
     const file = `commands/${st.name}.md`;
     const text = readIf(path.join(ctx.root, file));
@@ -1040,6 +1198,10 @@ function contract(ctx) {
     if (guards !== null) {
       if (!/Decline/.test(guards)) out.push(`${file}: Guards must say what the stage declines`);
       st.guard.forEach((g) => { if (!guards.includes(g)) out.push(`${file}: Guards must key on the previous stage's line: ${g}`); });
+    }
+    if (st.id !== 'brief') {
+      const steps = sectionText(text, '## Steps') || '';
+      if (/\bask(s)? (the human|the person|the reader|the user|you|them)\b/i.test(steps)) out.push(`${file}: Steps tell the stage to ask the human a question, and only carousel-brief asks questions`);
     }
     Object.keys(st.must || {}).forEach((name) => {
       const body = sectionText(text, `## ${name}`);
@@ -1121,10 +1283,51 @@ function stripInline(line) {
   return line.replace(/`[^`]*`/g, '');
 }
 
+// ---- scrub: nothing in shipped prose may describe a particular private engine.
+
+function jsonKeys(obj, out) {
+  if (Array.isArray(obj)) obj.forEach((x) => jsonKeys(x, out));
+  else if (obj && typeof obj === 'object') Object.keys(obj).forEach((k) => { out.add(k); jsonKeys(obj[k], out); });
+  return out;
+}
+
+function scrubAllowed(ctx) {
+  const ok = new Set(ctx.config.scrubAllow || []);
+  ['carousel.config.example.json', 'plans/ledger.template.json'].forEach((f) => {
+    const t = readIf(path.join(ctx.root, f));
+    if (t === null) return;
+    try { jsonKeys(JSON.parse(t), new Set()).forEach((k) => ok.add(k)); } catch (e) { /* reported by state */ }
+  });
+  return ok;
+}
+
+const SNAKE_SPAN = /`([a-z][a-z0-9]*(?:_[a-z0-9]+)+)`/g;
+
+function scrubProblems(rel, text, allowed) {
+  const out = [];
+  scanLines(text).forEach((l) => {
+    const where = `${rel}:${l.n}`;
+    if (/deck_(kit|scan)/i.test(l.line)) out.push(`${where}: names a private engine module (deck_kit, deck_scan)`);
+    if (/\bchecks? \d+[a-z]?\b/i.test(l.line)) out.push(`${where}: cites a scanner check by number`);
+    if (/#[0-9a-fA-F]{6}\b/.test(l.line)) out.push(`${where}: a six digit hex color (colors belong in your own design tokens file)`);
+    if (l.fence || l.fenced) return;
+    let m;
+    SNAKE_SPAN.lastIndex = 0;
+    while ((m = SNAKE_SPAN.exec(l.line))) {
+      if (!allowed.has(m[1])) out.push(`${where}: the identifier \`${m[1]}\` looks like a private engine name (add it to scrubAllow in the config if it is legitimate)`);
+    }
+  });
+  return out;
+}
+
+// A range written with a hyphen between two numbers, such as 5-10, in prose. Dates and ids are left alone.
+const NUM_RANGE = /(?<![\w./-])\d+(?:\.\d+)?-\d+(?:\.\d+)?(?![\w-])/;
+
 function prose(ctx) {
   const out = [];
   const words = ctx.config.bannedWords.map((w) => ({ w, re: new RegExp('(^|[^A-Za-z0-9])' + esc(w) + '(?![A-Za-z0-9])', 'i') }));
   const pats = ctx.config.bannedPatterns.map((p) => ({ p, re: new RegExp(p, 'i') }));
+  const allowed = scrubAllowed(ctx);
   ctx.prose.forEach((rel) => {
     const text = readIf(path.join(ctx.root, rel));
     scanLines(text).forEach((l) => {
@@ -1133,9 +1336,12 @@ function prose(ctx) {
       if (l.fence || l.fenced) return;
       const plain = stripInline(l.line);
       if (/(?<=\S) -{1,2} (?=\S)/.test(plain)) out.push(`${where}: spaced hyphen used as punctuation`);
+      const rg = NUM_RANGE.exec(plain);
+      if (rg) out.push(`${where}: hyphenated number range "${rg[0]}", write "${rg[0].replace('-', ' to ')}"`);
       words.forEach((b) => { if (b.re.test(plain)) out.push(`${where}: banned word "${b.w}"`); });
       pats.forEach((b) => { if (b.re.test(plain)) out.push(`${where}: banned pattern ${b.p}`); });
     });
+    if (!rel.startsWith('docs/gallery/')) scrubProblems(rel, text, allowed).forEach((p) => out.push(p));
     spellingProblems(text, ctx.config.americanAllow).forEach((h) => out.push(`${rel}:${h.line}: British spelling "${h.word}", write "${h.better}"`));
   });
   return out;
@@ -1171,7 +1377,11 @@ function state(ctx) {
   if (les === null) out.push('memory/wiki/lessons.md is missing');
   else {
     const hist = readIf(path.join(ctx.root, 'memory/wiki/lessons.history')) || '';
-    lessons.validate(les, today, hist).forEach((e) => out.push(e.startsWith('WARN ') ? e : (e.startsWith('lessons.history') ? `memory/wiki/${e}` : `memory/wiki/lessons.md: ${e}`)));
+    const archiveIds = [];
+    ['memory/history/expired-lessons.md', 'memory/history/retired-rules.md'].forEach((f) => {
+      (readIf(path.join(ctx.root, f)) || '').split('\n').forEach((l) => { const m = /^- ([LR]-[0-9a-f]{6}) \|/.exec(l); if (m) archiveIds.push(m[1]); });
+    });
+    lessons.validate(les, today, hist, archiveIds).forEach((e) => out.push(e.startsWith('WARN ') ? e : (e.startsWith('lessons.history') ? `memory/wiki/${e}` : `memory/wiki/lessons.md: ${e}`)));
   }
   const doc = readIf(path.join(ctx.root, 'bookshelf/lessons.md'));
   [['EXPIRY_DAYS', ' days'], ['MAX_RULES', ' rules'], ['RULE_REVIEW_DAYS', ' days']].forEach(([k, unit]) => {
@@ -1195,6 +1405,17 @@ function state(ctx) {
       if (f.endsWith('example.json') && !Object.keys(v.tools).length) out.push(`${f}: the sample must register a scan and a render command`);
     } catch (e) { out.push(`${f}: not valid JSON (${e.message})`); }
   });
+  // a deck shipped in the repository must carry neutral document properties
+  const neutral = ctx.config.neutralPptxCreator || 'Carousel OS example';
+  ['plans', 'docs'].forEach((dir) => walkAny(ctx.root, dir, '.pptx').forEach((rel) => {
+    try {
+      const m = pptxCoreProperties(path.join(ctx.root, rel));
+      if (m.creator !== neutral) out.push(`${rel}: docProps creator is "${m.creator}", and a shipped deck carries only "${neutral}"`);
+      if (m.lastModifiedBy !== neutral) out.push(`${rel}: docProps lastModifiedBy is "${m.lastModifiedBy}", and a shipped deck carries only "${neutral}"`);
+      if (/generated using|python-pptx/i.test(m.text)) out.push(`${rel}: the document properties hold a generator string`);
+      if (m.thumbnail) out.push(`${rel}: the deck carries a template thumbnail image`);
+    } catch (e) { out.push(`${rel}: ${e.message}`); }
+  }));
   planFiles(ctx).forEach((rel) => {
     analyzePlan(ctx, rel, readIf(path.join(ctx.root, rel)), rel.startsWith('plans/example/')).forEach((e) => out.push(e));
   });
@@ -1231,7 +1452,7 @@ function handoffCheck(ctx) {
 
 const DEFAULTS = {
   rulesMaxBytes: 8000, commandMaxBytes: 7000, pointerMaxBytes: 1200,
-  nonCommandNames: [], allowMissing: [], unchecked: [], bannedWords: [], bannedPatterns: [], americanAllow: [],
+  nonCommandNames: [], allowMissing: [], unchecked: [], bannedWords: [], bannedPatterns: [], americanAllow: [], scrubAllow: [],
 };
 
 function loadConfig(file) {
@@ -1274,19 +1495,26 @@ const HELP = [
 
 function main(argv) {
   const opts = { root: process.cwd(), config: null, today: null, ledger: null, final: false, ledgerMd: null, plan: null, hashes: null, skip: [] };
+  const FLAGS = {
+    '--root': ['a folder', (v) => { opts.root = path.resolve(v); }],
+    '--config': ['a file', (v) => { opts.config = v; }],
+    '--today': ['a date as YYYY-MM-DD', (v) => { opts.today = v; }],
+    '--ledger': ['a ledger file', (v) => { opts.ledger = v; }],
+    '--ledger-md': ['a ledger file', (v) => { opts.ledgerMd = v; }],
+    '--plan': ['a plan file', (v) => { opts.plan = v; }],
+    '--hashes': ['a plan file', (v) => { opts.hashes = v; }],
+    '--skip': ['a check name', (v) => { opts.skip.push(v); }],
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--help' || a === '-h') { console.log(HELP); return 0; }
-    else if (a === '--root') opts.root = path.resolve(argv[++i]);
-    else if (a === '--config') opts.config = argv[++i];
-    else if (a === '--today') opts.today = argv[++i];
-    else if (a === '--ledger') opts.ledger = argv[++i];
-    else if (a === '--final') opts.final = true;
-    else if (a === '--ledger-md') opts.ledgerMd = argv[++i];
-    else if (a === '--plan') opts.plan = argv[++i];
-    else if (a === '--hashes') opts.hashes = argv[++i];
-    else if (a === '--skip') opts.skip.push(argv[++i]);
-    else { console.error(`check-process: unknown argument ${a}\n${HELP}`); return 2; }
+    if (a === '--final') { opts.final = true; continue; }
+    if (FLAGS[a]) {
+      const v = argv[i + 1];
+      if (v === undefined || v.startsWith('--')) { console.error(`check-process: ${a} needs a value: ${FLAGS[a][0]}. Run with --help for usage.`); return 2; }
+      FLAGS[a][1](v);
+      i++;
+    } else { console.error(`check-process: unknown argument ${a}\n${HELP}`); return 2; }
   }
   const loadJson = (f) => {
     const t = readIf(f);
@@ -1349,6 +1577,6 @@ function main(argv) {
   return result.failed ? 1 : 0;
 }
 
-module.exports = { STAGES, reportRegex, validateLedger, validateHandoff, validateEngineConfig, readPptxSlides, ledgerMd, checkTextProblem, spellingProblems, ratioPhrases, main };
+module.exports = { LIMITS, DeckError, pptxCoreProperties, STAGES, reportRegex, validateLedger, validateHandoff, validateEngineConfig, readPptxSlides, ledgerMd, checkTextProblem, spellingProblems, ratioPhrases, main };
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));

@@ -35,6 +35,8 @@ Engine: optional. Register your own in `carousel.config.json` (sample: `carousel
 Each script prints usage with `--help`.
 - `node scripts/check-process.js`: every process check. Exit 0 means clean.
 - `node scripts/check-process.js --plan plans/<slug>.md`: read the deck file and compare it with the ledger.
+- `node scripts/check-process.js --hashes plans/<slug>.md`: print the deck, ledger and Build hashes for the plan.
+- `node scripts/run-tools.js plans/<slug>.md`: run the engine tools registered in `carousel.config.json` and print their Tool lines.
 - `node scripts/check-process.js --ledger plans/<slug>.ledger.json --final`: the ledger gate.
 - `node scripts/lessons.js list`: rules and lessons with time left.
 - `node scripts/rotate-log.js`: move old log entries to `memory/history/`.

@@ -66,7 +66,7 @@ function localToday() {
 // ---------------------------------------------------------------- what counts as the same lesson
 
 const STOP = new Set(['a', 'an', 'the', 'on', 'in', 'of', 'to', 'itself', 'always', 'please', 'make', 'sure', 'you', 'we',
-  'it', 'is', 'are', 'be', 'that', 'this', 'for', 'with', 'at', 'as', 'and', 'or', 'directly', 'just', 'right', 'then']);
+  'it', 'is', 'are', 'be', 'that', 'this', 'for', 'with', 'at', 'as', 'and', 'or', 'directly', 'just', 'then']);
 const NEGATIONS = new Set(['never', 'not', 'no', 'dont', 'doesnt', 'stop', 'avoid', 'without', 'cannot', 'cant', 'nothing',
   'none', 'isnt', 'arent', 'wont', 'shouldnt']);
 const SYNONYMS = {
@@ -77,7 +77,10 @@ const ANTONYMS = [['add', 'remove'], ['add', 'cut'], ['add', 'delete'], ['keep',
   ['include', 'exclude'], ['before', 'after'], ['more', 'fewer'], ['more', 'less'], ['larger', 'smaller'], ['increase', 'decrease'],
   ['first', 'last'], ['open', 'close'], ['show', 'hide'], ['show', 'remove'], ['show', 'cut'], ['show', 'drop'], ['show', 'delete'],
   ['widest', 'narrowest'], ['wide', 'narrow'], ['long', 'short'], ['same', 'different'], ['one', 'many'], ['over', 'under'],
-  ['before', 'after'], ['early', 'late'], ['ask', 'assume'], ['cite', 'omit']];
+  ['before', 'after'], ['early', 'late'], ['ask', 'assume'], ['cite', 'omit'], ['above', 'below'], ['left', 'right'], ['top', 'bottom'],
+  ['default', 'custom'], ['dark', 'light'], ['biggest', 'smallest'], ['largest', 'smallest'], ['big', 'small'], ['high', 'low'],
+  ['up', 'down'], ['start', 'end'], ['begin', 'end'], ['inside', 'outside'], ['whole', 'decimal'], ['bold', 'plain'], ['full', 'empty'],
+  ['internal', 'external'], ['public', 'private'], ['single', 'multiple'], ['fewer', 'more'], ['lead', 'trail']];
 
 function stem(w) {
   if (w.length > 4 && w.endsWith('ing')) return w.slice(0, -3);
@@ -103,7 +106,16 @@ function canon(text) {
     w = SYNONYMS[w] || w;
     if (!STOP.has(raw) && !STOP.has(w)) out.push(w);
   });
-  return { tokens: new Set(out), negations };
+  return { tokens: new Set(out), negations, sequence: out };
+}
+
+// Words whose meaning depends on which thing comes first: "answer before evidence" is not "evidence before answer".
+const ORDER_WORDS = new Set(['before', 'after', 'above', 'below', 'left', 'right', 'over', 'under', 'first', 'last', 'then', 'top', 'bottom', 'lead']);
+
+function lcsRatio(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+  return a.length && b.length ? dp[a.length][b.length] / Math.max(a.length, b.length) : 1;
 }
 
 function opposite(a, b) {
@@ -121,10 +133,24 @@ function similar(a, b) {
   const cb = canon(b);
   if (ca.negations % 2 !== cb.negations % 2) return false;
   if (opposite(ca.tokens, cb.tokens)) return false;
+  const ordered = ca.sequence.some((t) => ORDER_WORDS.has(t)) || cb.sequence.some((t) => ORDER_WORDS.has(t));
+  if (ordered && lcsRatio(ca.sequence, cb.sequence) < 0.8) return false;
   let inter = 0;
   ca.tokens.forEach((t) => { if (cb.tokens.has(t)) inter++; });
   const union = ca.tokens.size + cb.tokens.size - inter;
   return union > 0 && inter / union >= SIMILARITY;
+}
+
+function textHash(text) {
+  return crypto.createHash('sha1').update(normalize(text)).digest('hex').slice(0, 12);
+}
+
+// An id is the first six hex digits of the text hash, with a salt of "#2", "#3" and so on when two lessons collide.
+function idMatches(prefix, id, text) {
+  for (const salt of ['', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9']) {
+    if (id === `${prefix}-${crypto.createHash('sha1').update(normalize(text) + salt).digest('hex').slice(0, 6)}`) return true;
+  }
+  return false;
 }
 
 function idFor(prefix, text, taken) {
@@ -163,9 +189,22 @@ function parseHistory(text) {
 }
 
 // Replay the history and compare what it says with what the lessons file says.
-function reconcile(doc, entries) {
+// archiveIds: ids found in the expired-lessons and retired-rules archives.
+function reconcile(doc, entries, archiveIds) {
   const errors = [];
+  const archive = new Set(archiveIds || []);
+  const stateAt = (id, upTo) => {
+    let n = 1;
+    for (let i = 0; i < upTo; i++) {
+      const e = entries[i];
+      if (e.id !== id) continue;
+      if (e.action === 'repeat') n += 1;
+      else if (e.action === 'merge') { const m = /n=(\d+) confirmed/.exec(e.detail); if (m) n = Number(m[1]); }
+    }
+    return n;
+  };
   doc.lessons.forEach((l) => {
+    if (!idMatches('L', l.id, l.text)) errors.push(`${l.id}: the id does not match the lesson text (an id is a hash of the text)`);
     let n = 1;
     let confirmed = l.date;
     entries.filter((e) => e.id === l.id).forEach((e) => {
@@ -180,16 +219,31 @@ function reconcile(doc, entries) {
     if (l.confirmed !== confirmed) errors.push(`${l.id}: confirmed ${l.confirmed} in the lessons file, but lessons.history supports ${confirmed}`);
   });
   doc.rules.forEach((r) => {
+    if (!idMatches('R', r.id, r.text)) errors.push(`${r.id}: the id does not match the rule text (an id is a hash of the text)`);
     const lid = 'L-' + r.id.slice(2);
-    const promotes = entries.filter((e) => e.action === 'promote' && e.id === lid);
-    if (!promotes.length) { errors.push(`${r.id}: no human-confirmed promotion in lessons.history`); return; }
-    const promoted = promotes[promotes.length - 1].date;
-    if (r.promoted !== promoted) errors.push(`${r.id}: promoted ${r.promoted} in the lessons file, but lessons.history says ${promoted}`);
+    const idx = entries.findIndex((e, i) => e.action === 'promote' && e.id === lid && entries.slice(i + 1).every((x) => !(x.action === 'promote' && x.id === lid)));
+    if (idx < 0) { errors.push(`${r.id}: no human-confirmed promotion in lessons.history`); return; }
+    const promo = entries[idx];
+    if (r.promoted !== promo.date) errors.push(`${r.id}: promoted ${r.promoted} in the lessons file, but lessons.history says ${promo.date}`);
+    const th = /text:([0-9a-f]{12})/.exec(promo.detail);
+    if (!th) errors.push(`${r.id}: the promotion line in lessons.history holds no text hash`);
+    else if (th[1] !== textHash(r.text)) errors.push(`${r.id}: the rule text differs from the text the human approved (hash ${th[1]})`);
+    if (stateAt(lid, idx) < 2) errors.push(`${r.id}: promoted before the lesson was corrected twice (n was ${stateAt(lid, idx)})`);
     const reviews = entries.filter((e) => e.action === 'review' && e.id === r.id).map((e) => e.date);
-    const reviewed = reviews.length ? reviews[reviews.length - 1] : promoted;
+    const reviewed = reviews.length ? reviews[reviews.length - 1] : promo.date;
     if (r.reviewed !== reviewed) errors.push(`${r.id}: reviewed ${r.reviewed} in the lessons file, but lessons.history says ${reviewed}`);
-    const retired = entries.filter((e) => e.action === 'retire' && e.id === r.id && e.date >= promoted);
+    const retired = entries.filter((e) => e.action === 'retire' && e.id === r.id && e.date >= promo.date);
     if (retired.length) errors.push(`${r.id}: retired in lessons.history but still in the lessons file`);
+  });
+  // every id the history names must exist somewhere: a lesson, a rule, an archive, or a merge
+  const known = new Set(archive);
+  doc.lessons.forEach((l) => known.add(l.id));
+  doc.rules.forEach((r) => { known.add(r.id); known.add('L-' + r.id.slice(2)); });
+  archive.forEach((id) => { if (id.startsWith('R-')) known.add('L-' + id.slice(2)); });
+  entries.forEach((e) => { if (e.action === 'merge') (e.detail.match(/L-[0-9a-f]{6}/g) || []).forEach((x) => known.add(x)); });
+  entries.forEach((e) => {
+    if (e.action === 'drop') return;
+    if (!known.has(e.id)) errors.push(`lessons.history line ${e.n}: ${e.id} is in no lesson, rule or archive`);
   });
   return errors;
 }
@@ -239,7 +293,7 @@ function serialize(doc) {
 const ageOf = (l, today) => daysBetween(l.confirmed, today);
 
 // Strings starting with "WARN " are notices. Anything else is a failure.
-function validate(text, today, historyText) {
+function validate(text, today, historyText, archiveIds) {
   const doc = parse(text);
   const errors = doc.errors.slice();
   const ids = new Set();
@@ -269,7 +323,7 @@ function validate(text, today, historyText) {
     const h = parseHistory(historyText);
     h.errors.forEach((e) => errors.push(`lessons.history: ${e}`));
     h.entries.filter((e) => e.date > today).forEach((e) => errors.push(`lessons.history: line ${e.n} is dated in the future (today is ${today})`));
-    if (!h.errors.length) reconcile(doc, h.entries).forEach((e) => errors.push(e));
+    if (!h.errors.length) reconcile(doc, h.entries, archiveIds).forEach((e) => errors.push(e));
   }
   return errors;
 }
@@ -286,11 +340,12 @@ function parseArgs(argv) {
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--file') opts.file = argv[++i];
-    else if (a === '--archive') opts.archive = argv[++i];
-    else if (a === '--history') opts.history = argv[++i];
-    else if (a === '--date') opts.date = argv[++i];
-    else if (a === '--human-confirmed') {
+    if (['--file', '--archive', '--history', '--date'].includes(a)) {
+      const v = argv[i + 1];
+      if (v === undefined || v.startsWith('--')) { opts.argError = `${a} needs a value. Run with --help for usage.`; break; }
+      opts[a.slice(2)] = v;
+      i++;
+    } else if (a === '--human-confirmed') {
       opts.human = true;
       const q = argv[i + 1];
       if (q === undefined || q.startsWith('--')) opts.humanBad = true;
@@ -330,11 +385,17 @@ const HELP = [
 function main(argv) {
   if (argv.length === 0 || argv.includes('--help') || argv.includes('-h')) { console.log(HELP); return argv.length === 0 ? 2 : 0; }
   const { opts, rest } = parseArgs(argv);
+  if (opts.argError) { console.error(`lessons: ${opts.argError}`); return 2; }
   const cmd = rest[0];
   const today = opts.date || localToday();
   if (!validDate(today)) { console.error(`lessons: --date wants a real date as YYYY-MM-DD, got "${today}"`); return 2; }
   if (!['add', 'list', 'repeat', 'confirm', 'promote', 'review', 'retire', 'expire', 'dedupe'].includes(cmd)) {
     console.error('usage: lessons.js add|list|repeat|confirm|promote|review|retire|expire|dedupe [args] [--file F] [--date D]');
+    return 2;
+  }
+  const NEEDS_ID = { repeat: 'repeat L-3fa91c', confirm: 'confirm L-3fa91c', review: 'review R-3fa91c', retire: 'retire R-3fa91c' };
+  if (NEEDS_ID[cmd] && !rest[1]) {
+    console.error(`lessons: ${cmd} needs the id of ${cmd === 'review' || cmd === 'retire' ? 'a rule' : 'a lesson'}, for example: node scripts/lessons.js ${NEEDS_ID[cmd]} --human-confirmed "<their words>"`);
     return 2;
   }
   if (!fs.existsSync(opts.file)) { console.error(`lessons: ${opts.file} does not exist`); return 2; }
@@ -416,7 +477,7 @@ function main(argv) {
     if (doc.rules.length >= MAX_RULES) return needHuman(`the rule cap of ${MAX_RULES} is reached. Retire or merge a rule first with retire <id>`);
     doc.lessons.splice(doc.lessons.indexOf(l), 1);
     doc.rules.unshift({ id: 'R-' + l.id.slice(2), promoted: today, reviewed: today, text: l.text });
-    record('promote', l.id, `-> R-${l.id.slice(2)}`);
+    record('promote', l.id, `-> R-${l.id.slice(2)} text:${textHash(l.text)}`);
     save();
     console.log('Promoted 1.');
     return 0;
@@ -487,6 +548,6 @@ function main(argv) {
   return 2;
 }
 
-module.exports = { EXPIRY_DAYS, MAX_RULES, RULE_REVIEW_DAYS, PROMOTE_GRACE_DAYS, parse, serialize, validate, parseHistory, reconcile, similar, normalize, main };
+module.exports = { EXPIRY_DAYS, MAX_RULES, RULE_REVIEW_DAYS, PROMOTE_GRACE_DAYS, parse, serialize, validate, parseHistory, reconcile, similar, normalize, idFor, textHash, main };
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));

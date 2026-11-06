@@ -1,4 +1,3 @@
-# Note: this workflow has not run yet. Push it to a private branch and read every job before you rely on it.
 name: check
 
 on:

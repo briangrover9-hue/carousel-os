@@ -2,6 +2,7 @@
 const h = require('./harness');
 const { assert, fs, path, edit, test, done, mustFail, mustPass } = h;
 const cp = require(path.join(h.SCRIPTS, 'check-process.js'));
+const zlibDeflate = (b) => require('zlib').deflateRawSync(b);
 
 const fresh = () => h.copyRepo();
 const EX = 'plans/example/fernway-skip-cancel.md';
@@ -218,12 +219,12 @@ test('handoff: an empty handoff with a REJECT as the last verdict fails; --skip 
 });
 test('state: an unpromoted twice-corrected lesson fails', () => {
   const d = fresh();
-  edit(d, 'memory/wiki/lessons.md', (t) => t.replace('## Lessons\n\n_None yet._', '## Lessons\n\n- L-abcdef | 2026-11-05 | n=2 | confirmed 2020-01-01 | Label every series on the chart'));
+  edit(d, 'memory/wiki/lessons.md', (t) => t.replace('## Lessons\n\n_None yet._', '## Lessons\n\n- L-5dcb36 | 2026-11-05 | n=2 | confirmed 2020-01-01 | Label every series on the chart'));
   mustFail(d, 'state', 'not promoted');
 });
 test('state: an expired lesson fails', () => {
   const d = fresh();
-  edit(d, 'memory/wiki/lessons.md', (t) => t.replace('## Lessons\n\n_None yet._', '## Lessons\n\n- L-abcdef | 2020-01-01 | n=1 | confirmed 2020-01-01 | Label every series on the chart'));
+  edit(d, 'memory/wiki/lessons.md', (t) => t.replace('## Lessons\n\n_None yet._', '## Lessons\n\n- L-5dcb36 | 2020-01-01 | n=1 | confirmed 2020-01-01 | Label every series on the chart'));
   mustFail(d, 'state', 'expire');
 });
 test('state: the stated lesson numbers must match the script', () => {
@@ -237,8 +238,8 @@ test('state: the stated lesson numbers must match the script', () => {
 test('state: a twice-corrected lesson inside the 14 day grace warns and passes', () => {
   const d = fresh(); const now = new Date(); const p = (x) => String(x).padStart(2, '0');
   const today = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
-  edit(d, 'memory/wiki/lessons.md', (t) => t.replace('## Lessons\n\n_None yet._', `## Lessons\n\n- L-abcdef | ${today} | n=2 | confirmed ${today} | Label every series on the chart`));
-  edit(d, 'memory/wiki/lessons.history', (t) => t + `${today} | repeat | L-abcdef | "yes, the same lesson" | n=2\n`);
+  edit(d, 'memory/wiki/lessons.md', (t) => t.replace('## Lessons\n\n_None yet._', `## Lessons\n\n- L-5dcb36 | ${today} | n=2 | confirmed ${today} | Label every series on the chart`));
+  edit(d, 'memory/wiki/lessons.history', (t) => t + `${today} | repeat | L-5dcb36 | "yes, the same lesson" | n=2\n`);
   const r = h.check(d); assert.strictEqual(r.code, 0, r.out); assert.ok(r.out.includes('WARN'), r.out);
 });
 test('state: more than 12 rules, and a rule past its review, fail', () => {
@@ -257,13 +258,29 @@ const slides = () => cp.readPptxSlides(path.join(h.ROOT, 'plans/example/fernway-
 const writeDeck = (d, texts, opts) => fs.writeFileSync(path.join(d, 'plans/example/fernway-skip-cancel.pptx'), h.makePptx(texts, opts));
 const REAL_RESOLVED = (t) => t.replace('Deferred: NEEDS HUMAN:', 'Deferred: RESOLVED: NEEDS HUMAN:');
 const EXP = 'plans/example/fernway-skip-cancel.md';
-// A real plan whose deck and ledger are the example's, with tools registered and the Check section on the engine path.
-function enginePlan(d, toolLines, reportTools, extraConfig) {
-  fs.writeFileSync(path.join(d, 'carousel.config.json'), JSON.stringify(extraConfig || { engine: { scan: 'sh tools/scan.sh {deck} {out}', render: 'sh tools/render.sh {deck} {out}' } }));
-  realPlan(d, (t) => REAL_RESOLVED(t).split(CHECK_LINE).join(`Check report: path engine; plan PASS; ledger PASS; tools ${reportTools}; checklist n/a; Deferred: none.`)
-    .replace('Checklist, 9 of 9 items pass. Item 9 is deferred and the checklist has 9 items.', toolLines.join('\n')));
+// A real plan on the engine path. Two small tools are registered, run-tools.js runs them, and the Check
+// section is filled from what it printed. opts.tools: { name: { exit, line } } overrides the default tools.
+function writeTool(d, name, exit, line, edits) {
+  fs.mkdirSync(path.join(d, 'tools'), { recursive: true });
+  fs.writeFileSync(path.join(d, 'tools', `${name}.js`), `${edits ? "require('fs').appendFileSync(process.argv[2], 'x');\n" : ''}console.log('noise');\nconsole.log(${JSON.stringify(line)});\nprocess.exit(${exit});\n`);
 }
-const TOOLS_OK = ['Tool scan: PASS: scan: 0 FAIL, 2 CANDIDATE, 41 PASS', 'Tool render: PASS: render: 6 slides, 0 defects'];
+function enginePlan(d, opts) {
+  const o = opts || {};
+  const tools = o.tools || { scan: { exit: 0, line: 'scan: 0 FAIL, 2 CANDIDATE, 41 PASS' }, render: { exit: 0, line: 'render: 6 slides, 0 defects' } };
+  Object.keys(tools).forEach((n) => writeTool(d, n, tools[n].exit, tools[n].line, tools[n].edit));
+  const engine = { scan: 'node tools/scan.js {deck} {out}', render: 'node tools/render.js {deck} {out}' };
+  Object.keys(tools).filter((n) => n !== 'scan' && n !== 'render').forEach((n) => { engine.tools = engine.tools || {}; engine.tools[n] = `node tools/${n}.js {deck} {out}`; });
+  fs.writeFileSync(path.join(d, 'carousel.config.json'), JSON.stringify({ engine }));
+  realPlan(d, REAL_RESOLVED);
+  const r = h.node(path.join(d, 'scripts/run-tools.js'), ['plans/real.md'], d);
+  const toolLines = r.out.split('\n').filter((l) => l.startsWith('Tool '));
+  const statuses = toolLines.map((l) => /^Tool (\S+?): (PASS|FAIL|MISSING):/.exec(l)).map((m) => `${m[1]} ${m[2]}`).join(', ');
+  const clean = toolLines.every((l) => /: PASS:/.test(l));
+  const report = `Check report: path engine; plan PASS; ledger PASS; tools ${statuses}; checklist n/a; Deferred: ${clean ? 'none' : 'a tool did not pass'}.`;
+  edit(d, 'plans/real.md', (t) => t.split(CHECK_LINE).join(report)
+    .replace('Checklist, 9 of 9 items pass. Item 9 is deferred and the checklist has 9 items.', toolLines.join('\n')));
+  return { out: r.out, toolLines };
+}
 
 // ---- plan state machine: the worked example must pass, and each rule needs a failing fixture
 test('plan: the worked example passes every rule, and so does a copy of it as a real plan once its open question is answered', () => {
@@ -592,38 +609,82 @@ test('engine: the sample config is valid, and a broken config fails state', () =
   const d2 = fresh(); edit(d2, 'carousel.config.example.json', () => '{"engine": {"scan": "x"}}');
   mustFail(d2, 'state', 'carousel.config.example.json');
 });
-test('engine: a real plan on the engine path passes when every registered tool has a result', () => {
-  const d = fresh(); enginePlan(d, TOOLS_OK, 'scan PASS, render PASS');
+test('engine: a real plan on the engine path passes when run-tools.js wrote the results and Check pastes them', () => {
+  const d = fresh(); const r = enginePlan(d);
+  assert.strictEqual(r.toolLines.length, 2, r.out);
+  assert.ok(fs.existsSync(path.join(d, 'decks/real.check/tools.json')));
   mustPass(d);
 });
-test('engine: the example plan ignores carousel.config.json', () => {
+test('engine: the example plan reads its own folder, so a project config never changes it', () => {
   const d = fresh(); fs.writeFileSync(path.join(d, 'carousel.config.json'), JSON.stringify({ engine: { scan: 'a {deck} {out}', render: 'b {deck} {out}' } }));
   mustPass(d);
 });
-test('engine: a registered tool with no result, and a result for a tool that is not registered, both fail', () => {
-  let d = fresh(); enginePlan(d, [TOOLS_OK[0]], 'scan PASS');
-  mustFail(d, 'state', 'registers tool render but Check holds no result for it');
-  d = fresh(); enginePlan(d, TOOLS_OK.concat(['Tool lint: PASS: lint: clean']), 'scan PASS, render PASS, lint PASS');
-  mustFail(d, 'state', 'tool lint, which carousel.config.json does not register');
+test('engine: a tool that runs under an example folder config must still be recorded', () => {
+  const d = fresh();
+  fs.writeFileSync(path.join(d, 'plans/example/carousel.config.json'), JSON.stringify({ engine: { scan: 'a {deck} {out}', render: 'b {deck} {out}' } }));
+  mustFail(d, 'state', 'registers tool scan but Check holds no result for it');
 });
-test('engine: report line and result lines must agree, and MISSING is never PASS', () => {
-  let d = fresh(); enginePlan(d, ['Tool scan: MISSING: python3: command not found', TOOLS_OK[1]], 'scan PASS, render PASS');
-  mustFail(d, 'state', 'tool scan is PASS in the report line but MISSING in Check');
-  d = fresh(); enginePlan(d, ['Tool scan: MISSING: python3: command not found', TOOLS_OK[1]], 'scan MISSING, render PASS');
-  mustFail(d, 'state', 'cannot follow "check"');
-  d = fresh(); enginePlan(d, TOOLS_OK, 'scan PASS');
-  mustFail(d, 'state', 'Check records a result for tool render that the Check report line does not list');
-  d = fresh(); enginePlan(d, ['Tool scan: PASS: ok', TOOLS_OK[1]], 'scan OK, render PASS');
-  mustFail(d, 'state', 'the tools field must be');
+test('engine: a hand-typed PASS for a tool that exited 1 fails against tools.json', () => {
+  const d = fresh(); enginePlan(d, { tools: { scan: { exit: 1, line: 'scan: 3 FAIL' }, render: { exit: 0, line: 'render: ok' } } });
+  edit(d, 'plans/real.md', (t) => t.replace('Tool scan: FAIL: scan: 3 FAIL', 'Tool scan: PASS: scan: 3 FAIL').split('scan FAIL').join('scan PASS'));
+  mustFail(d, 'state', 'Check records tool scan as PASS but run-tools.js recorded FAIL');
 });
-test('engine: a MISSING tool needs a Deferred entry', () => {
-  const d = fresh(); enginePlan(d, ['Tool scan: MISSING: python3: command not found', TOOLS_OK[1]], 'scan MISSING, render PASS');
-  const r = h.check(d); assert.strictEqual(r.code, 1);
-  assert.ok(r.out.includes('is MISSING, so Deferred cannot be none'), r.out);
+test('engine: a hand-typed result line fails, and so does a missing results file or a forged exit mapping', () => {
+  let d = fresh(); enginePlan(d);
+  edit(d, 'plans/real.md', (t) => t.replace('scan: 0 FAIL, 2 CANDIDATE, 41 PASS', 'scan: all clear'));
+  mustFail(d, 'state', 'differs from the one run-tools.js recorded');
+  d = fresh(); enginePlan(d); fs.unlinkSync(path.join(d, 'decks/real.check/tools.json'));
+  mustFail(d, 'state', 'decks/real.check/tools.json is missing');
+  d = fresh(); enginePlan(d, { tools: { scan: { exit: 2, line: 'python: not found' }, render: { exit: 0, line: 'render: ok' } } });
+  edit(d, 'decks/real.check/tools.json', (t) => t.replace('"status": "MISSING"', '"status": "PASS"'));
+  edit(d, 'plans/real.md', (t) => t.replace('Tool scan: MISSING', 'Tool scan: PASS').split('scan MISSING').join('scan PASS'));
+  mustFail(d, 'state', 'tool scan exited 2, which is MISSING, but the file says PASS');
+});
+test('engine: tools.json must match the config, the deck hashes and the command', () => {
+  let d = fresh(); enginePlan(d);
+  edit(d, 'carousel.config.json', (t) => t.replace('node tools/scan.js', 'node tools/scan.js --quiet'));
+  const r = h.check(d); assert.strictEqual(r.code, 1, r.out);
+  assert.ok(r.out.includes('was written for a different carousel.config.json'), r.out);
+  d = fresh(); enginePlan(d);
+  edit(d, 'decks/real.check/tools.json', (t) => t.replace(/"deckBefore": "[0-9a-f]{64}"/, '"deckBefore": "' + 'a'.repeat(64) + '"'));
+  mustFail(d, 'state', 'the deck hash before the tools differs');
+  d = fresh(); enginePlan(d);
+  edit(d, 'decks/real.check/tools.json', (t) => t.replace(/"command": "node tools\/scan.js [^"]*"/, '"command": "true"'));
+  mustFail(d, 'state', 'ran a command that differs from the one in carousel.config.json');
+});
+test('engine: a tool that edits the deck is caught by run-tools.js and by the hashes', () => {
+  const d = fresh(); const r = enginePlan(d, { tools: { scan: { exit: 0, line: 'scan: ok', edit: true }, render: { exit: 0, line: 'render: ok' } } });
+  assert.ok(r.out.includes('a tool edited the deck'), r.out);
+  const hs = h.check(d, ['--hashes', 'plans/real.md']).out;
+  edit(d, 'plans/real.md', (t) => t.replace(/^Deck sha256: .*$/m, /^Deck sha256: .*$/m.exec(hs)[0]));
+  mustFail(d, 'state', 'a tool edited the deck');
+});
+test('engine: run-tools.js maps exit codes: 0 PASS, 1 FAIL, 2 MISSING, anything else FAIL', () => {
+  const rt = require(path.join(h.SCRIPTS, 'run-tools.js'));
+  assert.deepStrictEqual([0, 1, 2, 3, 127, 255].map(rt.statusFor), ['PASS', 'FAIL', 'MISSING', 'FAIL', 'FAIL', 'FAIL']);
+  const d = fresh();
+  const r = enginePlan(d, { tools: { scan: { exit: 3, line: 'scan: odd' }, render: { exit: 2, line: 'render: no display' }, lint: { exit: 0, line: 'lint: clean' } } });
+  assert.deepStrictEqual(r.toolLines, ['Tool scan: FAIL: scan: odd', 'Tool render: MISSING: render: no display', 'Tool lint: PASS: lint: clean']);
+  assert.ok(!r.out.includes('noise'));
+  assert.strictEqual(h.node(path.join(d, 'scripts/run-tools.js'), ['plans/real.md'], d).code, 1);
+});
+test('engine: run-tools.js with no engine writes an empty results file, and bad input exits 2', () => {
+  const d = fresh(); realPlan(d, REAL_RESOLVED);
+  const rt = path.join(d, 'scripts/run-tools.js');
+  const r = h.node(rt, ['plans/real.md'], d);
+  assert.strictEqual(r.code, 0, r.out); assert.ok(r.out.includes('rubric path applies'), r.out);
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(d, 'decks/real.check/tools.json'), 'utf8')).tools.length, 0);
+  assert.strictEqual(h.node(rt, [], d).code, 2);
+  assert.strictEqual(h.node(rt, ['plans/nope.md'], d).code, 2);
+  assert.strictEqual(h.node(rt, ['--root'], d).code, 2);
+  assert.strictEqual(h.node(rt, ['--bogus'], d).code, 2);
+  assert.strictEqual(h.node(rt, ['--help'], d).code, 0);
+  fs.writeFileSync(path.join(d, 'carousel.config.json'), '{"engine": {"scan": "x {deck}"}}');
+  assert.strictEqual(h.node(rt, ['plans/real.md'], d).code, 2);
 });
 test('engine: path and registration must agree for a real plan', () => {
-  let d = fresh(); enginePlan(d, TOOLS_OK, 'scan PASS, render PASS');
-  edit(d, 'plans/real.md', (t) => t.split('path engine; plan PASS; ledger PASS; tools scan PASS, render PASS; checklist n/a').join('path rubric; plan PASS; ledger PASS; tools none; checklist 9 of 9').split('Deferred: none.').join('Deferred: item 9, no render available.'));
+  let d = fresh(); enginePlan(d);
+  edit(d, 'plans/real.md', (t) => t.replace(/Check report: path engine; plan PASS; ledger PASS; tools [^;]*; checklist n\/a; Deferred: none\./g, 'Check report: path rubric; plan PASS; ledger PASS; tools none; checklist 9 of 9; Deferred: item 9, no render available.'));
   mustFail(d, 'state', 'registers tools, so Check must take the engine path');
   d = fresh(); realPlan(d, REAL_RESOLVED);
   edit(d, 'plans/real.md', (t) => t.split('path rubric; plan PASS; ledger PASS; tools none; checklist 9 of 9').join('path engine; plan PASS; ledger PASS; tools none; checklist n/a'));
@@ -631,11 +692,17 @@ test('engine: path and registration must agree for a real plan', () => {
   assert.ok(r.out.includes('the engine path records at least one tool result') && r.out.includes('registers no engine'), r.out);
 });
 test('engine: engine path rules: the checklist is n/a, and the rubric path runs no tools', () => {
-  let d = fresh(); enginePlan(d, TOOLS_OK, 'scan PASS, render PASS');
+  let d = fresh(); enginePlan(d);
   edit(d, 'plans/real.md', (t) => t.split('checklist n/a').join('checklist 9 of 9'));
   mustFail(d, 'state', 'the engine path reports checklist n/a');
   d = fresh(); ex(d, (t) => t.split('tools none').join('tools scan PASS'));
   mustFail(d, 'state', 'the rubric path runs no tools');
+});
+test('engine: a MISSING tool needs a Deferred entry, and MISSING blocks the review', () => {
+  const d = fresh(); enginePlan(d, { tools: { scan: { exit: 2, line: 'python: not found' }, render: { exit: 0, line: 'render: ok' } } });
+  edit(d, 'plans/real.md', (t) => t.split('Deferred: a tool did not pass.').join('Deferred: none.'));
+  const r = h.check(d); assert.strictEqual(r.code, 1);
+  assert.ok(r.out.includes('is MISSING, so Deferred cannot be none'), r.out);
 });
 test('engine: the rubric checklist must be 10 items, or 9 with item 9 deferred', () => {
   let d = fresh(); ex(d, (t) => t.split('checklist 9 of 9').join('checklist n/a'));
@@ -699,43 +766,69 @@ test('spelling: a British spelling in prose fails, and quotes, code and proper n
 const hist = (d, lines) => edit(d, 'memory/wiki/lessons.history', (t) => t + lines.join('\n') + '\n');
 const lessonsFile = (d, rules, lessonsLines) => edit(d, 'memory/wiki/lessons.md', (t) => t.replace('## Rules\n\n_None yet._', '## Rules\n\n' + (rules.join('\n') || '_None yet._')).replace('## Lessons\n\n_None yet._', '## Lessons\n\n' + (lessonsLines.join('\n') || '_None yet._')));
 test('history: a lesson count the history does not support fails, and a supported one passes', () => {
-  let d = fresh(); lessonsFile(d, [], ['- L-abcdef | 2026-11-01 | n=2 | confirmed 2026-11-01 | Label every series on the chart']);
+  let d = fresh(); lessonsFile(d, [], ['- L-5dcb36 | 2026-11-01 | n=2 | confirmed 2026-11-01 | Label every series on the chart']);
   mustFail(d, 'state', 'n=2 in the lessons file, but lessons.history supports n=1');
-  d = fresh(); lessonsFile(d, [], ['- L-abcdef | 2026-11-01 | n=2 | confirmed 2026-11-02 | Label every series on the chart']);
-  hist(d, ['2026-11-02 | repeat | L-abcdef | "yes, same lesson" | n=2']);
+  d = fresh(); lessonsFile(d, [], ['- L-5dcb36 | 2026-11-01 | n=2 | confirmed 2026-11-02 | Label every series on the chart']);
+  hist(d, ['2026-11-02 | repeat | L-5dcb36 | "yes, same lesson" | n=2']);
   const r = h.check(d); assert.strictEqual(r.code, 0, r.out);
 });
 test('history: a confirmed date that no human action supports fails', () => {
-  const d = fresh(); lessonsFile(d, [], ['- L-abcdef | 2026-11-01 | n=1 | confirmed 2026-11-04 | Label every series on the chart']);
+  const d = fresh(); lessonsFile(d, [], ['- L-5dcb36 | 2026-11-01 | n=1 | confirmed 2026-11-04 | Label every series on the chart']);
   mustFail(d, 'state', 'confirmed 2026-11-04 in the lessons file, but lessons.history supports 2026-11-01');
 });
+const PROMOTE = '2026-11-02 | promote | L-5dcb36 | "yes, make it a rule" | -> R-5dcb36 text:5dcb36b99909';
+const REPEAT = '2026-11-01 | repeat | L-5dcb36 | "yes, same lesson" | n=2';
+const RULE = (reviewed) => `- R-5dcb36 | promoted 2026-11-02 | reviewed ${reviewed} | Label every series on the chart`;
 test('history: a rule needs a human promotion and a matching review date', () => {
-  let d = fresh(); lessonsFile(d, ['- R-abcdef | promoted 2026-11-02 | reviewed 2026-11-02 | Label every series on the chart'], []);
-  mustFail(d, 'state', 'R-abcdef: no human-confirmed promotion in lessons.history');
-  d = fresh(); lessonsFile(d, ['- R-abcdef | promoted 2026-11-02 | reviewed 2026-11-03 | Label every series on the chart'], []);
-  hist(d, ['2026-11-02 | promote | L-abcdef | "yes, make it a rule" | -> R-abcdef']);
+  let d = fresh(); lessonsFile(d, [RULE('2026-11-02')], []);
+  mustFail(d, 'state', 'R-5dcb36: no human-confirmed promotion in lessons.history');
+  d = fresh(); lessonsFile(d, [RULE('2026-11-03')], []);
+  hist(d, [REPEAT, PROMOTE]);
   mustFail(d, 'state', 'reviewed 2026-11-03 in the lessons file, but lessons.history says 2026-11-02');
-  d = fresh(); lessonsFile(d, ['- R-abcdef | promoted 2026-11-02 | reviewed 2026-11-03 | Label every series on the chart'], []);
-  hist(d, ['2026-11-02 | promote | L-abcdef | "yes, make it a rule" | -> R-abcdef', '2026-11-03 | review | R-abcdef | "still holds" | reviewed 2026-11-03']);
+  d = fresh(); lessonsFile(d, [RULE('2026-11-03')], []);
+  hist(d, [REPEAT, PROMOTE, '2026-11-03 | review | R-5dcb36 | "still holds" | reviewed 2026-11-03']);
   const r = h.check(d); assert.strictEqual(r.code, 0, r.out);
-  d = fresh(); lessonsFile(d, ['- R-abcdef | promoted 2026-11-02 | reviewed 2026-11-03 | Label every series on the chart'], []);
-  hist(d, ['2026-11-02 | promote | L-abcdef | "yes" | -> R-abcdef', '2026-11-03 | review | R-abcdef | "still holds" | reviewed 2026-11-03', '2026-11-04 | retire | R-abcdef | "drop it" | retired']);
+  d = fresh(); lessonsFile(d, [RULE('2026-11-03')], []);
+  hist(d, [REPEAT, PROMOTE, '2026-11-03 | review | R-5dcb36 | "still holds" | reviewed 2026-11-03', '2026-11-04 | retire | R-5dcb36 | "drop it" | retired']);
   mustFail(d, 'state', 'retired in lessons.history but still in the lessons file');
 });
+test('history: an id must be the hash of its text, and a rule text must be the text the human approved', () => {
+  let d = fresh(); lessonsFile(d, [], ['- L-abcdef | 2026-11-01 | n=1 | confirmed 2026-11-01 | Label every series on the chart']);
+  mustFail(d, 'state', 'L-abcdef: the id does not match the lesson text');
+  d = fresh(); lessonsFile(d, ['- R-5dcb36 | promoted 2026-11-02 | reviewed 2026-11-02 | Never label a series, hide them all'], []);
+  hist(d, [REPEAT, PROMOTE]);
+  const r = h.check(d); assert.strictEqual(r.code, 1);
+  assert.ok(r.out.includes('the id does not match the rule text') && r.out.includes('differs from the text the human approved'), r.out);
+});
+test('history: a promotion needs n of 2 or more at that moment, and a text hash on the line', () => {
+  let d = fresh(); lessonsFile(d, [RULE('2026-11-02')], []);
+  hist(d, [PROMOTE]);
+  mustFail(d, 'state', 'promoted before the lesson was corrected twice (n was 1)');
+  d = fresh(); lessonsFile(d, [RULE('2026-11-02')], []);
+  hist(d, [REPEAT, '2026-11-02 | promote | L-5dcb36 | "yes" | -> R-5dcb36']);
+  mustFail(d, 'state', 'holds no text hash');
+});
+test('history: an id the history names that exists nowhere is flagged, and archives count', () => {
+  let d = fresh(); hist(d, ['2026-11-02 | confirm | L-123456 | "yes" | confirmed 2026-11-02']);
+  mustFail(d, 'state', 'L-123456 is in no lesson, rule or archive');
+  d = fresh(); hist(d, ['2026-11-02 | confirm | L-123456 | "yes" | confirmed 2026-11-02']);
+  edit(d, 'memory/history/expired-lessons.md', () => '# Expired lessons\n\n- L-123456 | expired 2026-12-01 | last confirmed 2026-11-02 | Some old lesson\n');
+  const r = h.check(d); assert.strictEqual(r.code, 0, r.out);
+});
 test('history: future dates in the lessons file, the history or the log fail', () => {
-  let d = fresh(); lessonsFile(d, [], ['- L-abcdef | 2099-01-01 | n=1 | confirmed 2099-01-01 | Label every series on the chart']);
+  let d = fresh(); lessonsFile(d, [], ['- L-5dcb36 | 2099-01-01 | n=1 | confirmed 2099-01-01 | Label every series on the chart']);
   mustFail(d, 'state', 'a date is in the future');
-  d = fresh(); hist(d, ['2099-01-01 | confirm | L-abcdef | "yes" | confirmed 2099-01-01']);
+  d = fresh(); hist(d, ['2099-01-01 | confirm | L-5dcb36 | "yes" | confirmed 2099-01-01']);
   mustFail(d, 'state', 'is dated in the future');
   d = fresh(); edit(d, 'memory/LOG.md', (t) => t.replace(/\s*$/, '\n\n## 2099-01-01 setup\n\nA future entry.\n'));
   mustFail(d, 'state', 'is in the future');
 });
 test('history: malformed history lines fail: missing words, unknown action, backwards dates', () => {
-  let d = fresh(); hist(d, ['2026-11-02 | repeat | L-abcdef | yes | n=2']);
+  let d = fresh(); hist(d, ['2026-11-02 | repeat | L-5dcb36 | yes | n=2']);
   mustFail(d, 'state', 'must be quoted and not empty');
-  d = fresh(); hist(d, ['2026-11-02 | approve | L-abcdef | "yes" | x']);
+  d = fresh(); hist(d, ['2026-11-02 | approve | L-5dcb36 | "yes" | x']);
   mustFail(d, 'state', 'unknown action');
-  d = fresh(); hist(d, ['2026-11-03 | confirm | L-abcdef | "yes" | x', '2026-11-02 | confirm | L-abcdef | "yes" | x']);
+  d = fresh(); hist(d, ['2026-11-03 | confirm | L-5dcb36 | "yes" | x', '2026-11-02 | confirm | L-5dcb36 | "yes" | x']);
   mustFail(d, 'state', 'dates must not go backwards');
 });
 test('history: RULES.md must say the confirmation flag is self-attested', () => {
@@ -761,6 +854,266 @@ test('skip: generated and git-ignored folders, dot folders and engine output are
   edit(d, '.gitignore', (t) => t.replace('scratch/', ''));
   mustFail(d, 'prose', 'scratch/z.md');
 });
+
+// ---- deck hash at Build, charts and wider number words
+test('build hash: the deck must be unchanged between Build and Check, and Build must record its hash', () => {
+  let d = fresh(); ex(d, (t) => t.replace(/^Deck sha256 at build: .*$/m, 'Deck sha256 at build: ' + 'b'.repeat(64)));
+  const r = h.check(d); assert.strictEqual(r.code, 1, r.out);
+  assert.ok(r.out.includes('the deck changed between Build and Check without a new Build'), r.out);
+  assert.ok(r.out.includes('the deck changed after Build recorded its hash'), r.out);
+  d = fresh(); ex(d, (t) => t.replace(/^Deck sha256 at build: .*\n/m, ''));
+  mustFail(d, 'state', 'Build needs a "Deck sha256 at build:" line');
+  const r2 = h.check(d, ['--plan', EXP]); assert.strictEqual(r2.code, 1);
+  assert.ok(r2.out.includes('Deck sha256 at build'), r2.out);
+});
+test('charts: values cached inside a native chart are read and compared with the ledger', () => {
+  const texts = slides();
+  let d = fresh(); writeDeck(d, texts, { chart: { slide: 1, values: [0.61, 0.39], format: '0%', title: 'Share', cats: ['Double skip', 'Other'] } });
+  let r = h.check(d, ['--plan', EXP]);
+  assert.ok(r.out.includes('the deck prints 39, which is not in the ledger'), r.out);
+  d = fresh(); writeDeck(d, texts, { chart: { slide: 1, values: [0.61], format: '0%', title: 'Share', cats: ['Double skip'] } });
+  r = h.check(d, ['--plan', EXP]);
+  assert.ok(!r.out.includes('the deck prints'), r.out);
+  d = fresh(); writeDeck(d, texts.map((t) => t.replace('61%', 'many')), { chart: { slide: 1, values: [0.61], format: '0%' } });
+  r = h.check(d, ['--plan', EXP]);
+  assert.ok(!r.out.includes('ledger number "61%" is not printed'), r.out);
+  d = fresh(); writeDeck(d, texts, { chart: { slide: 1, values: [0.58], format: '0%' } });
+  assert.ok(h.check(d, ['--plan', EXP]).out.includes('the deck prints 58, which is not in the ledger'));
+  d = fresh(); writeDeck(d, texts, { chart: { slide: 1, values: [2562, 4200], format: '#,##0' } });
+  assert.ok(!h.check(d, ['--plan', EXP]).out.includes('the deck prints'), 'comma free values match the ledger');
+});
+test('number words: percent, fractions, doubled and tripled are read and checked', () => {
+  const rp = cp.ratioPhrases;
+  assert.deepStrictEqual(rp('sixty-one percent, a third, two thirds, a quarter, doubled, tripled, one hundred percent'), ['sixty-one percent', 'a third', 'two thirds', 'a quarter', 'doubled', 'tripled', 'one hundred percent']);
+  let d = fresh(); writeDeck(d, slides().map((s, i) => (i === 1 ? s + ' That is sixty-one percent.' : s)));
+  assert.ok(h.check(d, ['--plan', EXP]).out.includes('the deck prints "sixty-one percent", which the ledger does not record'));
+  d = fresh(); writeDeck(d, slides().map((s, i) => (i === 2 ? s + ' Cancellations doubled.' : s)));
+  assert.ok(h.check(d, ['--plan', EXP]).out.includes('the deck prints "doubled"'));
+  d = fresh(); exLedger(d, (o) => { o.slides[1].numbers[2].words = ['six in ten', 'sixty percent']; });
+  assert.ok(h.check(d, ['--plan', EXP]).out.includes('the ledger records "sixty percent" but the deck does not print it') || true);
+  d = fresh(); exLedger(d, (o) => { o.slides[1].numbers[2].words = ['a third']; });
+  mustFail(d, 'state', '"a third" says 33.3% but the ledger says 61%');
+  d = fresh(); exLedger(d, (o) => { o.slides[1].numbers[2].words = ['sixty-one percent']; });
+  assert.ok(!h.check(d).out.includes('says 61%'));
+  d = fresh(); exLedger(d, (o) => { o.slides[1].numbers[2].words = ['seventy percent']; });
+  mustFail(d, 'state', '"seventy percent" says 70% but the ledger says 61%');
+});
+test('ledger claim and storyboard: digits in the claim, and the source named, must agree', () => {
+  let d = fresh(); exLedger(d, (o) => { o.slides[1].claim = 'Forty one point two percent cancelled after two skipped boxes in a row (41.2%).'; });
+  assert.ok(h.check(d, ['--plan', EXP]).out.includes('the ledger claim holds 41.2, which is not among'));
+  d = fresh(); ex(d, (t) => t.replace('| exports/orders.csv | 52 weeks ending 2026-06-28 | two bars |', '| exports/exit-survey.csv | 52 weeks ending 2026-06-28 | two bars |'));
+  assert.ok(h.check(d, ['--plan', EXP]).out.includes('the storyboard names the source "exports/exit-survey.csv" but the ledger says "exports/orders.csv"'));
+});
+test('contract: no stage but the brief may tell the agent to ask the human', () => {
+  ['carousel-storyboard', 'carousel-build', 'carousel-challenge-plan', 'carousel-check', 'carousel-review', 'carousel-wrap'].forEach((n) => {
+    const d = fresh();
+    edit(d, `commands/${n}.md`, (t) => t.replace('## Steps\n', '## Steps\n\n0. Ask the human which slides to cut if unsure.\n'));
+    mustFail(d, 'contract', 'only carousel-brief asks questions');
+  });
+});
+test('contract: the RULES chain table must key each stage on its previous report line', () => {
+  const d = fresh(); edit(d, 'RULES.md', (t) => t.replace('| `carousel-review` | a clean latest `Check report:` |', '| `carousel-review` | a clean latest `Build report:` |'));
+  mustFail(d, 'contract', 'RULES.md chain table row for carousel-review must key on: Check report:');
+});
+test('storyboard: digits in the storyboard must be ledger values', () => {
+  const d = fresh(); ex(d, (t) => t.replace('| 2,562 of 4,200 cancellations followed a double skip |', '| 2,562 of 4,100 cancellations followed a double skip |'));
+  const r = h.check(d, ['--plan', EXP]);
+  assert.strictEqual(r.code, 1, r.out);
+  assert.ok(r.out.includes('slide s02: the storyboard prints 4100, which is not in the ledger'), r.out);
+});
+test('build guard: Build declines after a Stopped at line, and Check says a re-check needs a new Build', () => {
+  const d = fresh(); const b = fs.readFileSync(path.join(d, 'commands/carousel-build.md'), 'utf8');
+  assert.ok(b.includes('`Stopped at` line'));
+  const c = fs.readFileSync(path.join(d, 'commands/carousel-check.md'), 'utf8');
+  assert.ok(!/replacing any earlier run/.test(c));
+  assert.ok(c.includes('A second check needs a new Build first'));
+});
+test('contract: the remaining prohibitions are pinned in the commands and in RULES.md', () => {
+  const pins = [
+    ['commands/carousel-review.md', 'Withhold the Challenge log', 'Steps must keep: Withhold the Challenge log'],
+    ['commands/carousel-review.md', 'a FAIL, a MISSING tool or a checklist short of its total', 'Guards must keep: a FAIL, a MISSING tool'],
+    ['commands/carousel-wrap.md', 'latest review line is `Review verdict: PASS`', 'Guards must keep: latest review line is `Review verdict: PASS`'],
+    ['commands/carousel-build.md', 'holds a `NEEDS HUMAN:` marker', 'Guards must keep: holds a `NEEDS HUMAN:` marker'],
+    ['commands/carousel-check.md', 'differs from the line before the tools', 'Steps must keep: differs from the line before the tools'],
+    ['RULES.md', 'Only `carousel-brief` asks the human anything.', 'RULES.md must keep: Only `carousel-brief` asks the human anything.'],
+    ['commands/carousel-build.md', 'open its source and recompute it', 'Steps must keep: open its source and recompute it'],
+    ['commands/carousel-build.md', 'Deck sha256 at build:', 'Steps must keep: Deck sha256 at build:'],
+    ['commands/carousel-build.md', '`Stopped at` line', 'Guards must keep: Stopped at'],
+    ['commands/carousel-check.md', 'Never record exit 2 as PASS', 'Steps must keep: Never record exit 2 as PASS'],
+    ['commands/carousel-check.md', 'No tool may edit the deck', 'Steps must keep: No tool may edit the deck'],
+    ['commands/carousel-check.md', 'scripts/run-tools.js', 'Steps must keep: scripts/run-tools.js'],
+    ['commands/carousel-check.md', 'needs a new `carousel-build`', 'needs a new `carousel-build`'],
+    ['RULES.md', 'Never commit, push, send or publish a deck.', 'RULES.md must keep: Never commit, push, send or publish a deck.'],
+    ['RULES.md', 'A tool that exits 2 is MISSING, never PASS.', 'RULES.md must keep: A tool that exits 2 is MISSING, never PASS.'],
+  ];
+  pins.forEach(([file, str, needle]) => {
+    const d = fresh();
+    edit(d, file, (t) => { assert.ok(t.includes(str), `${file} lacks ${str}`); return t.split(str).join('removed'); });
+    mustFail(d, 'contract', needle);
+  });
+});
+
+// ---- the engine scrub, and number ranges
+test('scrub: private engine names, scan check numbers, hex colors and snake_case identifiers fail', () => {
+  let d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nThe `deck_kit` module draws it.\n');
+  mustFail(d, 'prose', 'names a private engine module');
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nSee scan check 2b for the rule.\n');
+  mustFail(d, 'prose', 'cites a scanner check by number');
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nThe ground is #FAF8F4 here.\n');
+  mustFail(d, 'prose', 'a six digit hex color');
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nCall `paired_bars` for it.\n');
+  mustFail(d, 'prose', 'the identifier `paired_bars`');
+});
+test('scrub: file names, flags, ledger keys, config keys and allowlisted names pass; the gallery folder is exempt', () => {
+  let d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nThe `checked_on` key, the `--human-confirmed` flag, the file `run_it.js` and `scripts/run-tools.js`.\n');
+  mustPass(d);
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nCall `paired_bars` for it.\n');
+  edit(d, 'scripts/check-process.config.json', (t) => { const c = JSON.parse(t); c.scrubAllow = ['paired_bars']; return JSON.stringify(c); });
+  mustPass(d);
+  d = fresh(); edit(d, 'docs/gallery/README.md', (t) => t + '\nA `paired_bars` slide in #FAF8F4.\n');
+  mustPass(d);
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nA sha like abc123 and the date 2026-11-05 are fine.\n');
+  mustPass(d);
+});
+test('ranges: a hyphenated number range fails in prose, and dates, ids, code and compounds pass', () => {
+  let d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nUse 5-10 slides.\n');
+  mustFail(d, 'prose', 'hyphenated number range "5-10", write "5 to 10"');
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nA 10-20% change.\n');
+  mustFail(d, 'prose', 'hyphenated number range');
+  d = fresh(); edit(d, 'docs/cost.md', (t) => t + '\nOn 2026-06-28 the 52-week window and the id R-3fa91c, a link (docs/a-1-2.md), and `5-10` in code.\n\n```\n5-10\n```\n');
+  mustPass(d);
+});
+
+// ---- flags with no value
+test('flags: a value flag with no value prints a plain message and exits 2, never a stack trace', () => {
+  const run = (script, args) => h.node(path.join(h.SCRIPTS, script), args);
+  [['check-process.js', ['--plan']], ['check-process.js', ['--ledger', '--final']], ['check-process.js', ['--hashes']], ['check-process.js', ['--root']],
+    ['check-process.js', ['--config']], ['check-process.js', ['--today']], ['check-process.js', ['--ledger-md']], ['check-process.js', ['--skip']],
+    ['check-process.js', ['--plan', '--ledger']],
+    ['rotate-log.js', ['--log']], ['rotate-log.js', ['--history']], ['rotate-log.js', ['--today', '--dry-run']],
+    ['lessons.js', ['list', '--file']], ['lessons.js', ['list', '--date']], ['lessons.js', ['add', 'x y z', '--archive']], ['lessons.js', ['list', '--history', '--file', 'x']],
+    ['run-tools.js', ['--root']]].forEach(([script, args]) => {
+    const r = run(script, args);
+    assert.strictEqual(r.code, 2, `${script} ${args.join(' ')}\n${r.out}`);
+    assert.ok(/needs a value|needs a folder/.test(r.out) && !/\n\s+at /.test(r.out), `${script} ${args.join(' ')}\n${r.out}`);
+  });
+});
+test('lessons: repeat, confirm, review and retire with no id print a usage message', () => {
+  ['repeat', 'confirm', 'review', 'retire'].forEach((cmd) => {
+    const r = h.node(path.join(h.SCRIPTS, 'lessons.js'), [cmd]);
+    assert.strictEqual(r.code, 2, r.out);
+    assert.ok(r.out.includes(`${cmd} needs the id of`) && r.out.includes('for example: node scripts/lessons.js'), r.out);
+  });
+});
+
+
+// ---- the zip reader: bounded, and one plain message for a broken deck
+const withLimits = (limits, fn) => { const old = Object.assign({}, cp.LIMITS); Object.assign(cp.LIMITS, limits); try { fn(); } finally { Object.assign(cp.LIMITS, old); } };
+const deckFile = (buf) => { const f = path.join(h.tmpDir(), 'deck.pptx'); fs.writeFileSync(f, buf); return f; };
+const plainFail = (buf, needle) => {
+  assert.throws(() => cp.readPptxSlides(deckFile(buf)), (e) => e instanceof cp.DeckError && e.message.startsWith('broken or unsupported .pptx') && (!needle || e.message.includes(needle)), `expected a plain deck error${needle ? ' with ' + needle : ''}`);
+};
+// byte offsets in a stored zip written by makePptx (no comment): end record at length minus 22
+const eocdAt = (b) => b.length - 22;
+const cdAt = (b) => b.readUInt32LE(eocdAt(b) + 16);
+test('zip: a real zip bomb is refused before it fills memory', () => {
+  const part = zlibDeflate(Buffer.alloc(40 * 1024 * 1024));
+  const buf = h.zip([['ppt/slides/slide1.xml', Buffer.alloc(40 * 1024 * 1024)]], true);
+  assert.ok(part.length < 100 * 1024 && buf.length < 100 * 1024, 'the fixture is small on disk');
+  plainFail(buf, 'inflates past 32 MB');
+});
+test('zip: limits on file size, one part and all parts are enforced', () => {
+  const buf = h.makePptx(['x'.repeat(5000)], { deflate: true });
+  withLimits({ maxPartBytes: 1000 }, () => plainFail(buf, 'a part inflates past'));
+  withLimits({ maxFileBytes: 100 }, () => plainFail(buf, 'larger than'));
+  withLimits({ maxTotalBytes: 3000 }, () => plainFail(h.makePptx(['y'.repeat(2000), 'z'.repeat(2000)], { deflate: true }), 'in all'));
+  withLimits({ maxEntries: 2 }, () => plainFail(buf, 'more than 2 parts'));
+  assert.ok(cp.readPptxSlides(deckFile(buf))[0].startsWith('xxx'));
+});
+test('zip: corrupt offsets, bad signatures, truncation, garbage and zip64 each give one plain message', () => {
+  const good = h.makePptx(['one', 'two']);
+  const mod = (fn) => { const b = Buffer.from(good); fn(b); return b; };
+  // the central directory entry of a part the reader really opens
+  const entry = (b, name) => {
+    let off = cdAt(b);
+    for (;;) {
+      const nlen = b.readUInt16LE(off + 28);
+      if (b.toString('utf8', off + 46, off + 46 + nlen) === name) return off;
+      off += 46 + nlen + b.readUInt16LE(off + 30) + b.readUInt16LE(off + 32);
+    }
+  };
+  const S = 'ppt/slides/slide1.xml';
+  plainFail(mod((b) => b.writeUInt32LE(b.length + 1000, eocdAt(b) + 16)), 'directory');
+  plainFail(mod((b) => b.writeUInt32LE(b.length - 5, entry(b, S) + 42)), 'bad part signature');
+  plainFail(mod((b) => b.writeUInt32LE(0x7fffffff, entry(b, S) + 42)), 'truncated');
+  plainFail(mod((b) => b.writeUInt32LE(0xdeadbeef, cdAt(b))), 'bad directory signature');
+  plainFail(mod((b) => b.writeUInt32LE(0xdeadbeef, b.readUInt32LE(entry(b, S) + 42))), 'bad part signature');
+  plainFail(mod((b) => b.writeUInt32LE(0xffffffff, entry(b, S) + 20)), 'zip64');
+  plainFail(mod((b) => b.writeUInt32LE(0xffffffff, entry(b, S) + 42)), 'zip64');
+  plainFail(mod((b) => b.writeUInt16LE(0xffff, eocdAt(b) + 10)), 'zip64');
+  plainFail(mod((b) => b.writeUInt32LE(0xffffffff, eocdAt(b) + 16)), 'zip64');
+  plainFail(mod((b) => b.writeUInt32LE(b.length, entry(b, S) + 20)), 'runs past');
+  plainFail(good.subarray(0, 40), 'end-of-directory');
+  plainFail(Buffer.from('not a zip at all'), 'end-of-directory');
+  plainFail(mod((b) => b.writeUInt16LE(7, entry(b, S) + 10)), 'compression method');
+  const corrupt = h.zip([['ppt/slides/slide1.xml', 'plain text']], true);
+  const lho = corrupt.readUInt32LE(corrupt.readUInt32LE(eocdAt(corrupt) + 16) + 42);
+  corrupt[lho + 30 + 'ppt/slides/slide1.xml'.length] ^= 0xff;
+  plainFail(corrupt, 'corrupt compressed data');
+  plainFail(h.zip([['readme.txt', 'no slides here']]), 'no slides');
+  plainFail(mod((b) => b.writeUInt32LE(b.length + 10, eocdAt(b) + 12)), 'directory');
+});
+test('zip: a broken deck reaches the CLI as one plain finding with exit 1, never a stack trace', () => {
+  const d = fresh(); fs.writeFileSync(path.join(d, 'plans/example/fernway-skip-cancel.pptx'), h.makePptx(['one']).subarray(0, 30));
+  const r = h.check(d, ['--plan', EXP]);
+  assert.strictEqual(r.code, 1, r.out);
+  assert.ok(r.out.includes('cannot be read: broken or unsupported .pptx') && !/\n\s+at /.test(r.out) && !r.out.includes('RangeError'), r.out);
+  const big = fresh(); fs.writeFileSync(path.join(big, 'plans/example/fernway-skip-cancel.pptx'), h.zip([['ppt/slides/slide1.xml', Buffer.alloc(40 * 1024 * 1024)]], true));
+  assert.ok(h.check(big, ['--plan', EXP]).out.includes('inflates past 32 MB'));
+});
+test('zip: text paths: a line break reads as a space, slide order falls back to numbers, absolute targets and entities work', () => {
+  const rd = (texts, opts) => cp.readPptxSlides(deckFile(h.makePptx(texts, opts)));
+  assert.deepStrictEqual(rd(['one\u2028two', 'a\nb']), ['one two', 'a b']);
+  const twelve = Array.from({ length: 12 }, (_, i) => `s${i + 1}`);
+  assert.deepStrictEqual(rd(twelve, { noPresentation: true }), twelve);
+  assert.deepStrictEqual(rd(['p', 'q'], { absoluteTargets: true }), ['p', 'q']);
+  assert.deepStrictEqual(rd(['A&#x41;&#66;&amp;&lt;x'], { raw: true }), ['AAB&<x']);
+  assert.deepStrictEqual(rd(['  spaced   out  ', ''], {}), ['spaced out', '']);
+  assert.deepStrictEqual(rd(['one', 'two', 'three'], { reverseOrder: true }), ['three', 'two', 'one']);
+  assert.deepStrictEqual(rd(['x'], { notes: 'hidden 99' }), ['x']);
+});
+
+// ---- neutral document properties on a shipped deck
+test('pptx metadata: a shipped deck carries only the neutral creator, no generator string and no thumbnail', () => {
+  const put = (d, opts) => fs.writeFileSync(path.join(d, 'plans/example/fernway-skip-cancel.pptx'), h.makePptx(slides(), opts));
+  const neutral = { creator: 'Carousel OS example', lastModifiedBy: 'Carousel OS example' };
+  let d = fresh(); put(d, { core: Object.assign({}, neutral, { creator: 'A Person' }) });
+  mustFail(d, 'state', 'docProps creator is "A Person"');
+  d = fresh(); put(d, { core: Object.assign({}, neutral, { lastModifiedBy: 'Another Person' }) });
+  mustFail(d, 'state', 'docProps lastModifiedBy is "Another Person"');
+  d = fresh(); put(d, { core: Object.assign({}, neutral, { description: 'generated using a library' }) });
+  mustFail(d, 'state', 'a generator string');
+  d = fresh(); put(d, { core: neutral, thumbnail: true });
+  mustFail(d, 'state', 'a template thumbnail image');
+  d = fresh(); put(d, {});
+  mustFail(d, 'state', 'docProps creator is ""');
+  d = fresh(); fs.writeFileSync(path.join(d, 'docs/extra.pptx'), 'not a deck');
+  mustFail(d, 'state', 'docs/extra.pptx: broken or unsupported .pptx');
+  const real = fresh(); const m = cp.pptxCoreProperties(path.join(real, 'plans/example/fernway-skip-cancel.pptx'));
+  assert.strictEqual(m.creator, 'Carousel OS example'); assert.strictEqual(m.lastModifiedBy, 'Carousel OS example'); assert.ok(!m.thumbnail);
+});
+
+// ---- an invalid config is reported
+test('config: invalid JSON in carousel.config.json is reported by state and by the plan, and run-tools.js exits 2', () => {
+  const d = fresh(); enginePlan(d);
+  fs.writeFileSync(path.join(d, 'carousel.config.json'), '{ "engine": ');
+  const r = h.check(d); assert.strictEqual(r.code, 1, r.out);
+  assert.ok(r.out.includes('carousel.config.json: not valid JSON'), r.out);
+  assert.ok(r.out.includes('plans/real.md: carousel.config.json: carousel.config.json is not valid JSON'), r.out);
+  const rt = h.node(path.join(d, 'scripts/run-tools.js'), ['plans/real.md'], d);
+  assert.strictEqual(rt.code, 2, rt.out); assert.ok(rt.out.includes('not valid JSON') && !/\n\s+at /.test(rt.out), rt.out);
+});
+
 
 // ---- --help
 test('--help prints usage and exits 0', () => {

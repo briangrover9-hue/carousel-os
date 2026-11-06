@@ -18,10 +18,10 @@ A library of named moves for `carousel-storyboard`. These are candidates, never 
 12. **Barrier, not engine**: a factor that decides failure when absent but does not drive success when present (texture, price ceilings, compliance). Prevents the classic overclaim.
 13. **The asymmetry test**: a liability attribute reads negative where present and merely quiet where absent; an asset attribute reads positive where present. Classify attributes before recommending anyone lean on one.
 14. **Exposure / composition**: what share of the portfolio (or category) sits in the affected territory, as one bar. Converts an abstract trend into "how much of us does this touch".
-15. **The play**: the recommendation as 2-4 numbered, testable moves, each tied to the evidence slide that earned it, worded per the causality rules.
+15. **The play**: the recommendation as 2 to 4 numbered, testable moves, each tied to the evidence slide that earned it, worded per the causality rules.
 16. **Methodology candor**: the full scale of the work (corpus, records, match rates) plus the one fragile assumption named voluntarily. Flexing scale and admitting the assumption in the same breath is what makes the rest believable.
 17. **The close**: restate the objective in our framing and answer it in one sentence, with the single number that carries it. Quote nothing back. The reader should recognize their question in sharper clothes.
 
 ## Ranking findings into beats
 
-Score every candidate finding 0-2 on three axes: **Evidence** (how many independent sources or surfaces support it), **Surprise** (does it change what the audience believes), **Actionability** (can the client do something with it this year). A finding makes the deck only when it scores on at least two axes; high-evidence, zero-surprise material goes to the appendix. Before cutting a finding for thin evidence, widen the lens once (longer window, adjacent scope) to check whether the thinness is real or an artifact of the cut.
+Score every candidate finding 0 to 2 on three axes: **Evidence** (how many independent sources or surfaces support it), **Surprise** (does it change what the audience believes), **Actionability** (can the client do something with it this year). A finding makes the deck only when it scores on at least two axes; high-evidence, zero-surprise material goes to the appendix. Before cutting a finding for thin evidence, widen the lens once (longer window, adjacent scope) to check whether the thinness is real or an artifact of the cut.

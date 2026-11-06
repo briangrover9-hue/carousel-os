@@ -6,13 +6,16 @@ Write each check so it reads the file's XML or its parsed shapes, never a descri
 
 ## Result levels
 
-Every check reports one of three levels per slide.
+Every check reports one of four levels per slide, and the scanner maps them to its exit code as follows. [bookshelf/engine-contract.md](../../bookshelf/engine-contract.md) holds the exit codes themselves.
 
-- **PASS:** measured, and within the rule.
-- **FAIL:** measured, and outside the rule. A FAIL blocks the check stage. Nobody loosens a threshold or changes an input to turn it into a PASS.
-- **CANDIDATE:** the script found something that needs a human or reviewer to judge, such as a grid that might be a wall of numbers or empty space that might be intended. A CANDIDATE never blocks on its own, and every one gets a written ruling before the deck ships.
+| Level | Meaning | Effect on the exit code |
+|---|---|---|
+| PASS | Measured, and within the rule. | None. |
+| FAIL | Measured, and outside the rule. A FAIL blocks the check stage, and nobody loosens a threshold or changes an input to turn it into a PASS. | Exit 1. |
+| CANDIDATE | The script found something a person must judge, such as a grid that might be a wall of numbers. It never blocks on its own, and every one gets a written ruling before the deck ships. | Exit 0, with the CANDIDATE count in the last line. |
+| NOT SCANNED | The check could not run on this file, for example a chart check on a deck with no charts. | Exit 0, with the NOT SCANNED count in the last line, so silence never reads as a pass. |
 
-Add a fourth, NOT SCANNED, for a check that could not run on this file. Silence must never read as a pass.
+The scanner exits 2 only when the scanner itself cannot run: a missing runtime, an unreadable file, a crash. The last line of output always reads like `scan: 0 FAIL, 3 CANDIDATE, 1 NOT SCANNED, 41 PASS`.
 
 ## The families of checks
 
@@ -22,19 +25,19 @@ Add a fourth, NOT SCANNED, for a check that could not run on this file. Silence 
 - A small caps or tracked label sitting above a headline. FAIL.
 - The headlines read in order, written to the report, so a reviewer can test whether they form an argument.
 
-Why: a checklist once told the reviewer to read a rendered line count from a script that emitted none. The rule was listed as covered and enforced by nothing.
+Why: you trust a rule because the checklist lists it, and a rule the scanner never emits is covered in name only.
 
 ### Density and number counts
 - Words per slide, words per sentence.
-- Numbers per slide, and how many of them carry emphasis. Past about twenty undifferentiated numbers, CANDIDATE.
+- Numbers per slide, and how many of them carry emphasis. More than 20 undifferentiated numbers on one slide: CANDIDATE.
 - Numbers per deck, so a reviewer can see where the weight sits.
 
-Why: a density rule that counted only prose pushed builders into tables of sixty equal figures.
+Why: a density rule that counts only prose sends builders into tables of sixty equal figures, and nobody can find the claim.
 
 ### A number beside a number
 - An ordinal ("1.", "01") next to a stat, or a numbered list whose items lead with a figure. FAIL.
 
-Why: "59" beside "1." reads as one figure. A key-insights slide built as six numbered rows carried thirty figures with an index beside each.
+Why: "59" beside "1." reads as one figure, and the reader quotes the wrong number.
 
 ### Unsourced numbers and ledger reconciliation
 - A percentage with no base beside it.
@@ -43,19 +46,19 @@ Why: "59" beside "1." reads as one figure. A key-insights slide built as six num
 - The same entity and metric with different values or rounding on two slides.
 - Quotes compared byte for byte against the ledger's quote table.
 
-Why: one wrong reconciliation costs more trust than any number of missing ones.
+Why: one number that fails to match its source costs more trust than a dozen missing footnotes.
 
 ### Contrast on every stop
 - Every text color against the fill directly under it: the shape it sits in, or the ground. For a gradient ground, every stop.
 - Labels inside native chart objects against their series fill.
 - Thin marks (lines, markers) against the 3:1 graphics floor.
 
-Why: an early scanner skipped text sitting over a box, so a heatmap shipped an ink label at 4.44:1 on its darkest cell. It also ignored transparency, so it invented a second accent color on a correct deck. Composite alpha before you measure.
+Why: a label that is hard to read on its own background is the defect a reader notices first, and a scanner that checks only the slide ground misses it. Composite transparency before you measure.
 
 ### Request text echoed into the deliverable
 - Any run of eight or more consecutive words from the client's request, found anywhere in the deck: slides, appendix and speaker notes. FAIL, with an exemption for runs made only of category, market and metric names.
 
-Why: a client's email was quoted verbatim into a "question as asked" panel. A deck that pastes the question back reads as if nobody thought about it.
+Why: a deck that pastes the question back to the person who asked it reads as if nobody thought about it.
 
 ### Private names leaking
 - Scan all text, notes included, for names on a deny list. FAIL on any hit.
@@ -73,15 +76,15 @@ Why: the scanner cannot catch a name it does not know, and the list of names you
 - Every size in the file counted against the declared scale. FAIL on any size off it.
 - Every fill and text color counted against the palette, printed as a census.
 
-Why: a census of a built file once found ten bars that had silently reverted to a default tint. Nothing raised, nothing warned, and only counting found it.
+Why: a color can drift to a default without any warning, and only counting what reached the file shows it.
 
 ### Empty space and fill
-- Content that stops well short of the floor: CANDIDATE.
-- Two containers sharing a top whose bottoms differ by more than a hair: FAIL.
+- Content whose lowest edge sits more than 15 percent of the slide height above the content region's bottom: CANDIDATE. Measure the lowest shape bottom against the region's bottom.
+- Two containers sharing a top whose bottoms differ by more than 0.02 inch (about 1.5 points): FAIL.
 - Text out of bounds or overlapping other text: FAIL.
 
 ### Chart label legibility
-- Value labels present on every mark of every series, including the emphasized one. A bolding step once switched values off on the claim series while its test checked only that the label block existed.
+- Value labels present on every mark of every series, including the emphasized one. The test counts the labels and compares the count with the marks.
 - Label size on the scale, label contrast on its fill, labels not colliding.
 
 ### Structure
@@ -97,11 +100,11 @@ A check you have never seen fail certifies nothing. For each one:
 - [ ] Assert it PASSes on the corrected version.
 - [ ] Revert the check and confirm the fixture goes red.
 
-One of my scans missed the exact incident it was written for, because it measured shapes and the defect lived in a native chart. Only running it on that deck would have shown it.
+Run each new check on the deck that prompted it. A scan can pass the file it was written for when it measures shapes and the defect lives somewhere else, such as a native chart.
 
 ## Minimum version
 
-- [ ] PASS, FAIL and CANDIDATE levels, exit codes 0, 1 and 2, one summary line.
+- [ ] PASS, FAIL, CANDIDATE and NOT SCANNED levels. Exit 0 when there is no FAIL, 1 on any FAIL and 2 when the scanner cannot run, with the CANDIDATE and NOT SCANNED counts in the one summary line.
 - [ ] Headline line count and color count.
 - [ ] Type sizes and colors counted against the tokens.
 - [ ] Text contrast against the fill under it.

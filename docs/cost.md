@@ -1,6 +1,6 @@
 # What it costs
 
-The full chain is slow and uses many tokens on purpose. Each stage re-reads sources and files so that a claim gets looked at more than once. I have not measured token counts for your setup, and I will not promise savings. This page says where the cost comes from so you can decide what to trim.
+You expected a deck in ten minutes and the full chain takes much longer. It is slow and uses many tokens because each stage re-reads sources and files, so a claim gets looked at more than once. I have not measured token counts for your setup, and I will not promise savings. This page says where the cost comes from so you can decide what to trim.
 
 ## Where it goes, largest first
 

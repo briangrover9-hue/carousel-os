@@ -5,17 +5,17 @@ Eight slides from decks the author's own engine drew. That engine is not part of
 ![A summary slide with three stat cards](01-stat-cards.png)
 Three stat cards, each with a headline number, its unit and one plain reading, above a short list of actions.
 
-![A ranked table of claims with inline bars](02-ranked-bar-table.png)
-A ranked bar table: one row per claim, signed bars and a printed value on every row.
+![A table of claims ranked by item count, with signed bars for the change](02-ranked-bar-table.png)
+A ranked bar table: seven claims sorted by item count from most to fewest, with sales, the change and a signed bar for the change, and a printed value on every row.
 
-![A five by five heatmap](03-heatmap.png)
-A heatmap of how often two claims appear together, five fixed shades of one blue and a printed number in every cell.
+![A five by five heatmap of claims that appear together](03-heatmap.png)
+A heatmap of how often two claims appear on the same item. The column headings match the row labels, there are five fixed shades of one blue, and every cell prints its number.
 
-![A table and a trend line for complaints before and after a change](04-trend-line.png)
-A before and after table with the change in points, drawn beside the trend that led to it.
+![A line chart of the share of reviews mentioning sweetness by month, falling after a dated formula change](04-trend-line.png)
+A line chart of one rate by month. The card names the dated change and gives both periods with their counts, and only the first and last points carry a printed value.
 
-![A 100 percent stacked bar of review sentiment](05-stacked-share-bar.png)
-A share bar of positive, neutral and negative reviews, with a band of totals above it.
+![A 100 percent stacked bar of review sentiment for four groups](05-stacked-share-bar.png)
+A share bar of positive, neutral and negative reviews for four groups, with a band of totals above it. Every segment prints its value.
 
 ![A mirrored bar chart of praise and complaints with two quotes](06-quote-slide.png)
 Praise and complaints mirrored around a label column, with two verbatim quotes and their sources on the right.
@@ -23,5 +23,5 @@ Praise and complaints mirrored around a label column, with two verbatim quotes a
 ![A comparison table of options against criteria](07-comparison-table.png)
 Three options against five criteria in a plain table, one short answer per cell.
 
-![A template slide showing chart color pairings](08-template-layout.png)
-A layout from the master template: the palette and the five chart color pairings, on one slide.
+![A template slide with four numbered rules](08-template-layout.png)
+A slide from the master template: a headline, a scope line and a numbered list of four rules. It shows no data, so it carries no source line.

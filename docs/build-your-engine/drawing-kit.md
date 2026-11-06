@@ -23,7 +23,7 @@ Give the refusal a way out where one is legitimate. A deck that needs a darker p
 Text fit is the most common visual defect, and estimating it by character count is wrong often enough to matter.
 
 - [ ] Measure text with the real font file at the size you will draw, including tracking.
-- [ ] Count lines, not width. A guard that capped width and never counted lines let a long table label wrap to three lines and print over the next row.
+- [ ] Count lines, not width. A guard that caps width and never counts lines lets a long table label wrap and print over the next row.
 - [ ] Measure every text cell in a table, header included.
 - [ ] Balance line breaks on titles and quotes so no word sits alone on the last line, measured at the drawn tracking so the break you plan is the break that renders.
 - [ ] Refuse a headline that wraps past its cap instead of shrinking it.
@@ -35,7 +35,7 @@ A label inside a mark (a stacked segment, a heatmap cell, a bar) must be readabl
 
 - [ ] Choose ink or white by measured WCAG contrast against the actual fill, per label.
 - [ ] Refuse the label if neither reaches 4.5:1, unless the fill is a named, accepted exemption.
-- [ ] Apply the same function to every form that puts text on a fill, drawn and native alike. A fix that reached the drawn 100% bar and missed the native one shipped labels at 2.4:1.
+- [ ] Apply the same function to every form that puts text on a fill, drawn and native alike. A fix that reaches the drawn bar and misses the native one still ships an unreadable label.
 
 ## De-collision with floors
 
@@ -50,7 +50,7 @@ Labels collide: line endpoints that end near each other, scatter points, short b
 The same inputs should produce the same bytes.
 
 - [ ] Fix every timestamp, revision number and generated ID in the saved file.
-- [ ] Strip theme style references the library adds to shapes by default. Mine added an effect reference to every shape, and one renderer drew it as a drop shadow under every table row.
+- [ ] Strip theme style references the library adds to shapes by default. A library may attach an effect reference to every shape, and one renderer draws it as a drop shadow under every table row.
 - [ ] Size logos and images from their own aspect ratio, never stretched to a box.
 
 Why: per-slide hashes are how review verdicts carry over between rounds, and how the golden gallery detects change. Noise in the bytes voids every verdict and hides real diffs.

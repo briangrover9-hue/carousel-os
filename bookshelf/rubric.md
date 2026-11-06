@@ -31,7 +31,7 @@ Overall is the weighted mean, rounded to one decimal, then the caps below apply.
 - Thinking: if the mean of dimensions 2 to 4 is below 8, overall is at most 7.
 - Clarity: if the mean of dimensions 5 to 8 is below 7, overall is at most 7.
 - Length: a deck over the agreed slide budget is at most 7 until it fits.
-- Narrative: if dimension 3 is under its floor, overall is at most 6. Fix the storyboard, not the slides.
+- Narrative: if dimension 3 is under its floor, overall is at most 6. Repair the storyboard before touching any slide.
 
 A deck at exactly its floors still trips the thinking cap. That is intended. When a cap binds, the reviewer names the dimensions that hold it.
 
@@ -52,7 +52,7 @@ Stop when no P0 and no P1 is open, every number is reconciled to its source, and
 2. A P0 or P1 first seen at the final confirmation is fixed and confirmed once more. If it opens again, declare a blocker: name what prevents the bar (missing data, an unanswerable question, a deadline) and say so in the delivery note.
 3. A second content rework (a new analysis or a new organizing idea) is itself a blocker to declare.
 4. Every quantitative claim carries a check against the current slide and the current ledger row. Unverifiable never rounds up to verified: re-run the source analysis or weaken the claim to what you can prove.
-5. Every region the render report lists as approximated is resolved: view it in a PDF export, rebuild it from kit components, or name it as unverified in the delivery note.
+5. Every region a render flags as approximate is resolved: view it in a PDF export, rebuild it with your drawing components, or name it as unverified in the delivery note.
 
 ## Verdicts
 

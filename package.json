@@ -49,14 +49,18 @@
     "scripts/",
     "tests/process/",
     "tests/installer/",
-    "!**/.DS_Store"
+    "tests/example/",
+    "tests/helpers/",
+    "tests/scripts/",
+    "!**/.DS_Store",
+    "!docs/publish-checklist.md"
   ],
   "scripts": {
     "check": "node scripts/check.js",
-    "test": "node tests/process/run.js && node tests/installer/run.js",
+    "test": "node tests/process/run.js && node tests/installer/run.js && node tests/scripts/scripts.test.js && node tests/example/scan.test.js",
     "install:process": "node scripts/install.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   }
 }

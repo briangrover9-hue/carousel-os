@@ -1,29 +1,36 @@
 # Carousel OS
 
 ![Carousel OS: example slides arranged around the title](docs/hero.png)
+*Slides drawn by the author's own engine, which is not included.*
 
 A deck process for agents, with a ledger for every number.
 
-Every number printed on a slide gets an entry in a claim ledger: its source, its window, and a check that has to pass before the entry counts. A script then reads the slide text out of the deck file and compares it with the ledger, so a slide that prints 31% against a ledger value of 31.2% fails the check.
+Every slide gets one ledger entry, and every number printed on the slide is listed in it with its source, its window and a check that has to pass before the entry counts. A script then reads the slide text out of the deck file and compares it with the ledger.
 
 I built a deck by hand, swore I would never do it that way again, and turned the habits I had picked up into this process.
 
+## Moments it is built for
+
+You tell the agent a number is wrong. It says it is fixed, and it is not. In Carousel OS an entry becomes `checked` only after someone recomputes the number from its source and writes down what they did, and a script opens the .pptx and compares the printed slide with the ledger.
+
+A slide carries a figure nobody can trace. Every number sits in the ledger with its source and window, and a number on a slide that the ledger lacks fails the check.
+
+The check passes and the mistake is still there. A reviewer starts with fresh context, sees only the bar and the files, and tries to disprove the deck. It pastes the value it found for every number.
+
+You tell it the same thing for the third time. Each correction becomes a dated lesson, and a lesson corrected twice becomes a rule after you approve it.
+
+It looked done until someone else read it. The headlines read alone have to make an argument, and the plan records how each stage ended.
+
 ## Who it is for
 
-People who ship decks with numbers in them: analysts, consultants, product and strategy leads, anyone who presents a readout to readers who will ask where a figure came from. It runs inside an agent such as Claude Code and needs Node 18 or newer.
+People who ship decks with numbers in them: analysts, consultants, product and strategy leads, anyone who presents a readout to readers who will ask where a figure came from. It runs inside an agent such as Claude Code and needs Node 20 or newer.
 
 ## What you get
 
 - A finished, checked deck in PowerPoint or Google Slides.
-- A claim ledger for it: one entry per slide, each number with its source and window, each marked checked only after someone recomputed it.
+- A claim ledger for it: one entry per slide, each number in it with its source and window, each entry marked checked only after someone recomputed it.
 - A plan file that records every stage, so you can read how the deck got made.
 - A memory that carries your corrections from one deck to the next.
-
-## The problem
-
-A deck with numbers fails quietly. Slide 3 says 31% and slide 9 says 31.2%. A percentage has its base on one slide and none on the next. The headlines read in order stop making an argument halfway down. Nobody caught any of it because the same person drew the deck and judged it.
-
-The process makes the builder one checker among several, and gives every number a row that says where it came from.
 
 ## How it works
 
@@ -39,11 +46,16 @@ You type nine commands, one at a time. No command starts the next, and each decl
 8. `carousel-wrap` runs one more check, logs the session and records lessons.
 9. `carousel-handoff` writes the note the next session starts from.
 
-One prompt cannot do this job. It would interpret the request, pick the story, find the numbers, draw the slides and grade itself in a single pass, so its mistakes go into the deck with its own approval. [How it thinks](docs/how-it-thinks.md) explains what each piece of the process prevents. A short internal deck can take the [light path](docs/light-path.md): the same nine stages with one critique round.
+A single prompt would interpret the request, pick the story, find the numbers, draw the slides and grade itself in one pass, so its mistakes go into the deck with its own approval. [How it thinks](docs/how-it-thinks.md) explains what each piece of the process targets. A short internal deck can take the [light path](docs/light-path.md): the same nine stages with one critique round.
 
-## What a run looks like
+## A rejection, a fix and a pass
 
-These are real report lines from the [worked example](plans/example/fernway-skip-cancel.md), an invented subscription business. The critique round caught a survey percentage divided by the wrong base, and the first review rejected a slide that printed 31% where the source says 31.2%. The example deck is a plain text deck built without an engine, so it shows the process and has no design to judge.
+The [worked example](plans/example/fernway-skip-cancel.md) is an invented subscription business. Its deck is a plain text deck built without an engine, so it shows the process and has no design to judge. The first review rejected it. This is the reviewer's finding, copied from the plan:
+
+> s03 31.2%: recomputed from orders.csv, found 31.2%. The slide printed 31%. MISMATCH.
+> Finding: s03 printed 31% where the source and the ledger say 31.2%. One unreconciled number.
+
+The fix pass changed slide 3 to print 31.2%, the ledger's value. A new check ran, a second review recomputed every number, and it passed. The critique rounds had already caught a survey percentage divided by the wrong base: 300 of the 1,428 members who answered, not of all 4,200 cancellations. Here are the report lines from that run:
 
 ```
 Start report: plan plans/example/fernway-skip-cancel.md created; path full; handoff read; lessons loaded 0.
@@ -62,6 +74,23 @@ Wrap report: check PASS; log entry written; lessons added 1; wiki pages touched 
 Handoff report: memory/handoff.md written; 2 bullets; focus confirm whether the exit survey was voluntary.
 ```
 
+## What the check says when a number is wrong
+
+I copied the example to a temporary folder, changed slide 3 in the deck file to print 31% and ran the plan gate. This is the real output:
+
+```
+$ node scripts/check-process.js --plan plans/example/fernway-skip-cancel.md
+Plan: the deck read against 6 ledger rows and the Build table
+  the deck changed after Build recorded its hash. A changed deck needs a new Build.
+  slide s03: ledger number "31.2%" is not printed in the deck (slide 3)
+  slide s03: the deck prints 31, which is not in the ledger
+  slide s03: the deck prints 31 but the Build table does not
+  slide s03: the Build table shows 31.2 but the deck does not print it
+FAIL plan (5)
+```
+
+The exit code is 1, and the Check stage reports `plan FAIL` until a new Build fixes the slide.
+
 ## Evidence you can read
 
 - [The plan](plans/example/fernway-skip-cancel.md) holds the brief, storyboard, three critique rounds with their diff summaries, the pasted check output and the reviewer's evidence.
@@ -72,23 +101,22 @@ Handoff report: memory/handoff.md written; 2 bullets; focus confirm whether the 
 
 An engine is a program that draws slides, checks them, or both: a scanner that counts type sizes and colors, a renderer that turns the deck into images, a drawing kit that refuses what it cannot draw well. Carousel OS does not ship one. It ships the process and a blueprint, and it works without an engine, using a written checklist instead.
 
-You can build your own, or plug in one you already have. Register it in `carousel.config.json` with a scan command and a render command, each a shell template that takes `{deck}` and `{out}`, plus any other named tools. A tool exits 0 for PASS, 1 for FAIL and 2 when it or its runtime is missing, and `carousel-check` records the last line of its output. The sample is [carousel.config.example.json](carousel.config.example.json) and the keys are defined in [the engine contract](bookshelf/engine-contract.md).
+You can build your own, or plug in one you already have. Register it in `carousel.config.json`, and `carousel-check` runs it and records what it says. The sample is [carousel.config.example.json](carousel.config.example.json), and [the engine contract](bookshelf/engine-contract.md) defines the keys and exit codes.
 
 - [Build your engine](docs/build-your-engine/README.md) says what a good engine checks and in what order to build it.
 - [The gallery](docs/gallery/README.md) shows slides drawn by the author's own engine. The engine is not included.
 
 ## What it costs
 
-The full chain is slow and uses many tokens, on purpose. The review costs the most because the reviewer re-reads everything with no shared context. [What it costs](docs/cost.md) says where the tokens go and what you can trim. I make no promise of savings. Run targeted checks while you work, and one complete check at check and one at wrap.
+The full chain is slow and uses many tokens. The review costs the most because the reviewer re-reads everything with no shared context. [What it costs](docs/cost.md) says where the tokens go and what you can trim. I make no promise of savings. Run targeted checks while you work, and one complete check at check and one at wrap.
 
 ## Limits
 
 - The agent still does the thinking and the storytelling. The process makes its work visible and checkable, and you remain the person who decides.
 - The checks catch what they were built to catch. A deck can pass every one and still be dull or wrong in a way none of them anticipated, so read it before it leaves.
-- The plan gate reads the text in a .pptx file. It does not read text inside images, charts drawn as pictures or speaker notes.
+- The plan gate reads the text in a .pptx file and the values inside native charts. It does not read text inside images, charts drawn as pictures or speaker notes.
 - Without an engine, the check is a written checklist that the agent answers, which is weaker than a program that counts.
 - The targets are PowerPoint and Google Slides. For Slides, export a .pptx before the check.
-- It is slow on purpose.
 
 ## Getting started
 

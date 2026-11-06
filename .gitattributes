@@ -3,3 +3,5 @@
 *.png -text
 *.ttf -text
 *.json -text
+memory/wiki/lessons.md -text
+memory/wiki/lessons.history -text

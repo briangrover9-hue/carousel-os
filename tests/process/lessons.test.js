@@ -61,6 +61,11 @@ test('documented paraphrases match and documented opposites do not', () => {
     ['Show the legend on every chart', 'Hide the legend on every chart'],
     ['Open every deck with the answer', 'Do not open every deck with the answer'],
     ['Add a source line to every slide', 'Cut the source line from every slide'],
+    ['Always put the source line above the chart on every data slide', 'Always put the source line below the chart on every data slide'],
+    ['Use the default theme for every internal deck', 'Use the custom theme for every internal deck'],
+    ['Lead with the answer before the evidence on slide two', 'Lead with the evidence before the answer on slide two'],
+    ['Put the legend on the left of every chart', 'Put the legend on the right of every chart'],
+    ['Start the deck with the biggest number in the evidence', 'Start the deck with the smallest number in the evidence'],
   ];
   same.forEach(([a, b]) => assert.ok(lessons.similar(a, b), `should match: ${a} / ${b}`));
   opposite.forEach(([a, b]) => assert.ok(!lessons.similar(a, b), `must not match: ${a} / ${b}`));
@@ -186,18 +191,18 @@ test('list shows rules, lessons and time left', () => {
 test('dedupe only lists candidates until the human confirms, then merges and adds counts', () => {
   const f = fixture();
   fs.writeFileSync(f.file, text(f).replace('## Lessons\n\n_None yet._',
-    '## Lessons\n\n- L-aaaaaa | 2026-11-01 | n=1 | confirmed 2026-11-01 | Label the series on the chart itself\n' +
-    '- L-bbbbbb | 2026-11-03 | n=1 | confirmed 2026-11-04 | Label each series directly on the chart\n' +
+    '## Lessons\n\n- L-d2b13c | 2026-11-01 | n=1 | confirmed 2026-11-01 | Label the series on the chart itself\n' +
+    '- L-dcd02c | 2026-11-03 | n=1 | confirmed 2026-11-04 | Label each series directly on the chart\n' +
     '- L-cccccc | 2026-11-03 | n=1 | confirmed 2026-11-03 | Cut slides that have no source'));
   const before = text(f);
   const r = run(f, ['dedupe']);
   assert.strictEqual(r.code, 3, r.out);
-  assert.ok(r.out.includes('MERGE CANDIDATE: L-aaaaaa L-bbbbbb'), r.out);
+  assert.ok(r.out.includes('MERGE CANDIDATE: L-d2b13c L-dcd02c'), r.out);
   assert.strictEqual(text(f), before);
   assert.ok(run(f, ['dedupe', ...H]).out.includes('Merged 1 duplicates.'));
   const doc = lessons.parse(text(f));
   assert.strictEqual(doc.lessons.length, 2);
-  const merged = doc.lessons.find((l) => l.id === 'L-aaaaaa');
+  const merged = doc.lessons.find((l) => l.id === 'L-d2b13c');
   assert.strictEqual(merged.n, 2);
   assert.strictEqual(merged.confirmed, '2026-11-04');
 });
@@ -258,10 +263,10 @@ test('a lessons file that the history does not support fails reconciliation', ()
 test('dedupe merges are recorded with the words and the new count', () => {
   const f = fixture();
   fs.writeFileSync(f.file, text(f).replace('## Lessons\n\n_None yet._',
-    '## Lessons\n\n- L-aaaaaa | 2026-11-01 | n=1 | confirmed 2026-11-01 | Label the series on the chart itself\n' +
-    '- L-bbbbbb | 2026-11-03 | n=1 | confirmed 2026-11-04 | Label each series directly on the chart'));
+    '## Lessons\n\n- L-d2b13c | 2026-11-01 | n=1 | confirmed 2026-11-01 | Label the series on the chart itself\n' +
+    '- L-dcd02c | 2026-11-03 | n=1 | confirmed 2026-11-04 | Label each series directly on the chart'));
   run(f, ['dedupe', '--human-confirmed', 'yes, merge them', '--date', '2026-11-10']);
-  assert.ok(hist(f).includes('merge | L-aaaaaa | "yes, merge them" | n=2 confirmed 2026-11-04 | absorbed L-bbbbbb'), hist(f));
+  assert.ok(hist(f).includes('merge | L-d2b13c | "yes, merge them" | n=2 confirmed 2026-11-04 | absorbed L-dcd02c'), hist(f));
   assert.deepStrictEqual(lessons.validate(text(f), '2026-11-10', hist(f)).filter((e) => !e.startsWith('WARN')), []);
 });
 

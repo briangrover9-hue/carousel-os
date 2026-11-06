@@ -95,12 +95,27 @@ function makePptx(texts, opts) {
   const o = opts || {};
   const files = [['[Content_Types].xml', '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>']];
   const ids = texts.map((t, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 1}"/>`);
-  files.push(['ppt/presentation.xml', `<p:presentation xmlns:p="p" xmlns:r="r"><p:sldIdLst>${(o.reverseOrder ? ids.slice().reverse() : ids).join('')}</p:sldIdLst></p:presentation>`]);
-  files.push(['ppt/_rels/presentation.xml.rels', `<Relationships>${texts.map((t, i) => `<Relationship Id="rId${i + 1}" Type="slide" Target="slides/slide${i + 1}.xml"/>`).join('')}</Relationships>`]);
+  if (!o.noPresentation) files.push(['ppt/presentation.xml', `<p:presentation xmlns:p="p" xmlns:r="r"><p:sldIdLst>${(o.reverseOrder ? ids.slice().reverse() : ids).join('')}</p:sldIdLst></p:presentation>`]);
+  if (!o.noPresentation) files.push(['ppt/_rels/presentation.xml.rels', `<Relationships>${texts.map((t, i) => `<Relationship Id="rId${i + 1}" Type="slide" Target="${o.absoluteTargets ? '/ppt/' : ''}slides/slide${i + 1}.xml"/>`).join('')}</Relationships>`]);
   texts.forEach((t, i) => {
-    const paras = String(t).split('\n').map((p) => `<a:p><a:r><a:t>${xmlEsc(p)}</a:t></a:r></a:p>`).join('');
+    // "\n" starts a paragraph and "\u2028" is a line break inside one. With opts.raw the text goes in as XML.
+    const run = (x) => `<a:r><a:t xml:space="preserve">${o.raw ? x : xmlEsc(x)}</a:t></a:r>`;
+    const paras = String(t).split('\n').map((p) => `<a:p>${p.split('\u2028').map(run).join('<a:br/>')}</a:p>`).join('');
     files.push([`ppt/slides/slide${i + 1}.xml`, `<p:sld xmlns:a="a" xmlns:p="p"><p:cSld><p:spTree><p:sp><p:txBody>${paras}</p:txBody></p:sp></p:spTree></p:cSld></p:sld>`]);
   });
+  if (o.chart) {
+    const c = o.chart; // { slide: index, values: [..], format: '0%', title, cats }
+    const rels = `<Relationships><Relationship Id="rId9" Type="chart" Target="../charts/chart1.xml"/></Relationships>`;
+    files.push([`ppt/slides/_rels/slide${c.slide + 1}.xml.rels`, rels]);
+    const pts = c.values.map((v, i) => `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`).join('');
+    const cats = (c.cats || []).map((v, i) => `<c:pt idx="${i}"><c:v>${xmlEsc(v)}</c:v></c:pt>`).join('');
+    files.push(['ppt/charts/chart1.xml', `<c:chartSpace xmlns:c="c" xmlns:a="a"><c:chart><c:title><c:tx><c:rich><a:p><a:r><a:t>${xmlEsc(c.title || '')}</a:t></a:r></a:p></c:rich></c:tx></c:title><c:plotArea><c:ser><c:cat><c:strRef><c:strCache>${cats}</c:strCache></c:strRef></c:cat><c:val><c:numRef><c:numCache><c:formatCode>${c.format || 'General'}</c:formatCode>${pts}</c:numCache></c:numRef></c:val></c:ser></c:plotArea></c:chart></c:chartSpace>`]);
+  }
+  if (o.core) {
+    const c = o.core;
+    files.push(['docProps/core.xml', `<cp:coreProperties xmlns:cp="cp" xmlns:dc="dc"><dc:creator>${c.creator || ''}</dc:creator><cp:lastModifiedBy>${c.lastModifiedBy || ''}</cp:lastModifiedBy>${c.description ? `<dc:description>${c.description}</dc:description>` : ''}</cp:coreProperties>`]);
+  }
+  if (o.thumbnail) files.push(['docProps/thumbnail.jpeg', 'x']);
   if (o.notes) files.push(['ppt/notesSlides/notesSlide1.xml', `<p:notes xmlns:a="a"><a:p><a:r><a:t>${xmlEsc(o.notes)}</a:t></a:r></a:p></p:notes>`]);
   return zip(files, !!o.deflate);
 }
@@ -135,4 +150,4 @@ function done() {
   process.exit(failed ? 1 : 0);
 }
 
-module.exports = { assert, fs, path, ROOT, SCRIPTS, tmpDir, copyRepo, edit, node, check, makePptx, syncHashes, mustFail, mustPass, test, done };
+module.exports = { assert, fs, path, ROOT, SCRIPTS, tmpDir, copyRepo, edit, node, check, makePptx, zip, syncHashes, mustFail, mustPass, test, done };
