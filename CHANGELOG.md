@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.2
 
 - **The worked example's exports ship.** `plans/example/exports/` holds the three invented files the example cites (`visits.csv`, `cancellations.csv`, `exit-survey.csv`), written from a fixed seed by `make-exports.js` beside them, so anyone can recount every number in the plan and ledger. The plan's opening paragraph says where they are. A new test, `tests/process/example-exports.test.js`, recomputes every ledger number from the files and fails on any mismatch, and checks that the generator still writes the same bytes.
 - The README says the check compares every number on the slides with a ledger that records its source, which is what `carousel-check` does. Recomputing from the source happens at build and in the fidelity reviewer.

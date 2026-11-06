@@ -1,6 +1,6 @@
 {
   "name": "carousel-os",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "An operating system for building presentations with an AI agent: brief, storyboard, critique, build, number check, fresh review and memory across decks. Works in Claude Code, Cursor and Codex.",
   "license": "MIT",
   "author": {
