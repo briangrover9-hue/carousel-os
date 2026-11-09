@@ -7,6 +7,8 @@
 
 An operating system for building presentations with an AI agent. It interviews you for the brief, plans the story slide by slide, critiques that plan before anything is drawn, builds the deck, checks every number on the slides against a ledger that records its source, has two reviewers who didn't build it try to break it, and remembers your corrections for the next deck. Works in Claude Code, Cursor and Codex.
 
+Read how it works: [The Presentation System Your Agents Are Missing](https://www.linkedin.com/pulse/presentation-system-your-agents-missing-brian-grover-sp9he).
+
 ## Install
 
 Pick one of four ways. Each installs the whole system, and each needs Node 20 or newer.
